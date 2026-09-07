@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Chariots élévateurs — QR</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#090b0e;color:#eef2f7;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+.wrap{max-width:760px;margin:auto;padding:16px}
+.card{background:#11151b;border:1px solid #262d37;border-radius:24px;padding:20px;box-shadow:0 12px 35px rgba(0,0,0,.25)}
+h1{font-size:29px;margin:0 0 5px} h2{font-size:21px;margin:25px 0 11px}
+.sub,.muted{color:#9ca7b7} .badge{display:inline-block;background:#1c232d;padding:8px 14px;border-radius:999px;font-weight:750;margin:10px 0 12px}
+.search,.input,.select,.textarea{width:100%;padding:13px 14px;border-radius:13px;border:1px solid #303844;background:#0c1015;color:#fff;font-size:15px}
+.textarea{min-height:90px;resize:vertical}
+.results{margin:8px 0} .result{padding:12px;border:1px solid #252c36;border-radius:13px;margin:7px 0;background:#0e1217;cursor:pointer}
+.result small{color:#9ca7b7}
+.grid{display:grid;grid-template-columns:1fr;gap:9px}
+.item{background:#0c1015;border:1px solid #20262f;border-radius:15px;padding:13px 15px}
+.label{display:block;color:#8f9aaa;font-size:13px;margin-bottom:4px} .value{font-size:17px;font-weight:650;word-break:break-word}
+.status{display:inline-block;padding:7px 11px;border-radius:999px;background:#202833;font-size:13px;font-weight:700}
+button{border:0;border-radius:13px;padding:13px 16px;background:#e9eef5;color:#111;font-weight:750;font-size:15px;cursor:pointer}
+button.secondary{background:#202731;color:#eef2f7}
+.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}
+.log{border:1px solid #252c36;border-radius:15px;padding:13px;margin:9px 0;background:#0e1217}
+.log b{display:block;margin-bottom:4px} .log small{color:#9ca7b7}
+.hidden{display:none} footer{margin-top:22px;text-align:center;color:#737e8d;font-size:12px}
+hr{border:0;border-top:1px solid #242b34;margin:22px 0}
+
+.authbox{margin-top:10px;padding:14px;border:1px solid #303844;border-radius:15px;background:#0c1015}.error{color:#ff8f8f;margin-top:8px;font-size:14px}.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap"><div class="card">
+<h1>Chariot élévateur</h1>
+<div class="sub">Fiche technique • QR • Maintenance</div>
+
+<input id="search" class="search" placeholder="Rechercher QR ID, châssis, client..." autocomplete="off">
+<div id="results" class="results"></div>
+
+<div id="fiche" class="hidden">
+<div id="qrid" class="badge"></div>
+<div id="status"></div>
+
+<h2>Identification</h2><div class="grid" id="identification"></div>
+<h2>Caractéristiques</h2><div class="grid" id="characteristics"></div>
+<h2>Informations</h2><div class="grid" id="information"></div>
+
+<hr>
+<h2>Maintenance / Intervention</h2>
+<div id="authBox" class="authbox">
+  <div id="authStatus" class="muted">Connexion requise pour ajouter ou modifier une intervention.</div>
+  <div id="loginForm">
+    <input id="loginEmail" class="input" type="email" placeholder="Email / User" autocomplete="username">
+    <div style="margin-top:9px"><input id="loginPassword" class="input" type="password" placeholder="Mot de passe" autocomplete="current-password"></div>
+    <div class="actions"><button onclick="login()">Se connecter</button></div>
+    <div id="loginError" class="error"></div>
+  </div>
+  <div id="loggedInBox" class="hidden">
+    <div id="userLabel" class="muted"></div>
+    <div class="actions"><button class="secondary" onclick="logout()">Se déconnecter</button></div>
+  </div>
+</div>
+
+<div id="maintenanceEditor" class="hidden">
+  <div style="margin-top:12px"><input id="date" class="input" type="date"></div>
+  <div style="margin-top:9px"><input id="technicien" class="input" placeholder="Technicien"></div>
+  <div style="margin-top:9px"><input id="type" class="input" placeholder="Type d'intervention (entretien, réparation, contrôle...)"></div>
+  <div style="margin-top:9px"><textarea id="travaux" class="textarea" placeholder="Travaux effectués / pièces remplacées / observations"></textarea></div>
+  <div class="actions"><button onclick="addMaintenance()">Ajouter l'intervention</button></div>
+</div>
+
+<h2>Historique</h2>
+<div id="history"></div>
+</div>
+<footer>QR ID permanent • Données techniques issues du fichier de gestion</footer>
+</div></div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = "https://hkakedonludcqgjjzkei.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_AQWeYHI3Xli_1iBKVr9EPg_8L8PR-Hc";
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+let currentUser = null;
+</script>
+<script>
+const CHARIOTS = [{"STOCK":"STOCK1","N° châssis":"G6214","N° de serie":null,"Couleur":"Gris","Moteur":"ISUZU","Capacité (T)":"3 T","Hauteur de levage (m)":"3","Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0001"},{"STOCK":"STOCK1","N° châssis":"G6143","N° de serie":null,"Couleur":"Vert","Moteur":"MITSUBISHI","Capacité (T)":"3 T","Hauteur de levage (m)":"3","Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"Réservé","Client":"SARL ABDELLAH IDAHMANENE","Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0002"},{"STOCK":"STOCK1","N° châssis":"G6149","N° de serie":null,"Couleur":"Vert","Moteur":"MITSUBISHI","Capacité (T)":"3 T","Hauteur de levage (m)":"3","Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"Réservé","Client":"SARL ABDELLAH IDAHMANENE","Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0003"},{"STOCK":"STOCK1","N° châssis":"G6204","N° de serie":null,"Couleur":"Gris","Moteur":"ISUZU","Capacité (T)":"3 T","Hauteur de levage (m)":"4.5","Dimention de fourche (M)":"1.2","Type de mât":"Triplex","TYPE DE PNEU":null,"Statut":"En stock","Client":"HAITOUM CHIHEB EDDINE","Date livraison":"2026-09-01","Observations":null,"Engine Number":null,"QR ID":"CH-0004"},{"STOCK":"STOCK1","N° châssis":"G6194","N° de serie":null,"Couleur":"Gris","Moteur":"ISUZU","Capacité (T)":"3 T","Hauteur de levage (m)":"3","Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"Réservé","Client":"SPA SGA ABDELLAH IDAHMANENE ","Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0005"},{"STOCK":"STOCK1","N° châssis":"G6203","N° de serie":null,"Couleur":"Gris","Moteur":"ISUZU","Capacité (T)":"3 T","Hauteur de levage (m)":"3","Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"Réservé","Client":"SARL ABDELLAH IDAHMANENE","Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0006"},{"STOCK":"STOCK1","N° châssis":"G6201","N° de serie":null,"Couleur":"Gris","Moteur":"ISUZU","Capacité (T)":"3 T","Hauteur de levage (m)":"3","Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"Réservé","Client":"SARL ABDELLAH IDAHMANENE","Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0007"},{"STOCK":"STOCK1","N° châssis":"G6235","N° de serie":null,"Couleur":"Vert","Moteur":null,"Capacité (T)":"3 T","Hauteur de levage (m)":"4.5","Dimention de fourche (M)":"1.2","Type de mât":"Triplex","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0008"},{"STOCK":"STOCK1","N° châssis":"G6166","N° de serie":null,"Couleur":"Vert","Moteur":"MITSUBISHI","Capacité (T)":"3 T","Hauteur de levage (m)":"4.5","Dimention de fourche (M)":"1.2","Type de mât":"Triplex","TYPE DE PNEU":null,"Statut":"Réservé","Client":"MLA PC OUARED MOURAD","Date livraison":null,"Observations":"TRANSFORMATION","Engine Number":null,"QR ID":"CH-0009"},{"STOCK":"STOCK1","N° châssis":"G61651/G6151","N° de serie":null,"Couleur":"Vert","Moteur":null,"Capacité (T)":"3,8 T","Hauteur de levage (m)":"4.5","Dimention de fourche (M)":"1.5","Type de mât":"Triplex","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":"NUMERO DE CHASSIS INCORRECT","Engine Number":null,"QR ID":"CH-0010"},{"STOCK":"STOCK1","N° châssis":"G6012","N° de serie":null,"Couleur":"orange","Moteur":"XINSHAI","Capacité (T)":"3,8 T","Hauteur de levage (m)":"4.3","Dimention de fourche (M)":"1.5","Type de mât":"Triplex","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0011"},{"STOCK":"STOCK1","N° châssis":"G6167","N° de serie":null,"Couleur":"Vert","Moteur":"MITSUBISHI","Capacité (T)":"3,8 T","Hauteur de levage (m)":"4","Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0012"},{"STOCK":"STOCK1","N° châssis":"G6134","N° de serie":null,"Couleur":"Vert","Moteur":"MITSUBISHI","Capacité (T)":"3,8 T","Hauteur de levage (m)":"3","Dimention de fourche (M)":null,"Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0013"},{"STOCK":"STOCK1","N° châssis":"G6177","N° de serie":null,"Couleur":"Vert","Moteur":"MITSUBISHI","Capacité (T)":"3,8 T","Hauteur de levage (m)":"3","Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0014"},{"STOCK":"STOCK1","N° châssis":"G6032","N° de serie":null,"Couleur":"Jaune","Moteur":"XINSHAI","Capacité (T)":"3,8 T","Hauteur de levage (m)":"4.5","Dimention de fourche (M)":"1.2","Type de mât":"Triplex","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0015"},{"STOCK":"STOCK1","N° châssis":"G6010","N° de serie":null,"Couleur":"Rouge","Moteur":"XINSHAI","Capacité (T)":"3,8 T","Hauteur de levage (m)":"4","Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0016"},{"STOCK":"STOCK1","N° châssis":"G6148","N° de serie":null,"Couleur":"Vert","Moteur":"MITSUBISHI","Capacité (T)":"3,8 T","Hauteur de levage (m)":"4","Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0017"},{"STOCK":"STOCK1","N° châssis":"G6174","N° de serie":null,"Couleur":"Vert","Moteur":"MITSUBISHI","Capacité (T)":"3,8 T","Hauteur de levage (m)":"3","Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0018"},{"STOCK":"STOCK1","N° châssis":"G6232","N° de serie":"684","Couleur":"Vert","Moteur":"ISUZU","Capacité (T)":"3 T","Hauteur de levage (m)":"4.5","Dimention de fourche (M)":"1.2","Type de mât":"Triplex","TYPE DE PNEU":null,"Statut":"Livré","Client":"SPA ENTREPRISE DEMBALAGE","Date livraison":"2026-08-31","Observations":null,"Engine Number":null,"QR ID":"CH-0019"},{"STOCK":"STOCK1","N° châssis":"G6127","N° de serie":null,"Couleur":"Jaune","Moteur":null,"Capacité (T)":"3 T","Hauteur de levage (m)":"4.5","Dimention de fourche (M)":"1.2","Type de mât":"Triplex","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0020"},{"STOCK":"STOCK1","N° châssis":"G6112","N° de serie":null,"Couleur":"Jaune","Moteur":null,"Capacité (T)":"3,8 T","Hauteur de levage (m)":"4.3","Dimention de fourche (M)":"1.2","Type de mât":"Triplex","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0021"},{"STOCK":"STOCK1","N° châssis":"G6162","N° de serie":null,"Couleur":"Jaune","Moteur":"XINSHAI","Capacité (T)":"3 T","Hauteur de levage (m)":"3","Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"Livré","Client":"ZIANI AISSA","Date livraison":"2026-08-30","Observations":null,"Engine Number":null,"QR ID":"CH-0022"},{"STOCK":"STOCK1","N° châssis":"A4496","N° de serie":null,"Couleur":"Vert","Moteur":null,"Capacité (T)":"5 T","Hauteur de levage (m)":"5.5","Dimention de fourche (M)":"1.2","Type de mât":"Triplex","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0023"},{"STOCK":"STOCK1","N° châssis":"MA8680","N° de serie":null,"Couleur":"Jaune","Moteur":"ISUZU","Capacité (T)":"7 T","Hauteur de levage (m)":"4","Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":null,"Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0024"},{"STOCK":"STOCK1","N° châssis":"G6016","N° de serie":null,"Couleur":"Vert","Moteur":"ISUZU","Capacité (T)":"5 T","Hauteur de levage (m)":"4.5","Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"Livré","Client":null,"Date livraison":"2026-09-03","Observations":null,"Engine Number":null,"QR ID":"CH-0025"},{"STOCK":"STOCK1","N° châssis":"G6119","N° de serie":null,"Couleur":"Jaune","Moteur":null,"Capacité (T)":"3 T","Hauteur de levage (m)":"3","Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0026"},{"STOCK":"STOCK2","N° châssis":"G6170","N° de serie":null,"Couleur":"Vert","Moteur":"MITSUBISHI","Capacité (T)":"3,8 T","Hauteur de levage (m)":"3","Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0027"},{"STOCK":"STOCK2","N° châssis":"MA4640","N° de serie":null,"Couleur":"orange","Moteur":"ISUZU","Capacité (T)":"7 T","Hauteur de levage (m)":"4","Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0028"},{"STOCK":"STOCK2","N° châssis":"G6008","N° de serie":null,"Couleur":"Rouge","Moteur":"Autre","Capacité (T)":"3,8 T","Hauteur de levage (m)":"4","Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"Réservé","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0029"},{"STOCK":"STOCK2","N° châssis":"G6163","N° de serie":null,"Couleur":"Vert","Moteur":"MITSUBISHI","Capacité (T)":"3,8 T","Hauteur de levage (m)":"3","Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0030"},{"STOCK":"STOCK2","N° châssis":"G6180","N° de serie":null,"Couleur":"Vert","Moteur":"MITSUBISHI","Capacité (T)":"3,8 T","Hauteur de levage (m)":"3","Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0031"},{"STOCK":"STOCK2","N° châssis":"G6161","N° de serie":null,"Couleur":"Vert","Moteur":"MITSUBISHI","Capacité (T)":"3,8 T","Hauteur de levage (m)":"3","Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0032"},{"STOCK":"STOCK2","N° châssis":"G6162","N° de serie":null,"Couleur":"Vert","Moteur":"MITSUBISHI","Capacité (T)":"3,8 T","Hauteur de levage (m)":"3","Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0033"},{"STOCK":"STOCK2","N° châssis":"G6156","N° de serie":null,"Couleur":"Vert","Moteur":"MITSUBISHI","Capacité (T)":"3,8 T","Hauteur de levage (m)":"3","Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0034"},{"STOCK":"STOCK2","N° châssis":"G6179","N° de serie":null,"Couleur":"Vert","Moteur":"MITSUBISHI","Capacité (T)":"3,8 T","Hauteur de levage (m)":"3","Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0035"},{"STOCK":"STOCK2","N° châssis":"G6155","N° de serie":null,"Couleur":"Vert","Moteur":"MITSUBISHI","Capacité (T)":"3,8 T","Hauteur de levage (m)":"3","Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0036"},{"STOCK":"STOCK2","N° châssis":"G6173","N° de serie":null,"Couleur":"Vert","Moteur":null,"Capacité (T)":"3,8 T","Hauteur de levage (m)":"3","Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"Livré","Client":null,"Date livraison":"2026-09-03","Observations":null,"Engine Number":null,"QR ID":"CH-0037"},{"STOCK":"STOCK2","N° châssis":"G6160","N° de serie":null,"Couleur":"Vert","Moteur":"MITSUBISHI","Capacité (T)":"3,8 T","Hauteur de levage (m)":"3","Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0038"},{"STOCK":"STOCK2","N° châssis":"G6147","N° de serie":null,"Couleur":"Vert","Moteur":"MITSUBISHI","Capacité (T)":"3,8 T","Hauteur de levage (m)":"3","Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0039"},{"STOCK":"STOCK2","N° châssis":"G6020","N° de serie":null,"Couleur":"orange","Moteur":"XINSHAI","Capacité (T)":"3,8 T","Hauteur de levage (m)":"3","Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"En fabrication","Client":"EURL ROKAY MACHINES","Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0040"},{"STOCK":"STOCK2","N° châssis":"G6007","N° de serie":null,"Couleur":"Rouge","Moteur":"Autre","Capacité (T)":"3,8 T","Hauteur de levage (m)":"3","Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0041"},{"STOCK":"STOCK2","N° châssis":"G6168","N° de serie":null,"Couleur":"Vert","Moteur":null,"Capacité (T)":"3,8 T","Hauteur de levage (m)":"4","Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0042"},{"STOCK":"STOCK2","N° châssis":"G6176","N° de serie":null,"Couleur":"Vert","Moteur":"MITSUBISHI","Capacité (T)":"3,8 T","Hauteur de levage (m)":"3","Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0043"},{"STOCK":"STOCK2","N° châssis":"BR9CEDG38T1AG6021","N° de serie":null,"Couleur":"orange","Moteur":"XINSHAI","Capacité (T)":"3,8 T","Hauteur de levage (m)":null,"Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"En stock","Client":"SARL BRIQEUTTRERIE MOUSSAOUI","Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0044"},{"STOCK":"STOCK2","N° châssis":"MA8671","N° de serie":null,"Couleur":"Jaune","Moteur":"ISUZU","Capacité (T)":"7 T","Hauteur de levage (m)":"4","Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0045"},{"STOCK":"STOCK2","N° châssis":"MA4641","N° de serie":null,"Couleur":"orange","Moteur":"Autre","Capacité (T)":"7 T","Hauteur de levage (m)":null,"Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0046"},{"STOCK":"STOCK2","N° châssis":"G6157","N° de serie":null,"Couleur":"Vert","Moteur":"MITSUBISHI","Capacité (T)":"3,8 T","Hauteur de levage (m)":"3","Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0047"},{"STOCK":"STOCK2","N° châssis":"G6020","N° de serie":null,"Couleur":"orange","Moteur":"XINSHAI","Capacité (T)":"3,5 T","Hauteur de levage (m)":"4","Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0048"},{"STOCK":"STOCK2","N° châssis":"G6011","N° de serie":null,"Couleur":"Rouge","Moteur":"ISUZU","Capacité (T)":"10 T","Hauteur de levage (m)":"4.5","Dimention de fourche (M)":"2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0049"},{"STOCK":"STOCK2","N° châssis":"A8623","N° de serie":null,"Couleur":"orange","Moteur":"Autre","Capacité (T)":"10 T","Hauteur de levage (m)":null,"Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0050"},{"STOCK":"STOCK2","N° châssis":"MA8673","N° de serie":null,"Couleur":"Jaune","Moteur":"ISUZU","Capacité (T)":"7 T","Hauteur de levage (m)":"4","Dimention de fourche (M)":"1.2","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0051"},{"STOCK":"STOCK1","N° châssis":"G6135","N° de serie":"895","Couleur":"Jaune","Moteur":"XINSHAI","Capacité (T)":"3 T","Hauteur de levage (m)":"4.5","Dimention de fourche (M)":"1.2","Type de mât":"Triplex","TYPE DE PNEU":null,"Statut":"Livré","Client":"BLIDA LOG ORAN ALGER","Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0052"},{"STOCK":"STOCK1","N° châssis":"G6126","N° de serie":null,"Couleur":"Jaune","Moteur":"XINSHAI","Capacité (T)":"3 T","Hauteur de levage (m)":"4.5","Dimention de fourche (M)":"1.2","Type de mât":"Triplex","TYPE DE PNEU":null,"Statut":"Livré","Client":"BOULKBACHE MALEK","Date livraison":"2026-08-30","Observations":null,"Engine Number":null,"QR ID":"CH-0053"},{"STOCK":"SHOWROOM","N° châssis":"G6016","N° de serie":null,"Couleur":"orange","Moteur":"XINSHAI","Capacité (T)":"3,8 T","Hauteur de levage (m)":"4","Dimention de fourche (M)":"1,5 m","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0054"},{"STOCK":"SHOWROOM","N° châssis":"G6133","N° de serie":null,"Couleur":"Vert","Moteur":"MITSUBISHI","Capacité (T)":"3,8 T","Hauteur de levage (m)":"4.5","Dimention de fourche (M)":"1,5 m","Type de mât":"Triplex","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0055"},{"STOCK":"SHOWROOM","N° châssis":"G6001","N° de serie":null,"Couleur":"Rouge","Moteur":"XINSHAI","Capacité (T)":"3,8 T","Hauteur de levage (m)":"4","Dimention de fourche (M)":"1,5 m","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"En stock","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0056"},{"STOCK":"FABRICATION","N° châssis":"G6246","N° de serie":null,"Couleur":"Vert","Moteur":"ISUZU","Capacité (T)":"3 T","Hauteur de levage (m)":"4.5","Dimention de fourche (M)":"1,2 m","Type de mât":"Triplex","TYPE DE PNEU":null,"Statut":"En fabrication","Client":"BENGHARBIA ABDELKADER","Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0057"},{"STOCK":"STOCK1","N° châssis":"G6181","N° de serie":null,"Couleur":"Jaune","Moteur":"XINSHAI","Capacité (T)":"3 T","Hauteur de levage (m)":"3","Dimention de fourche (M)":"1,2 m","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"Prêt à livrer","Client":"BRIHMAT AMAR","Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0058"},{"STOCK":"FABRICATION","N° châssis":"G6147","N° de serie":null,"Couleur":"Jaune","Moteur":"XINSHAI","Capacité (T)":"3 T","Hauteur de levage (m)":"4.5","Dimention de fourche (M)":"1,2 m","Type de mât":"Triplex","TYPE DE PNEU":null,"Statut":"En fabrication","Client":null,"Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0059"},{"STOCK":"STOCK1","N° châssis":"G6136","N° de serie":null,"Couleur":"Jaune","Moteur":"XINSHAI","Capacité (T)":"3 T","Hauteur de levage (m)":"4.5","Dimention de fourche (M)":"1,2 m","Type de mât":"Triplex","TYPE DE PNEU":null,"Statut":"Livré","Client":"BEJAIA","Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0060"},{"STOCK":"FABRICATION","N° châssis":"G6169","N° de serie":null,"Couleur":"Jaune","Moteur":"XINSHAI","Capacité (T)":"3 T","Hauteur de levage (m)":"4.5","Dimention de fourche (M)":"1,2 m","Type de mât":"Triplex","TYPE DE PNEU":null,"Statut":"En fabrication","Client":"BEJAIA EMBALAGE","Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0061"},{"STOCK":"FABRICATION","N° châssis":"G6146","N° de serie":null,"Couleur":"Jaune","Moteur":"XINSHAI","Capacité (T)":"3 T","Hauteur de levage (m)":null,"Dimention de fourche (M)":null,"Type de mât":null,"TYPE DE PNEU":null,"Statut":"En fabrication","Client":"BLIDA LOG ORAN","Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0062"},{"STOCK":"FABRICATION","N° châssis":"G6116","N° de serie":null,"Couleur":"Jaune","Moteur":"XINSHAI","Capacité (T)":"3 T","Hauteur de levage (m)":"3","Dimention de fourche (M)":null,"Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"En fabrication","Client":"GROUPE BERBECHE","Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0063"},{"STOCK":"STOCK1","N° châssis":"G6172","N° de serie":"546","Couleur":"Gris","Moteur":"ISUZU","Capacité (T)":"3 T","Hauteur de levage (m)":"4.5","Dimention de fourche (M)":"1,2 m","Type de mât":"Triplex","TYPE DE PNEU":"PNEUMATIQUE","Statut":"Livré","Client":"SPA ENTREPRISE DEMBALAGE","Date livraison":"2026-08-31","Observations":null,"Engine Number":null,"QR ID":"CH-0064"},{"STOCK":"STOCK1","N° châssis":"G6173","N° de serie":null,"Couleur":"Jaune","Moteur":"XINSHAI","Capacité (T)":"3 T","Hauteur de levage (m)":"4.5","Dimention de fourche (M)":null,"Type de mât":"Triplex","TYPE DE PNEU":null,"Statut":"Livré","Client":"BEJAIA","Date livraison":"2026-09-03","Observations":null,"Engine Number":null,"QR ID":"CH-0065"},{"STOCK":"STOCK1","N° châssis":"G6175","N° de serie":"935","Couleur":"Jaune","Moteur":"XINSHAI","Capacité (T)":"3 T","Hauteur de levage (m)":"3","Dimention de fourche (M)":null,"Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"Livré","Client":"BEJAIA","Date livraison":"2026-09-03","Observations":null,"Engine Number":null,"QR ID":"CH-0066"},{"STOCK":"STOCK1","N° châssis":"G6244","N° de serie":null,"Couleur":"Vert","Moteur":"ISUZU","Capacité (T)":"3 T","Hauteur de levage (m)":"4.5","Dimention de fourche (M)":"1,2 m","Type de mât":"Triplex","TYPE DE PNEU":"PNEU PLEIN","Statut":"Livré","Client":"AIR ALGERIE","Date livraison":"2026-08-31","Observations":null,"Engine Number":null,"QR ID":"CH-0067"},{"STOCK":"STOCK1","N° châssis":"G6243","N° de serie":null,"Couleur":"Vert","Moteur":"ISUZU","Capacité (T)":"3 T","Hauteur de levage (m)":"4.5","Dimention de fourche (M)":"1,2 m","Type de mât":"Triplex","TYPE DE PNEU":"PNEU PLEIN","Statut":"Livré","Client":"AIR ALGERIE","Date livraison":"2026-08-31","Observations":null,"Engine Number":null,"QR ID":"CH-0068"},{"STOCK":"STOCK1","N° châssis":"G6242","N° de serie":null,"Couleur":"Vert","Moteur":"ISUZU","Capacité (T)":"3 T","Hauteur de levage (m)":"4.5","Dimention de fourche (M)":"1,2 m","Type de mât":"Triplex","TYPE DE PNEU":"PNEU PLEIN","Statut":"Livré","Client":"AIR ALGERIE","Date livraison":"2026-08-31","Observations":null,"Engine Number":null,"QR ID":"CH-0069"},{"STOCK":"STOCK1","N° châssis":"G6245","N° de serie":null,"Couleur":"Vert","Moteur":"ISUZU","Capacité (T)":"3 T","Hauteur de levage (m)":"4.5","Dimention de fourche (M)":"1,2 m","Type de mât":"Triplex","TYPE DE PNEU":"PNEU PLEIN","Statut":"Livré","Client":"AIR ALGERIE","Date livraison":"2026-08-31","Observations":null,"Engine Number":null,"QR ID":"CH-0070"},{"STOCK":"STOCK2","N° châssis":"G6125","N° de serie":"885","Couleur":"Jaune","Moteur":"XINSHAI","Capacité (T)":"3 T","Hauteur de levage (m)":"4.5","Dimention de fourche (M)":null,"Type de mât":"Triplex","TYPE DE PNEU":null,"Statut":"Préparation livraison","Client":"SPA BANQUE LOTFI ZAIDI","Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0071"},{"STOCK":"FABRICATION","N° châssis":"G6165","N° de serie":"925","Couleur":"Jaune","Moteur":"XINSHAI","Capacité (T)":"3 T","Hauteur de levage (m)":"3","Dimention de fourche (M)":"1,2 m","Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"Livré","Client":"BLIDA LOG ORAN","Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0072"},{"STOCK":"FABRICATION","N° châssis":"G6164","N° de serie":"924","Couleur":"Jaune","Moteur":"XINSHAI","Capacité (T)":"3 T","Hauteur de levage (m)":"3","Dimention de fourche (M)":null,"Type de mât":"DUPLEX","TYPE DE PNEU":null,"Statut":"En fabrication","Client":"BLIDA LOG ORAN","Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0073"},{"STOCK":"STOCK1","N° châssis":"G6155","N° de serie":null,"Couleur":"Jaune","Moteur":"XINSHAI","Capacité (T)":"3 T","Hauteur de levage (m)":"3","Dimention de fourche (M)":"1,2 m","Type de mât":"DUPLEX","TYPE DE PNEU":"PNEUMATIQUE","Statut":"Livré","Client":"BOUFNAR KHALED","Date livraison":"2026-09-03","Observations":null,"Engine Number":null,"QR ID":"CH-0074"},{"STOCK":"STOCK1","N° châssis":"G6147","N° de serie":"907","Couleur":"Vert","Moteur":"ISUZU","Capacité (T)":"3 T","Hauteur de levage (m)":"3","Dimention de fourche (M)":"1,2 m","Type de mât":"DUPLEX","TYPE DE PNEU":"PNEUMATIQUE","Statut":"Livré","Client":"BLIDA LOG ORAN","Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0075"},{"STOCK":"FABRICATION","N° châssis":"G6250","N° de serie":null,"Couleur":"Vert","Moteur":"ISUZU","Capacité (T)":"3 T","Hauteur de levage (m)":"4.5","Dimention de fourche (M)":"1,5 m","Type de mât":"Triplex","TYPE DE PNEU":"PNEUMATIQUE","Statut":"En fabrication","Client":"LAYTIM FAYCEL","Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0076"},{"STOCK":"FABRICATION","N° châssis":"G6252","N° de serie":"982","Couleur":"Gris","Moteur":"ISUZU","Capacité (T)":"3 T","Hauteur de levage (m)":null,"Dimention de fourche (M)":null,"Type de mât":null,"TYPE DE PNEU":"PNEUMATIQUE","Statut":"En fabrication","Client":"LA BELLE","Date livraison":null,"Observations":null,"Engine Number":"C240-338982","QR ID":"CH-0077"},{"STOCK":"STOCK1","N° châssis":"G6158","N° de serie":null,"Couleur":"Jaune","Moteur":"XINSHAI","Capacité (T)":"3 T","Hauteur de levage (m)":"3","Dimention de fourche (M)":"1,2 m","Type de mât":"DUPLEX","TYPE DE PNEU":"PNEUMATIQUE","Statut":"Livré","Client":"BEJAIA","Date livraison":"2026-09-03","Observations":null,"Engine Number":null,"QR ID":"CH-0078"},{"STOCK":"FABRICATION","N° châssis":"G6028","N° de serie":null,"Couleur":"Jaune","Moteur":"ISUZU","Capacité (T)":"7 T","Hauteur de levage (m)":null,"Dimention de fourche (M)":"2 m","Type de mât":"Duplex","TYPE DE PNEU":"PNEUMATIQUE","Statut":"Livré","Client":"SARL DISPRIMEX IMP EXP","Date livraison":"2026-09-06","Observations":null,"Engine Number":null,"QR ID":"CH-0079"},{"STOCK":"STOCK1","N° châssis":"G6257","N° de serie":null,"Couleur":"Gris","Moteur":"ISUZU","Capacité (T)":"3 T","Hauteur de levage (m)":"4.5","Dimention de fourche (M)":"1,2 m","Type de mât":"Triplex","TYPE DE PNEU":"PNEUMATIQUE","Statut":"Livré","Client":"SHOWROOM ORAN","Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0080"},{"STOCK":"STOCK1","N° châssis":"G6247","N° de serie":"977","Couleur":"Vert","Moteur":"ISUZU","Capacité (T)":"3 T","Hauteur de levage (m)":"4.5","Dimention de fourche (M)":"1,2 m","Type de mât":"Triplex","TYPE DE PNEU":"PNEUMATIQUE","Statut":"Livré","Client":"SHOWROOM ORAN","Date livraison":null,"Observations":null,"Engine Number":null,"QR ID":"CH-0081"}];
+const fields = {
+ identification:[["N° châssis","N° châssis"],["N° de série","N° de serie"],["N° moteur","Engine Number"],["Moteur","Moteur"]],
+ characteristics:[["Capacité","Capacité (T)"],["Hauteur de levage","Hauteur de levage (m)"],["Dimensions des fourches","Dimention de fourche (M)"],["Type de mât","Type de mât"],["Type de pneu","TYPE DE PNEU"],["Couleur","Couleur"]],
+ information:[["Stock","STOCK"],["Statut","Statut"],["Client","Client"],["Date de livraison","Date livraison"],["Observations","Observations"]]
+};
+const esc=s=>String(s??"—").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+const params=new URLSearchParams(location.search);
+const requested=params.get("id")||params.get("qr");
+let current=null;
+
+function findChariot(q){
+ if(!q)return null; const x=q.trim().toLowerCase();
+ return CHARIOTS.find(c=>String(c["QR ID"]).toLowerCase()===x||String(c["N° châssis"]||"").toLowerCase()===x)||null;
+}
+function item(label,value){return `<div class="item"><span class="label">${esc(label)}</span><span class="value">${esc(value||"—")}</span></div>`}
+function show(c){
+ if(!c)return;
+ current=c; document.getElementById("fiche").classList.remove("hidden");
+ document.getElementById("search").value=c["QR ID"]||"";
+ document.getElementById("qrid").textContent=c["QR ID"]||"—";
+ document.getElementById("status").innerHTML=`<span class="status">${esc(c["Statut"]||"Statut non renseigné")}</span>`;
+ for(const section of Object.keys(fields))
+   document.getElementById(section).innerHTML=fields[section].map(([l,k])=>item(l,c[k])).join("");
+ if(!document.getElementById("date").value) document.getElementById("date").value=new Date().toISOString().slice(0,10);
+ history.replaceState(null,"","?id="+encodeURIComponent(c["QR ID"]));
+ renderHistory();
+}
+function search(q){
+ const box=document.getElementById("results"),x=q.trim().toLowerCase();
+ if(!x){box.innerHTML="";return}
+ const found=CHARIOTS.filter(c=>JSON.stringify(c).toLowerCase().includes(x)).slice(0,12);
+ box.innerHTML=found.map(c=>`<div class="result" data-id="${esc(c["QR ID"])}"><strong>${esc(c["QR ID"])} — ${esc(c["N° châssis"])}</strong><br><small>${esc(c["Moteur"])} • ${esc(c["Capacité (T)"])} • ${esc(c["Statut"])}</small></div>`).join("");
+ box.querySelectorAll(".result").forEach(el=>el.onclick=()=>show(findChariot(el.dataset.id)));
+}
+async function getSession(){
+  const {data} = await supabaseClient.auth.getSession();
+  currentUser = data.session ? data.session.user : null;
+  updateAuthUI();
+}
+function updateAuthUI(){
+  const loginForm=document.getElementById("loginForm");
+  const loggedIn=document.getElementById("loggedInBox");
+  const editor=document.getElementById("maintenanceEditor");
+  const status=document.getElementById("authStatus");
+  const userLabel=document.getElementById("userLabel");
+  if(currentUser){
+    loginForm.classList.add("hidden");
+    loggedIn.classList.remove("hidden");
+    editor.classList.remove("hidden");
+    status.textContent="Connecté — vous pouvez ajouter une intervention.";
+    userLabel.textContent="Utilisateur : "+(currentUser.email||currentUser.id);
+    const tech=document.getElementById("technicien");
+    if(tech && !tech.value) tech.value=(currentUser.user_metadata?.full_name||currentUser.email||"");
+  }else{
+    loginForm.classList.remove("hidden");
+    loggedIn.classList.add("hidden");
+    editor.classList.add("hidden");
+    status.textContent="Connexion requise pour ajouter ou modifier une intervention.";
+    userLabel.textContent="";
+  }
+}
+async function login(){
+  const email=document.getElementById("loginEmail").value.trim();
+  const password=document.getElementById("loginPassword").value;
+  const err=document.getElementById("loginError");
+  err.textContent="";
+  if(!email||!password){err.textContent="Email et mot de passe requis.";return}
+  const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});
+  if(error){err.textContent=error.message;return}
+  currentUser=data.user;
+  updateAuthUI();
+}
+async function logout(){
+  await supabaseClient.auth.signOut();
+  currentUser=null;
+  updateAuthUI();
+}
+async function loadLogs(){
+  if(!current) return [];
+  const {data,error}=await supabaseClient
+    .from("maintenance")
+    .select("id,date,technicien,type,travaux,created_at,created_by")
+    .eq("qr_id",current["QR ID"])
+    .order("date",{ascending:false})
+    .order("created_at",{ascending:false});
+  if(error){console.error(error); return []}
+  return data||[];
+}
+async function addMaintenance(){
+  if(!current)return;
+  if(!currentUser){alert("Connectez-vous pour modifier la maintenance.");return}
+  const entry={
+    qr_id:current["QR ID"],
+    date:document.getElementById("date").value||new Date().toISOString().slice(0,10),
+    technicien:document.getElementById("technicien").value.trim() || (currentUser.email||"Technicien"),
+    type:document.getElementById("type").value.trim(),
+    travaux:document.getElementById("travaux").value.trim(),
+    created_by:currentUser.id
+  };
+  if(!entry.type&&!entry.travaux){alert("Indiquez au moins le type d'intervention ou les travaux effectués.");return}
+  const {error}=await supabaseClient.from("maintenance").insert(entry);
+  if(error){alert("Erreur: "+error.message);return}
+  renderHistory();
+  document.getElementById("type").value="";
+  document.getElementById("travaux").value="";
+}
+async function renderHistory(){
+  const box=document.getElementById("history"); if(!current)return;
+  const logs=await loadLogs();
+  box.innerHTML=logs.length?logs.map(x=>`<div class="log"><b>${esc(x.date)} — ${esc(x.type||"Intervention")}</b><small>${esc(x.technicien||"Technicien non renseigné")}</small><div style="margin-top:7px">${esc(x.travaux||"—")}</div></div>`).join(""):'<div class="muted">Aucune intervention enregistrée.</div>';
+}
+supabaseClient.auth.onAuthStateChange((event, session) => {
+  currentUser = session ? session.user : null;
+  updateAuthUI();
+  if(current) renderHistory();
+});
+
+document.getElementById("search").addEventListener("input",e=>search(e.target.value));
+const initial=findChariot(requested)||CHARIOTS[0]; show(initial); getSession();
+</script>
+</body></html>

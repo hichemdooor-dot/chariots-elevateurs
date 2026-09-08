@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Chariots élévateurs — QR</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#090b0e;color:#eef2f7;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+.wrap{max-width:760px;margin:auto;padding:16px}
+.card{background:#11151b;border:1px solid #262d37;border-radius:24px;padding:20px;box-shadow:0 12px 35px rgba(0,0,0,.25)}
+h1{font-size:29px;margin:0 0 5px} h2{font-size:21px;margin:25px 0 11px}
+.sub,.muted{color:#9ca7b7} .badge{display:inline-block;background:#1c232d;padding:8px 14px;border-radius:999px;font-weight:750;margin:10px 0 12px}
+.search,.input,.select,.textarea{width:100%;padding:13px 14px;border-radius:13px;border:1px solid #303844;background:#0c1015;color:#fff;font-size:15px}
+.textarea{min-height:90px;resize:vertical}
+.results{margin:8px 0} .result{padding:12px;border:1px solid #252c36;border-radius:13px;margin:7px 0;background:#0e1217;cursor:pointer}
+.result small{color:#9ca7b7}
+.grid{display:grid;grid-template-columns:1fr;gap:9px}
+.item{background:#0c1015;border:1px solid #20262f;border-radius:15px;padding:13px 15px}
+.label{display:block;color:#8f9aaa;font-size:13px;margin-bottom:4px} .value{font-size:17px;font-weight:650;word-break:break-word}
+.status{display:inline-block;padding:7px 11px;border-radius:999px;background:#202833;font-size:13px;font-weight:700}
+button{border:0;border-radius:13px;padding:13px 16px;background:#e9eef5;color:#111;font-weight:750;font-size:15px;cursor:pointer}
+button.secondary{background:#202731;color:#eef2f7}
+.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}
+.log{border:1px solid #252c36;border-radius:15px;padding:13px;margin:9px 0;background:#0e1217}
+.log b{display:block;margin-bottom:4px} .log small{color:#9ca7b7}
+.hidden{display:none} footer{margin-top:22px;text-align:center;color:#737e8d;font-size:12px}
+hr{border:0;border-top:1px solid #242b34;margin:22px 0}
+
+.authbox{margin-top:10px;padding:14px;border:1px solid #303844;border-radius:15px;background:#0c1015}.error{color:#ff8f8f;margin-top:8px;font-size:14px}.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap"><div class="card">
+<h1>Chariot élévateur</h1>
+<div class="sub">Fiche technique • QR • Transformations</div>
+
+<label for="chariotSelect" class="label" style="margin-top:10px">Sélectionner un chariot</label>
+<select id="chariotSelect" class="select"><option value="">Choisir un chariot...</option></select>
+<div style="margin-top:9px"><input id="search" class="search" placeholder="Rechercher QR ID, châssis, client..." autocomplete="off"></div>
+<div id="results" class="results"></div>
+
+<div id="fiche" class="hidden">
+<div id="qrid" class="badge"></div>
+<div id="status"></div>
+
+<h2>Identification</h2><div class="grid" id="identification"></div>
+<h2>Caractéristiques</h2><div class="grid" id="characteristics"></div>
+<h2>Informations</h2><div class="grid" id="information"></div>
+
+<hr>
+<h2>Transformation / Modification</h2>
+<div id="authBox" class="authbox">
+  <div id="authStatus" class="muted">Connexion requise pour enregistrer une transformation ou modification.</div>
+  <div id="loginForm">
+    <input id="loginEmail" class="input" type="email" placeholder="Email" autocomplete="username">
+    <div style="margin-top:9px"><input id="loginPassword" class="input" type="password" placeholder="Mot de passe" autocomplete="current-password"></div>
+    <div class="actions"><button onclick="login()">Se connecter</button><button class="secondary" onclick="testSupabase()">Tester la connexion</button></div>
+    <div id="loginError" class="error"></div>
+  </div>
+  <div id="loggedInBox" class="hidden">
+    <div id="userLabel" class="muted"></div>
+    <div class="actions"><button class="secondary" onclick="logout()">Se déconnecter</button></div>
+  </div>
+</div>
+
+<div id="maintenanceEditor" class="hidden">
+  <div style="margin-top:12px"><input id="date" class="input" type="date"></div>
+  <div style="margin-top:9px"><input id="technicien" class="input" placeholder="Technicien"></div>
+  <div style="margin-top:9px">
+    <select id="type" class="select">
+      <option value="">Type de modification...</option>
+      <option value="Type de mât">Type de mât</option>
+      <option value="Hauteur de levage">Hauteur de levage</option>
+      <option value="Fourches">Fourches</option>
+      <option value="Pneus">Pneus</option>
+      <option value="Autre transformation">Autre transformation</option>
+    </select>
+  </div>
+  <div style="margin-top:9px"><textarea id="travaux" class="textarea" placeholder="Détails de la modification / nouvelle configuration / observations"></textarea></div>
+  <div class="actions"><button onclick="addMaintenance()">Enregistrer la modification</button></div>
+</div>
+
+<h2>Historique</h2>
+<div id="history"></div>
+</div>
+<footer>QR ID permanent • Données techniques chargées depuis Supabase</footer>
+</div></div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = "https://hkakedonludcqjgjzkei.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_AQWeYHI3Xli_1iBKVr9EPg_8L8PR-Hc";
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+let currentUser = null;
+</script>
+<script>
+[
+  /* Loaded dynamically from Supabase */
+];
+let CHARIOTS = [];
+async function loadChariots(){
+  const { data, error } = await supabaseClient
+    .from("chariots")
+    .select("*")
+    .order("qr_id", { ascending: true });
+
+  if(error){
+    console.error("Erreur chargement chariots:", error);
+    const box = document.getElementById("results");
+    if(box) box.innerHTML = `<div class="result">Erreur de chargement des chariots : ${esc(error.message)}</div>`;
+    return false;
+  }
+
+  CHARIOTS = (data || []).map(c => ({
+    "STOCK": c.stock,
+    "N° châssis": c.chassis,
+    "N° de serie": c.serial_number,
+    "Couleur": c.color,
+    "Moteur": c.engine,
+    "Capacité (T)": c.capacity,
+    "Hauteur de levage (m)": c.lifting_height,
+    "Dimention de fourche (M)": c.fork_dimension,
+    "Type de mât": c.mast_type,
+    "TYPE DE PNEU": c.tire_type,
+    "Statut": c.status,
+    "Client": c.client,
+    "Date livraison": c.delivery_date,
+    "Observations": c.observations,
+    "Engine Number": c.engine_number,
+    "QR ID": c.qr_id
+  }));
+
+  const requested = new URLSearchParams(location.search).get("id") ||
+                    new URLSearchParams(location.search).get("qr");
+  if(requested){
+    const c = findChariot(requested);
+    if(c) show(c);
+  }
+  return true;
+}
+ {
+ identification:[["N° châssis","N° châssis"],["N° de série","N° de serie"],["N° moteur","Engine Number"],["Moteur","Moteur"]],
+ characteristics:[["Capacité","Capacité (T)"],["Hauteur de levage","Hauteur de levage (m)"],["Dimensions des fourches","Dimention de fourche (M)"],["Type de mât","Type de mât"],["Type de pneu","TYPE DE PNEU"],["Couleur","Couleur"]],
+ information:[["Stock","STOCK"],["Statut","Statut"],["Client","Client"],["Date de livraison","Date livraison"],["Observations","Observations"]]
+};
+const esc=s=>String(s??"—").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+const params=new URLSearchParams(location.search);
+const requested=params.get("id")||params.get("qr");
+let current=null;
+
+function findChariot(q){
+ if(!q)return null; const x=q.trim().toLowerCase();
+ return CHARIOTS.find(c=>String(c["QR ID"]).toLowerCase()===x||String(c["N° châssis"]||"").toLowerCase()===x)||null;
+}
+function item(label,value){return `<div class="item"><span class="label">${esc(label)}</span><span class="value">${esc(value||"—")}</span></div>`}
+function show(c){
+ if(!c)return;
+ current=c; syncSelectedChariot(); document.getElementById("fiche").classList.remove("hidden");
+ document.getElementById("search").value=c["QR ID"]||"";
+ const sel=document.getElementById("chariotSelect"); if(sel) sel.value=c["QR ID"]||"";
+ document.getElementById("qrid").textContent=c["QR ID"]||"—";
+ document.getElementById("status").innerHTML=`<span class="status">${esc(c["Statut"]||"Statut non renseigné")}</span>`;
+ for(const section of Object.keys(fields))
+   document.getElementById(section).innerHTML=fields[section].map(([l,k])=>item(l,c[k])).join("");
+ if(!document.getElementById("date").value) document.getElementById("date").value=new Date().toISOString().slice(0,10);
+ history.replaceState(null,"","?id="+encodeURIComponent(c["QR ID"]));
+ renderHistory();
+}
+function search(q){
+ const box=document.getElementById("results"),x=q.trim().toLowerCase();
+ if(!x){box.innerHTML="";return}
+ const found=CHARIOTS.filter(c=>JSON.stringify(c).toLowerCase().includes(x)).slice(0,12);
+ box.innerHTML=found.map(c=>`<div class="result" data-id="${esc(c["QR ID"])}"><strong>${esc(c["QR ID"])} — ${esc(c["N° châssis"])}</strong><br><small>${esc(c["Moteur"])} • ${esc(c["Capacité (T)"])} • ${esc(c["Statut"])}</small></div>`).join("");
+ box.querySelectorAll(".result").forEach(el=>el.onclick=()=>show(findChariot(el.dataset.id)));
+}
+async function getSession(){
+  try{
+    const {data,error}=await supabaseClient.auth.getSession();
+    if(error) throw error;
+    currentUser=data.session ? data.session.user : null;
+  }catch(e){
+    currentUser=null;
+    const err=document.getElementById("loginError");
+    if(err) err.textContent="Supabase inaccessible : "+friendlySupabaseError(e);
+  }
+  updateAuthUI();
+}
+
+function friendlySupabaseError(e){
+  const m=String(e?.message||e||"");
+  if(/failed to fetch|networkerror|load failed|network request failed/i.test(m))
+    return "Impossible de joindre Supabase. Vérifiez l'URL du projet, la clé Publishable/Anon et la connexion Internet.";
+  if(/invalid login credentials/i.test(m)) return "Email ou mot de passe incorrect.";
+  if(/email not confirmed/i.test(m)) return "Email non confirmé dans Supabase Auth.";
+  return m || "Erreur inconnue.";
+}
+
+async function testSupabase(){
+  const err=document.getElementById("loginError");
+  err.textContent="Test de connexion...";
+  try{
+    const r=await fetch(SUPABASE_URL+"/auth/v1/settings",{method:"GET",headers:{"apikey":SUPABASE_PUBLISHABLE_KEY}});
+    const text=await r.text();
+    if(!r.ok) throw new Error("HTTP "+r.status+" — "+text.slice(0,180));
+    err.textContent="Connexion Supabase OK. Vous pouvez vous connecter.";
+  }catch(e){
+    err.textContent="Test échoué : "+friendlySupabaseError(e);
+  }
+}
+function updateAuthUI(){
+  const loginForm=document.getElementById("loginForm");
+  const loggedIn=document.getElementById("loggedInBox");
+  const editor=document.getElementById("maintenanceEditor");
+  const status=document.getElementById("authStatus");
+  const userLabel=document.getElementById("userLabel");
+  if(currentUser){
+    loginForm.classList.add("hidden");
+    loggedIn.classList.remove("hidden");
+    editor.classList.remove("hidden");
+    status.textContent="Connecté — vous pouvez enregistrer une transformation ou modification.";
+    userLabel.textContent="Utilisateur : "+(currentUser.email||currentUser.id);
+    const tech=document.getElementById("technicien");
+    if(tech && !tech.value) tech.value=(currentUser.user_metadata?.full_name||currentUser.email||"");
+  }else{
+    loginForm.classList.remove("hidden");
+    loggedIn.classList.add("hidden");
+    editor.classList.add("hidden");
+    status.textContent="Connexion requise pour enregistrer une transformation ou modification.";
+    userLabel.textContent="";
+  }
+}
+async function login(){
+  const email=document.getElementById("loginEmail").value.trim();
+  const password=document.getElementById("loginPassword").value;
+  const err=document.getElementById("loginError");
+  err.textContent="";
+  if(!email||!password){err.textContent="Email et mot de passe requis.";return}
+  try{
+    err.textContent="Connexion...";
+    const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});
+    if(error) throw error;
+    currentUser=data.user;
+    err.textContent="";
+    updateAuthUI();
+    await renderHistory();
+  }catch(e){
+    err.textContent=friendlySupabaseError(e);
+    console.error("Supabase login error",e);
+  }
+}
+async function logout(){
+  const {error}=await supabaseClient.auth.signOut();
+  if(error){ console.error(error); return; }
+  currentUser=null;
+  updateAuthUI();
+  await renderHistory();
+}
+async function loadLogs(){
+  if(!current) return [];
+  const {data,error}=await supabaseClient
+    .from("maintenance")
+    .select("id,date,technicien,type,travaux,created_at,created_by")
+    .eq("qr_id",current["QR ID"])
+    .order("date",{ascending:false})
+    .order("created_at",{ascending:false});
+  if(error){console.error(error); return []}
+  return data||[];
+}
+async function addMaintenance(){
+  if(!current)return;
+  if(!currentUser){alert("Connectez-vous pour enregistrer une transformation ou modification.");return}
+  const entry={
+    qr_id:current["QR ID"],
+    date:document.getElementById("date").value||new Date().toISOString().slice(0,10),
+    technicien:document.getElementById("technicien").value.trim() || (currentUser.email||"Technicien"),
+    type:document.getElementById("type").value.trim(),
+    travaux:document.getElementById("travaux").value.trim(),
+    created_by:currentUser.id
+  };
+  if(!entry.type&&!entry.travaux){alert("Indiquez le type de modification et/ou les détails de la transformation.");return}
+  const {error}=await supabaseClient.from("maintenance").insert(entry);
+  if(error){alert("Erreur: "+error.message);return}
+  renderHistory();
+  document.getElementById("type").value="";
+  document.getElementById("travaux").value="";
+}
+async function renderHistory(){
+  const box=document.getElementById("history"); if(!current)return;
+  const logs=await loadLogs();
+  box.innerHTML=logs.length?logs.map(x=>`<div class="log"><b>${esc(x.date)} — ${esc(x.type||"Intervention")}</b><small>${esc(x.technicien||"Technicien non renseigné")}</small><div style="margin-top:7px">${esc(x.travaux||"—")}</div></div>`).join(""):'<div class="muted">Aucune intervention enregistrée.</div>';
+}
+supabaseClient.auth.onAuthStateChange((event, session) => {
+  currentUser = session ? session.user : null;
+  updateAuthUI();
+  if(current) renderHistory();
+});
+
+const chariotSelect=document.getElementById("chariotSelect");
+// V5: keep the selected QR in the URL and restore it after refresh.
+function syncSelectedChariot(){ if(chariotSelect && current) chariotSelect.value=current["QR ID"]||""; }
+CHARIOTS.forEach(c=>{
+ const opt=document.createElement("option");
+ opt.value=c["QR ID"];
+ opt.textContent=`${c["QR ID"]} — ${c["N° châssis"]||"Châssis non renseigné"} — ${c["Moteur"]||"Moteur non renseigné"} — ${c["Capacité (T)"]||"Capacité non renseignée"}`;
+ chariotSelect.appendChild(opt);
+});
+chariotSelect.addEventListener("change",e=>{if(e.target.value) show(findChariot(e.target.value));});
+document.getElementById("search").addEventListener("input",e=>search(e.target.value));
+const initial=findChariot(requested)||CHARIOTS[0]; show(initial); getSession();
+
+loadChariots();
+</script>
+</body></html>

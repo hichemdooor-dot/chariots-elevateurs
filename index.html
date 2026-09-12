@@ -425,6 +425,28 @@ body{background:var(--dash-bg)!important;color:var(--dash-text)!important}
 </style>
 
 
+<style id="v29-admin-topright">
+.sbi-admin-desktop{display:flex;justify-content:flex-end;max-width:1180px;margin:0 auto 10px;position:relative;z-index:8100}
+.sbi-admin-wrap{position:relative}
+.sbi-admin-btn{display:flex;align-items:center;gap:8px;border:1px solid #d5e2ef!important;background:#fff!important;color:#0b4f91!important;border-radius:12px!important;padding:10px 14px!important;font-weight:800!important;box-shadow:0 4px 14px rgba(18,59,105,.08)!important}
+.sbi-admin-btn:hover{background:#f2f7fc!important;transform:none!important}
+.sbi-admin-avatar{font-size:18px}.sbi-admin-caret{font-size:11px}
+.sbi-admin-menu{display:none;position:absolute;right:0;top:calc(100% + 7px);width:205px;background:#fff;border:1px solid #d5e2ef;border-radius:12px;padding:7px;box-shadow:0 14px 34px rgba(18,59,105,.18);z-index:9000}
+.sbi-admin-menu.open{display:block}
+.sbi-admin-menu button{width:100%;display:flex;align-items:center;gap:9px;text-align:left;background:#fff!important;color:#173b63!important;box-shadow:none!important;border-radius:9px!important;padding:10px 11px!important;font-weight:700!important}
+.sbi-admin-menu button:hover{background:#edf5fc!important;transform:none!important}
+.sbi-admin-menu .logout{color:#b42318!important}
+.sbi-admin-mobile{display:none;position:relative}
+@media(max-width:900px){
+ .sbi-admin-desktop{display:none}
+ .sbi-mobile-top{gap:7px}
+ .sbi-admin-mobile{display:block;margin-left:auto}
+ .sbi-admin-mobile .sbi-admin-btn{padding:8px 10px!important;min-height:42px;font-size:13px}
+ .sbi-admin-mobile .sbi-admin-menu{right:0;width:190px}
+}
+@media(max-width:420px){.sbi-admin-text{display:none}.sbi-admin-btn{padding:8px 9px!important}}
+</style>
+
 <style id="v26-management-only-login">
 /* V26: Gestion route shows only the connection box before authentication */
 body.sbi-management-login-only #sbiDashboard,
@@ -565,8 +587,26 @@ body.sbi-management-login-only > .wrap > .card #authBox + .actions{display:none 
   </aside>
 
   <div class="sbi-main" id="sbiMain">
+    <div class="sbi-admin-desktop">
+      <div class="sbi-admin-wrap">
+        <button class="sbi-admin-btn" type="button" onclick="sbiAdminClick(this)"><span class="sbi-admin-avatar">♟</span><span class="sbi-admin-text">Admin</span><span class="sbi-admin-caret">▼</span></button>
+        <div class="sbi-admin-menu">
+          <button type="button" onclick="sbiNavigate('management');closeAdminMenus()">🔒 Gestion connexion</button>
+          <button type="button" class="logout sbi-admin-logout" onclick="logout();closeAdminMenus()">↪ Déconnexion</button>
+        </div>
+      </div>
+    </div>
     <div class="sbi-mobile-top">
       <img src="logo-sbi-hangcha.png" alt="SBI HANGCHA">
+      <div class="sbi-admin-mobile">
+        <div class="sbi-admin-wrap">
+          <button class="sbi-admin-btn" type="button" onclick="sbiAdminClick(this)"><span class="sbi-admin-avatar">♟</span><span class="sbi-admin-text">Admin</span><span class="sbi-admin-caret">▼</span></button>
+          <div class="sbi-admin-menu">
+            <button type="button" onclick="sbiNavigate('management');closeAdminMenus()">🔒 Gestion connexion</button>
+            <button type="button" class="logout sbi-admin-logout" onclick="logout();closeAdminMenus()">↪ Déconnexion</button>
+          </div>
+        </div>
+      </div>
       <button class="sbi-menu-btn" type="button" onclick="toggleSbiMenu()" aria-label="Menu">☰</button>
     </div>
     <div class="sbi-mobile-overlay" id="sbiOverlay" onclick="closeSbiMenu()"></div>
@@ -616,7 +656,7 @@ body.sbi-management-login-only > .wrap > .card #authBox + .actions{display:none 
     <section class="sbi-special-page" id="sbiDeliveredPage">
       <div class="sbi-special-card">
         <div class="sbi-special-head"><h1>Chariots livrés</h1></div>
-        <input id="deliveredSearch" class="sbi-special-search" placeholder="Rechercher par N° chariot, châssis, moteur ou client..." autocomplete="off">
+        <input id="deliveredSearch" class="sbi-special-search" placeholder="Rechercher par N° chariot, châssis, type de moteur ou client..." autocomplete="off">
         <div id="deliveredTableWrap" class="sbi-delivered-table-wrap"></div>
         <div id="deliveredMobile" class="sbi-delivered-mobile"></div>
         <div class="sbi-delivered-meta"><span id="deliveredCount">—</span><span>Cliquer sur un chariot pour ouvrir sa fiche.</span></div>
@@ -626,7 +666,14 @@ body.sbi-management-login-only > .wrap > .card #authBox + .actions{display:none 
     <section class="sbi-special-page" id="sbiStockPage">
       <div class="sbi-special-card">
         <div class="sbi-special-head"><h1>Chariots en stock</h1></div>
-        <input id="stockSearch" class="sbi-special-search" placeholder="Rechercher par N° chariot, châssis, moteur ou client..." autocomplete="off">
+        <input id="stockSearch" class="sbi-special-search" placeholder="Rechercher par N° chariot, châssis, type de moteur ou client..." autocomplete="off">
+        <div class="stock-filters" aria-label="Filtres chariots en stock">
+          <select id="stockEngineFilter" class="sbi-special-filter"><option value="">Tous les moteurs</option></select>
+          <select id="stockCapacityFilter" class="sbi-special-filter"><option value="">Toutes les capacités</option></select>
+          <select id="stockMastFilter" class="sbi-special-filter"><option value="">Tous les mâts</option></select>
+          <select id="stockHeightFilter" class="sbi-special-filter"><option value="">Toutes les hauteurs</option></select>
+          <button type="button" id="stockClearFilters" class="sbi-filter-clear">Réinitialiser</button>
+        </div>
         <div id="stockTableWrap" class="sbi-stock-table-wrap"></div>
         <div id="stockMobile" class="sbi-stock-mobile"></div>
         <div class="sbi-delivered-meta"><span id="stockCount">—</span><span>Cliquer sur un chariot pour ouvrir sa fiche.</span></div>
@@ -640,7 +687,7 @@ body.sbi-management-login-only > .wrap > .card #authBox + .actions{display:none 
 
 <label for="chariotSelect" class="label" style="margin-top:10px">Sélectionner un chariot</label>
 <select id="chariotSelect" class="select"><option value="">Choisir un chariot...</option></select>
-<div style="margin-top:9px"><input id="search" class="search" placeholder="Rechercher par N° chariot, châssis, moteur ou client..." autocomplete="off"></div>
+<div style="margin-top:9px"><input id="search" class="search" placeholder="Rechercher par N° chariot, châssis, type de moteur ou client..." autocomplete="off"></div>
 <div class="quick-filters" aria-label="Filtrer les chariots">
   <button type="button" class="filter-btn active" data-filter="all" onclick="filterChariots('all')">Tous</button>
   <button type="button" class="filter-btn" data-filter="stock" onclick="filterChariots('stock')">Chariots en stock</button>
@@ -1136,7 +1183,7 @@ function search(q){
    if(!x) return true;
    const qr=String(c["QR ID"]||"").toLowerCase();
    const chassis=String(c["N° châssis"]||"").toLowerCase();
-   const engine=String(c["N° moteur"]||"").toLowerCase();
+   const engine=String(c["Moteur"]||"").toLowerCase();
    const client=String(c["Client"]||"").toLowerCase();
    return qr.includes(x) || chassis.includes(x) || engine.includes(x) || client.includes(x);
  }).slice(0,100);
@@ -1306,6 +1353,7 @@ function updateAuthUI(){
   }
   updateNewChariotVisibility();
   updateManagementUI();
+  updateSbiAdminControls();
 
   // V43: afficher immédiatement la gestion des utilisateurs après
   // restauration de la session, sans devoir se déconnecter/reconnecter.
@@ -2036,6 +2084,13 @@ img{width:70mm;height:70mm;object-fit:contain}
   .actions button{min-height:46px}
   .detail-top-actions .back-btn{width:100%}
 }
+
+/* V30 — stock filters */
+.stock-filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;gap:9px;margin:10px 0 12px}
+.sbi-special-filter{width:100%;padding:11px 12px;border-radius:11px;border:1px solid #cbd8e6;background:#fff;color:#123b69;font-size:14px;font-weight:600}
+.sbi-filter-clear{padding:11px 14px;border-radius:11px;border:1px solid #cbd8e6;background:#e8f0f7;color:#123b69;font-weight:750;white-space:nowrap}
+@media(max-width:900px){.stock-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:460px){.stock-filters{grid-template-columns:1fr}.sbi-filter-clear{width:100%}}
 </style>
 </head>
 <body>
@@ -2254,6 +2309,22 @@ function toggleSbiMenu(){
 }
 function closeSbiMenu(){ sbiCloseMenu(); }
 
+function closeAdminMenus(){
+  document.querySelectorAll(".sbi-admin-menu").forEach(m=>m.classList.remove("open"));
+}
+function sbiAdminClick(btn){
+  if(!currentUser){ sbiNavigate("management"); return; }
+  const menu=btn.closest(".sbi-admin-wrap")?.querySelector(".sbi-admin-menu");
+  const willOpen=menu && !menu.classList.contains("open");
+  closeAdminMenus();
+  if(menu && willOpen) menu.classList.add("open");
+}
+function updateSbiAdminControls(){
+  document.querySelectorAll(".sbi-admin-logout").forEach(b=>b.style.display=currentUser?"flex":"none");
+  document.querySelectorAll(".sbi-admin-caret").forEach(c=>c.style.display=currentUser?"inline":"none");
+}
+document.addEventListener("click",e=>{if(!e.target.closest(".sbi-admin-wrap")) closeAdminMenus();});
+
 function sbiSetActive(route){
   document.querySelectorAll(".sbi-nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.route===route));
 }
@@ -2277,7 +2348,7 @@ function renderDeliveredPage(q){
   const term=String(q||"").trim().toLowerCase();
   const rows=CHARIOTS.filter(c=>normalizeStatus(c["Statut"])==="livre").filter(c=>{
     if(!term) return true;
-    return [c["QR ID"],c["N° châssis"],c["N° moteur"],c["Client"]].some(v=>String(v||"").toLowerCase().includes(term));
+    return [c["QR ID"],c["N° châssis"],c["Moteur"],c["Client"]].some(v=>String(v||"").toLowerCase().includes(term));
   });
   const val=(v, suffix="")=>{const x=String(v??"").trim();return x?x+suffix:"—"};
   const table=document.getElementById("deliveredTableWrap");
@@ -2291,7 +2362,7 @@ function renderDeliveredPage(q){
       const height=h?( /[mM]$/.test(h)?h:h+" M"):"—";
       const mast=String(c["Type de mât"]||"").trim();
       const type=String(c["Moteur"]||"").trim();
-      return `<tr data-id="${esc(id)}"><td class="sbi-delivered-id">${esc(id||"—")}</td><td>${esc(val(c["N° châssis"]))}</td><td>${esc(val(c["N° moteur"]))}</td><td>${esc(val(type))}</td><td>${esc(val(c["Capacité (T)"]," T"))}</td><td>${esc(height)}</td><td>${esc(mast?mast.toUpperCase():"—")}</td><td>${esc(val(c["Client"]))}</td><td>${esc(val(c["Date de livraison"]))}</td><td><button type="button" class="sbi-delivered-view" data-id="${esc(id)}" aria-label="Voir ${esc(id)}">◉</button></td></tr>`;
+      return `<tr data-id="${esc(id)}"><td class="sbi-delivered-id">${esc(id||"—")}</td><td>${esc(val(c["N° châssis"]))}</td><td>${esc(val(c["N° moteur"]))}</td><td>${esc(val(type))}</td><td>${esc(fmtCapacity(c["Capacité (T)"]))}</td><td>${esc(height)}</td><td>${esc(mast?mast.toUpperCase():"—")}</td><td>${esc(val(c["Client"]))}</td><td>${esc(val(c["Date de livraison"]))}</td><td><button type="button" class="sbi-delivered-view" data-id="${esc(id)}" aria-label="Voir ${esc(id)}">◉</button></td></tr>`;
     }).join("")}</tbody></table>`:`<div class="muted" style="padding:20px">Aucun chariot livré trouvé.</div>`;
     table.querySelectorAll("tr[data-id]").forEach(el=>el.onclick=()=>{const id=el.dataset.id;if(id)window.location.href="?id="+encodeURIComponent(id)});
   }
@@ -2300,16 +2371,48 @@ function renderDeliveredPage(q){
       const id=String(c["QR ID"]||"");
       const h=String(c["Hauteur de levage (m)"]||"").trim();
       const height=h?( /[mM]$/.test(h)?h:h+" M"):"—";
-      return `<div class="sbi-delivered-card" data-id="${esc(id)}"><div class="sbi-delivered-card-top"><span class="sbi-delivered-card-id">${esc(id||"—")}</span><span class="status status-delivered">Livré</span></div><div class="sbi-delivered-fields"><div class="sbi-delivered-field"><span>N° châssis</span><b>${esc(val(c["N° châssis"]))}</b></div><div class="sbi-delivered-field"><span>N° moteur</span><b>${esc(val(c["N° moteur"]))}</b></div><div class="sbi-delivered-field"><span>Type moteur</span><b>${esc(val(c["Moteur"]))}</b></div><div class="sbi-delivered-field"><span>Capacité</span><b>${esc(val(c["Capacité (T)"]," T"))}</b></div><div class="sbi-delivered-field"><span>Hauteur</span><b>${esc(height)}</b></div><div class="sbi-delivered-field"><span>Type de mât</span><b>${esc(String(c["Type de mât"]||"").toUpperCase()||"—")}</b></div><div class="sbi-delivered-field"><span>Client</span><b>${esc(val(c["Client"]))}</b></div><div class="sbi-delivered-field"><span>Date de livraison</span><b>${esc(val(c["Date de livraison"]))}</b></div></div></div>`;
+      return `<div class="sbi-delivered-card" data-id="${esc(id)}"><div class="sbi-delivered-card-top"><span class="sbi-delivered-card-id">${esc(id||"—")}</span><span class="status status-delivered">Livré</span></div><div class="sbi-delivered-fields"><div class="sbi-delivered-field"><span>N° châssis</span><b>${esc(val(c["N° châssis"]))}</b></div><div class="sbi-delivered-field"><span>N° moteur</span><b>${esc(val(c["N° moteur"]))}</b></div><div class="sbi-delivered-field"><span>Type moteur</span><b>${esc(val(c["Moteur"]))}</b></div><div class="sbi-delivered-field"><span>Capacité</span><b>${esc(fmtCapacity(c["Capacité (T)"]))}</b></div><div class="sbi-delivered-field"><span>Hauteur</span><b>${esc(height)}</b></div><div class="sbi-delivered-field"><span>Type de mât</span><b>${esc(String(c["Type de mât"]||"").toUpperCase()||"—")}</b></div><div class="sbi-delivered-field"><span>Client</span><b>${esc(val(c["Client"]))}</b></div><div class="sbi-delivered-field"><span>Date de livraison</span><b>${esc(val(c["Date de livraison"]))}</b></div></div></div>`;
     }).join(""):`<div class="muted" style="padding:20px">Aucun chariot livré trouvé.</div>`;
     mobile.querySelectorAll(".sbi-delivered-card").forEach(el=>el.onclick=()=>{const id=el.dataset.id;if(id)window.location.href="?id="+encodeURIComponent(id)});
   }
 }
+function fmtCapacity(v){
+  const x=String(v??"").trim();
+  if(!x) return "—";
+  const cleaned=x.replace(/\s*T\s*T\s*$/i,"").replace(/\s*T\s*$/i,"").trim();
+  return cleaned ? cleaned + " T" : "—";
+}
+function stockNorm(v){ return String(v??"").trim().toLowerCase(); }
+function stockPopulateFilters(){
+  const fields=[
+    ["stockEngineFilter","Moteur","Tous les moteurs"],
+    ["stockCapacityFilter","Capacité (T)","Toutes les capacités"],
+    ["stockMastFilter","Type de mât","Tous les mâts"],
+    ["stockHeightFilter","Hauteur de levage (m)","Toutes les hauteurs"]
+  ];
+  fields.forEach(([id,key,label])=>{
+    const el=document.getElementById(id); if(!el) return;
+    const current=el.value;
+    const vals=[...new Set(CHARIOTS.filter(c=>normalizeStatus(c["Statut"])==="en stock" && !String(c["Client"]||"").trim()).map(c=>String(c[key]??"").trim()).filter(Boolean))];
+    vals.sort((a,b)=>a.localeCompare(b,undefined,{numeric:true,sensitivity:"base"}));
+    el.innerHTML=`<option value="">${label}</option>`+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join("");
+    if(vals.includes(current)) el.value=current;
+  });
+}
 function renderStockPage(q){
+  stockPopulateFilters();
   const term=String(q||"").trim().toLowerCase();
+  const engineFilter=stockNorm(document.getElementById("stockEngineFilter")?.value);
+  const capacityFilter=stockNorm(document.getElementById("stockCapacityFilter")?.value);
+  const mastFilter=stockNorm(document.getElementById("stockMastFilter")?.value);
+  const heightFilter=stockNorm(document.getElementById("stockHeightFilter")?.value);
   const rows=CHARIOTS.filter(c=>normalizeStatus(c["Statut"])==="en stock" && !String(c["Client"]||"").trim()).filter(c=>{
-    if(!term) return true;
-    return [c["QR ID"],c["N° châssis"],c["N° moteur"],c["Client"]].some(v=>String(v||"").toLowerCase().includes(term));
+    const matchesSearch=!term || [c["QR ID"],c["N° châssis"],c["Moteur"],c["Client"]].some(v=>String(v||"").toLowerCase().includes(term));
+    const matchesEngine=!engineFilter || stockNorm(c["Moteur"])===engineFilter;
+    const matchesCapacity=!capacityFilter || stockNorm(c["Capacité (T)"])===capacityFilter;
+    const matchesMast=!mastFilter || stockNorm(c["Type de mât"])===mastFilter;
+    const matchesHeight=!heightFilter || stockNorm(c["Hauteur de levage (m)"])===heightFilter;
+    return matchesSearch && matchesEngine && matchesCapacity && matchesMast && matchesHeight;
   });
   const val=(v,suffix="")=>{const x=String(v??"").trim();return x?x+suffix:"—"};
   const table=document.getElementById("stockTableWrap"), mobile=document.getElementById("stockMobile"), count=document.getElementById("stockCount");
@@ -2320,14 +2423,14 @@ function renderStockPage(q){
       const h=String(c["Hauteur de levage (m)"]||"").trim();
       const height=h?(/[mM]$/.test(h)?h:h+" M"):"—";
       const mast=String(c["Type de mât"]||"").trim();
-      return `<tr data-id="${esc(id)}"><td class="sbi-stock-id">${esc(id||"—")}</td><td>${esc(val(c["N° châssis"]))}</td><td>${esc(val(c["N° moteur"]))}</td><td>${esc(val(c["Moteur"]))}</td><td>${esc(val(c["Capacité (T)"]," T"))}</td><td>${esc(height)}</td><td>${esc(mast?mast.toUpperCase():"—")}</td><td>${esc(val(c["Client"]))}</td><td><span class="status status-stock">En stock</span></td><td><button type="button" class="sbi-stock-view" aria-label="Voir ${esc(id)}">◉</button></td></tr>`;
+      return `<tr data-id="${esc(id)}"><td class="sbi-stock-id">${esc(id||"—")}</td><td>${esc(val(c["N° châssis"]))}</td><td>${esc(val(c["N° moteur"]))}</td><td>${esc(val(c["Moteur"]))}</td><td>${esc(fmtCapacity(c["Capacité (T)"]))}</td><td>${esc(height)}</td><td>${esc(mast?mast.toUpperCase():"—")}</td><td>${esc(val(c["Client"]))}</td><td><span class="status status-stock">En stock</span></td><td><button type="button" class="sbi-stock-view" aria-label="Voir ${esc(id)}">◉</button></td></tr>`;
     }).join("")}</tbody></table>`:`<div class="muted" style="padding:20px">Aucun chariot en stock trouvé.</div>`;
     table.querySelectorAll("tr[data-id]").forEach(el=>el.onclick=()=>{const id=el.dataset.id;if(id)window.location.href="?id="+encodeURIComponent(id)});
   }
   if(mobile){
     mobile.innerHTML=rows.length?rows.map(c=>{
       const id=String(c["QR ID"]||""); const h=String(c["Hauteur de levage (m)"]||"").trim(); const height=h?(/[mM]$/.test(h)?h:h+" M"):"—";
-      return `<div class="sbi-stock-card" data-id="${esc(id)}"><div class="sbi-stock-card-top"><span class="sbi-stock-card-id">${esc(id||"—")}</span><span class="status status-stock">En stock</span></div><div class="sbi-stock-fields"><div class="sbi-stock-field"><span>N° châssis</span><b>${esc(val(c["N° châssis"]))}</b></div><div class="sbi-stock-field"><span>N° moteur</span><b>${esc(val(c["N° moteur"]))}</b></div><div class="sbi-stock-field"><span>Type moteur</span><b>${esc(val(c["Moteur"]))}</b></div><div class="sbi-stock-field"><span>Capacité</span><b>${esc(val(c["Capacité (T)"]," T"))}</b></div><div class="sbi-stock-field"><span>Hauteur</span><b>${esc(height)}</b></div><div class="sbi-stock-field"><span>Type de mât</span><b>${esc(String(c["Type de mât"]||"").toUpperCase()||"—")}</b></div></div></div>`;
+      return `<div class="sbi-stock-card" data-id="${esc(id)}"><div class="sbi-stock-card-top"><span class="sbi-stock-card-id">${esc(id||"—")}</span><span class="status status-stock">En stock</span></div><div class="sbi-stock-fields"><div class="sbi-stock-field"><span>N° châssis</span><b>${esc(val(c["N° châssis"]))}</b></div><div class="sbi-stock-field"><span>N° moteur</span><b>${esc(val(c["N° moteur"]))}</b></div><div class="sbi-stock-field"><span>Type moteur</span><b>${esc(val(c["Moteur"]))}</b></div><div class="sbi-stock-field"><span>Capacité</span><b>${esc(fmtCapacity(c["Capacité (T)"]))}</b></div><div class="sbi-stock-field"><span>Hauteur</span><b>${esc(height)}</b></div><div class="sbi-stock-field"><span>Type de mât</span><b>${esc(String(c["Type de mât"]||"").toUpperCase()||"—")}</b></div></div></div>`;
     }).join(""):`<div class="muted" style="padding:20px">Aucun chariot en stock trouvé.</div>`;
     mobile.querySelectorAll(".sbi-stock-card").forEach(el=>el.onclick=()=>{const id=el.dataset.id;if(id)window.location.href="?id="+encodeURIComponent(id)});
   }
@@ -2396,7 +2499,7 @@ function renderSbiDashboard(){
     const rows=CHARIOTS.slice(-6).reverse();
     recent.innerHTML=rows.length?rows.map(c=>{
       const id=esc(c["QR ID"]||"—");
-      const meta=[c["N° châssis"],c["Moteur"],c["Capacité (T)"]?String(c["Capacité (T)"])+" T":"",c["Client"]?"Client: "+c["Client"]:""].filter(Boolean).join(" • ");
+      const meta=[c["N° châssis"],c["Moteur"],c["Capacité (T)"]?fmtCapacity(c["Capacité (T)"]):"",c["Client"]?"Client: "+c["Client"]:""].filter(Boolean).join(" • ");
       return `<div class="sbi-recent-item" onclick="window.location.href='?id='+encodeURIComponent(${JSON.stringify(String(c["QR ID"]||""))})"><div class="sbi-recent-main"><strong>${id}</strong><span>${esc(meta||"Informations non renseignées")}</span></div><span class="status ${statusClass(c["Statut"])}">${esc(c["Statut"]||"—")}</span></div>`;
     }).join(""):'<div class="muted">Aucun chariot.</div>';
   }
@@ -2411,6 +2514,15 @@ function renderSbiDashboard(){
 document.addEventListener("input", function(e){
   if(e.target && e.target.id==="deliveredSearch") renderDeliveredPage(e.target.value);
   if(e.target && e.target.id==="stockSearch") renderStockPage(e.target.value);
+});
+document.addEventListener("change", function(e){
+  if(e.target && ["stockEngineFilter","stockCapacityFilter","stockMastFilter","stockHeightFilter"].includes(e.target.id)) renderStockPage(document.getElementById("stockSearch")?.value||"");
+});
+document.addEventListener("click", function(e){
+  if(e.target && e.target.id==="stockClearFilters"){
+    ["stockEngineFilter","stockCapacityFilter","stockMastFilter","stockHeightFilter"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
+    renderStockPage(document.getElementById("stockSearch")?.value||"");
+  }
 });
 
 window.addEventListener("popstate",()=>{

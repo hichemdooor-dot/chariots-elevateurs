@@ -151,6 +151,86 @@ button.danger{background:#c62828;color:#fff}
 .field-icon{color:#123b69}
 .required{color:#c62828}
 @media(max-width:600px){.brand-header{gap:10px}.brand-header img{width:145px}.brand-title{padding-left:10px}.brand-title strong{font-size:15px}}
+
+/* V17 — SBI Dashboard */
+.dashboard-shell{display:flex;min-height:620px;margin:-16px -16px 20px;border-radius:24px;overflow:hidden;background:#f4f7fb;border:1px solid #d7e1ec;box-shadow:0 12px 35px rgba(15,39,71,.10)}
+.dashboard-side{width:225px;flex:0 0 225px;background:#0b477f;color:#fff;padding:18px 14px;display:flex;flex-direction:column}
+.dashboard-side-brand{text-align:center;padding:4px 6px 18px;border-bottom:1px solid rgba(255,255,255,.16)}
+.dashboard-side-brand img{width:180px;max-width:100%;height:auto;object-fit:contain;display:block;margin:0 auto}
+.dashboard-side-nav{display:grid;gap:5px;margin-top:16px}
+.dashboard-nav{border:0!important;background:transparent!important;color:#fff!important;text-align:left!important;padding:11px 12px!important;border-radius:10px!important;font-weight:650!important;font-size:14px!important}
+.dashboard-nav:hover,.dashboard-nav.active{background:rgba(255,255,255,.13)!important}
+.dashboard-side-sign{margin-top:auto;padding:16px 5px 2px;border-top:1px solid rgba(255,255,255,.16);text-align:center;color:#c9d9ea;font-size:11px;line-height:1.5}
+.dashboard-main{flex:1;min-width:0;padding:22px 24px 24px}
+.dashboard-top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
+.dashboard-heading h2{margin:0!important;font-size:28px!important;color:#123b69}
+.dashboard-heading p{margin:4px 0 0;color:#68778a;font-size:14px}
+.dashboard-search-mini{width:min(430px,100%);padding:11px 13px!important;border-radius:11px!important}
+.dashboard-cards{display:grid;grid-template-columns:repeat(7,minmax(100px,1fr));gap:9px;margin-bottom:14px}
+.dashboard-stat{background:#fff;border:1px solid #dce5ef;border-radius:13px;padding:12px;min-width:0;cursor:pointer;transition:transform .15s ease,box-shadow .15s ease}
+.dashboard-stat:hover{transform:translateY(-2px);box-shadow:0 8px 18px rgba(15,39,71,.10)}
+.dashboard-stat .ds-label{font-size:11px;color:#68778a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dashboard-stat .ds-value{font-size:23px;font-weight:800;color:#123b69;margin-top:3px}
+.dashboard-stat.stock .ds-value{color:#16804b}.dashboard-stat.delivered .ds-value{color:#15803d}.dashboard-stat.blocked .ds-value{color:#d92d20}.dashboard-stat.ready .ds-value{color:#6841d9}.dashboard-stat.reserved .ds-value{color:#b96b00}
+.dashboard-grid{display:grid;grid-template-columns:1.15fr 1fr .9fr;gap:12px;margin-bottom:12px}
+.dashboard-panel{background:#fff;border:1px solid #dce5ef;border-radius:15px;padding:15px;min-width:0}
+.dashboard-panel h3{margin:0 0 12px;color:#123b69;font-size:16px}
+.dashboard-donut-row{display:flex;align-items:center;gap:18px}
+.dashboard-donut{width:145px;height:145px;flex:0 0 145px;border-radius:50%;background:conic-gradient(#2f9e70 0deg 120deg,#2684ff 120deg 175deg,#f59e0b 175deg 205deg,#7c5ce6 205deg 250deg,#21a366 250deg 345deg,#ef4444 345deg 360deg);position:relative}
+.dashboard-donut:after{content:"";position:absolute;inset:34px;border-radius:50%;background:#fff;border:1px solid #edf2f7}
+.dashboard-donut-center{position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#123b69;font-weight:800;font-size:23px}.dashboard-donut-center span{font-size:11px;color:#68778a;font-weight:600}
+.dashboard-legend{display:grid;gap:6px;flex:1}.dashboard-legend-row{display:flex;align-items:center;gap:7px;font-size:12px;color:#53657a}.dashboard-dot{width:9px;height:9px;border-radius:50%;flex:0 0 9px}.dashboard-legend-row b{margin-left:auto;color:#123b69}
+.dashboard-bars{display:grid;grid-template-columns:repeat(6,1fr);align-items:end;height:160px;gap:10px;padding-top:8px}.dashboard-bar-wrap{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:5px}.dashboard-bar{width:100%;max-width:36px;border-radius:7px 7px 3px 3px;background:linear-gradient(180deg,#2684ff,#0b67c2);min-height:5px}.dashboard-bar-num{font-size:11px;font-weight:800;color:#123b69}.dashboard-bar-label{font-size:10px;color:#68778a;white-space:nowrap}
+.dashboard-alerts{display:grid;gap:8px}.dashboard-alert{padding:10px 11px;border-radius:10px;border:1px solid #dbe4ee;font-size:12px}.dashboard-alert strong{display:block;font-size:13px;margin-bottom:2px}.dashboard-alert.red{background:#fff1f1;border-color:#ffd1d1;color:#b42318}.dashboard-alert.orange{background:#fff8eb;border-color:#ffe0a3;color:#a15c00}.dashboard-alert.blue{background:#eef7ff;border-color:#cfe6ff;color:#125ca6}.dashboard-alert.green{background:#effaf3;border-color:#ccefd8;color:#16763b}
+.dashboard-tables{display:grid;grid-template-columns:1fr 1fr;gap:12px}.dashboard-table{width:100%;border-collapse:collapse;font-size:12px}.dashboard-table th{background:#f3f7fb;color:#53657a;text-align:left;padding:8px;font-weight:700}.dashboard-table td{padding:8px;border-top:1px solid #edf1f5;color:#203b58}.dashboard-table .linkish{color:#0969da;font-weight:750;cursor:pointer}.dashboard-status{display:inline-block;padding:4px 7px;border-radius:999px;background:#e8f4ee;color:#16763b;font-weight:700;font-size:10px}
+@media(max-width:1050px){.dashboard-cards{grid-template-columns:repeat(4,1fr)}.dashboard-grid{grid-template-columns:1fr 1fr}.dashboard-panel:last-child{grid-column:1/-1}}
+@media(max-width:760px){.dashboard-shell{margin:-10px -10px 16px;border-radius:18px}.dashboard-side{display:none}.dashboard-main{padding:16px}.dashboard-top{align-items:flex-start;flex-direction:column}.dashboard-cards{grid-template-columns:repeat(2,1fr)}.dashboard-grid,.dashboard-tables{grid-template-columns:1fr}.dashboard-donut-row{flex-direction:column}.dashboard-donut{width:130px;height:130px;flex-basis:130px}.dashboard-heading h2{font-size:23px!important}}
+/* V19 — Mobile / Android / iPhone optimization */
+.mobile-dashboard-bar{display:none}
+.dashboard-menu-overlay{display:none}
+@media(max-width:760px){
+  body{overflow-x:hidden}
+  .wrap{padding:10px}
+  .card{border-radius:16px;padding:14px}
+  .dashboard-shell{margin:-10px -10px 14px;border-radius:0;min-height:0;overflow:visible}
+  .mobile-dashboard-bar{display:flex;position:sticky;top:0;z-index:1100;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;background:#0b477f;color:#fff;box-shadow:0 3px 12px rgba(0,0,0,.12)}
+  .mobile-dashboard-bar .mobile-brand{height:34px;width:auto;max-width:145px;object-fit:contain}
+  .mobile-menu-btn{display:inline-flex;align-items:center;justify-content:center;width:44px;height:42px;padding:0;border-radius:10px;background:#fff!important;color:#0b477f!important;font-size:24px!important;line-height:1}
+  .dashboard-side{display:flex;position:fixed;left:0;top:0;bottom:0;z-index:1300;width:min(82vw,285px);transform:translateX(-105%);transition:transform .22s ease;box-shadow:12px 0 30px rgba(0,0,0,.22);overflow-y:auto;padding-top:16px}
+  .dashboard-side.mobile-open{transform:translateX(0)}
+  .dashboard-menu-overlay{position:fixed;inset:0;z-index:1250;background:rgba(0,30,65,.42);backdrop-filter:blur(2px)}
+  .dashboard-menu-overlay.show{display:block}
+  .dashboard-side-brand img{width:165px}
+  .dashboard-nav{min-height:46px;font-size:15px!important;padding:12px 14px!important}
+  .dashboard-main{padding:12px}
+  .dashboard-top{padding-top:2px}
+  .dashboard-heading h2{font-size:23px!important}
+  .dashboard-heading p{font-size:13px}
+  .dashboard-search-mini{width:100%;min-height:46px;font-size:16px!important}
+  .dashboard-cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .dashboard-stat{padding:11px 10px;min-height:78px}
+  .dashboard-stat .ds-label{font-size:11px}.dashboard-stat .ds-value{font-size:22px}
+  .dashboard-grid,.dashboard-tables{grid-template-columns:1fr;gap:10px}
+  .dashboard-panel{padding:13px;border-radius:13px;overflow:hidden}
+  .dashboard-donut-row{flex-direction:column;gap:12px}.dashboard-donut{width:135px;height:135px;flex-basis:135px}
+  .dashboard-bars{height:145px;gap:6px}.dashboard-bar{max-width:30px}
+  .dashboard-table{display:block;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch}
+  .dashboard-table th,.dashboard-table td{padding:9px 7px}
+  .quick-filters{overflow-x:auto;flex-wrap:nowrap;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+  .filter-btn{flex:0 0 auto;min-height:44px}
+  input,select,textarea,button{font-size:16px!important}
+  .actions{gap:8px}.actions button{min-height:46px;flex:1 1 145px}
+  .brand-header{align-items:center}.brand-header img{width:120px!important}
+  .license-box{padding:10px 12px}.license-brand{width:min(88vw,420px)}
+  .license-loading-wrap{width:155px;height:155px}.sbi-loader-inner{width:118px;height:118px}.sbi-forklift-icon{width:62px;height:62px}
+  .license-loading-title{font-size:27px}.license-meta{width:100%;padding:12px 16px}
+}
+@media(max-width:380px){
+  .dashboard-cards{grid-template-columns:1fr 1fr}.dashboard-stat .ds-value{font-size:20px}.dashboard-main{padding:9px}.dashboard-panel{padding:11px}
+  .mobile-dashboard-bar .mobile-brand{max-width:125px}
+}
+
+
 </style>
 
 <style id="v26-uniform-labels">
@@ -338,6 +418,43 @@ button.danger{background:#c62828;color:#fff}
   </div>
 </div>
 
+
+<div id="dashboard" class="dashboard-shell">
+  <div class="mobile-dashboard-bar">
+    <button class="mobile-menu-btn" type="button" aria-label="Ouvrir le menu" onclick="toggleMobileDashboardMenu()">☰</button>
+    <img class="mobile-brand" src="logo-sbi-hangcha-sidebar.png" alt="SBI HANGCHA">
+    <span style="width:44px"></span>
+  </div>
+  <div id="dashboardMenuOverlay" class="dashboard-menu-overlay" onclick="closeMobileDashboardMenu()"></div>
+  <aside class="dashboard-side">
+    <div class="dashboard-side-brand"><img src="logo-sbi-hangcha-sidebar.png" alt="SBI HANGCHA"></div>
+    <div class="dashboard-side-nav">
+      <button class="dashboard-nav active" type="button" onclick="dashboardGo('dashboard')">⌂ &nbsp; Tableau de bord</button>
+      <button class="dashboard-nav" type="button" onclick="dashboardGo('fleet')">▣ &nbsp; Tous les chariots</button>
+      <button class="dashboard-nav" type="button" onclick="dashboardFilter('stock')">▰ &nbsp; En stock</button>
+      <button class="dashboard-nav" type="button" onclick="dashboardFilter('delivered')">▰ &nbsp; Chariots livrés</button>
+      <button class="dashboard-nav" type="button" onclick="dashboardGo('management')">⚙ &nbsp; Gestion</button>
+    </div>
+    <div class="dashboard-side-sign">© 2026<br><strong>Developed by BaCkDoooR</strong></div>
+  </aside>
+  <main class="dashboard-main">
+    <div class="dashboard-top">
+      <div class="dashboard-heading"><h2>Tableau de bord</h2><p>Vue d'ensemble de votre parc de chariots élévateurs</p></div>
+      <input id="dashboardSearch" class="search dashboard-search-mini" placeholder="Rechercher un chariot, châssis, moteur, client..." autocomplete="off">
+    </div>
+    <div id="dashboardStats" class="dashboard-cards"></div>
+    <div class="dashboard-grid">
+      <section class="dashboard-panel"><h3>Répartition des chariots par statut</h3><div id="dashboardStatusChart" class="dashboard-donut-row"></div></section>
+      <section class="dashboard-panel"><h3>Chariots par capacité</h3><div id="dashboardCapacityChart" class="dashboard-bars"></div></section>
+      <section class="dashboard-panel"><h3>Alertes et actions</h3><div id="dashboardAlerts" class="dashboard-alerts"></div></section>
+    </div>
+    <div class="dashboard-tables">
+      <section class="dashboard-panel"><h3>Derniers chariots ajoutés</h3><div id="dashboardRecentAdded"></div></section>
+      <section class="dashboard-panel"><h3>Derniers chariots livrés</h3><div id="dashboardRecentDelivered"></div></section>
+    </div>
+  </main>
+</div>
+
 <div class="wrap"><div class="card">
 <div class="brand-header"><img src="logo-sbi-hangcha.png" alt="SBI HANGCHA"><div class="brand-title"><strong>Gestion des chariots élévateurs</strong><span>SBI — Benouatas Industrie</span></div></div>
 <h1>Chariot élévateur</h1>
@@ -384,6 +501,7 @@ button.danger{background:#c62828;color:#fff}
 <div id="userAdmin" class="hidden" style="margin-top:18px">
   <hr>
   <h2>Gestion des utilisateurs SBI</h2>
+  <div class="muted" style="margin-bottom:10px">V43 — création des comptes via Supabase Auth sécurisé, avec rôles Utilisateur / Administrateur.</div>
   <div class="muted" style="margin-bottom:10px">
     Ajouter, désactiver ou supprimer les comptes utilisateurs. Le rôle Administrateur donne accès à la gestion des utilisateurs et reste protégé par Supabase.
   </div>
@@ -617,6 +735,87 @@ function populateSelect(){
   sel.value = current ? (current["QR ID"]||"") : "";
 }
 
+
+function dashboardNormalizeStatus(v){return normalizeStatus(v)}
+function dashboardOpen(qr){if(qr) window.location.href='?id='+encodeURIComponent(qr)}
+function dashboardNavActive(target){
+  document.querySelectorAll('.dashboard-nav').forEach(btn=>btn.classList.remove('active'));
+  const map={dashboard:0,fleet:1,stock:2,delivered:3,management:4};
+  const i=map[target];
+  const btn=document.querySelectorAll('.dashboard-nav')[i];
+  if(btn) btn.classList.add('active');
+}
+function dashboardFilter(filter){
+  closeMobileDashboardMenu();
+  const input=document.getElementById('search');
+  if(input) input.value='';
+  dashboardNavActive(filter==='stock'?'stock':filter==='delivered'?'delivered':'fleet');
+  filterChariots(filter);
+  const wrap=document.querySelector('.wrap');
+  if(wrap) wrap.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function toggleMobileDashboardMenu(){
+  const side=document.querySelector('.dashboard-side');
+  const overlay=document.getElementById('dashboardMenuOverlay');
+  if(!side) return;
+  const open=side.classList.toggle('mobile-open');
+  overlay?.classList.toggle('show',open);
+  document.body.style.overflow=open?'hidden':'';
+}
+function closeMobileDashboardMenu(){
+  document.querySelector('.dashboard-side')?.classList.remove('mobile-open');
+  document.getElementById('dashboardMenuOverlay')?.classList.remove('show');
+  document.body.style.overflow='';
+}
+function dashboardGo(target){
+  closeMobileDashboardMenu();
+  dashboardNavActive(target);
+  if(target==='dashboard'){window.scrollTo({top:0,behavior:'smooth'});return}
+  if(target==='fleet'){
+    const input=document.getElementById('search');
+    if(input) input.value='';
+    filterChariots('all');
+    document.querySelector('.wrap')?.scrollIntoView({behavior:'smooth',block:'start'});
+    return;
+  }
+  if(target==='management'){
+    const management=document.getElementById('management');
+    if(management && !management.classList.contains('hidden')) {
+      management.scrollIntoView({behavior:'smooth',block:'start'});
+    } else {
+      document.querySelector('.wrap')?.scrollIntoView({behavior:'smooth',block:'start'});
+      document.getElementById('chariotSelect')?.focus();
+    }
+  }
+}
+function updateDashboard(){
+  const dash=document.getElementById('dashboard');
+  if(!dash) return;
+  const isDetail=!!requested;
+  dash.classList.toggle('hidden',isDetail);
+  if(isDetail || !CHARIOTS.length) return;
+  const countStatus=(name)=>CHARIOTS.filter(c=>dashboardNormalizeStatus(c['Statut'])===dashboardNormalizeStatus(name)).length;
+  const stock=CHARIOTS.filter(c=>dashboardNormalizeStatus(c['Statut'])==='en stock'&&!String(c['Client']||'').trim()).length;
+  const delivered=countStatus('livre'), fabrication=countStatus('en fabrication'), reserved=countStatus('reserve'), ready=countStatus('pret a livrer'), blocked=countStatus('bloque / non conforme');
+  const stats=[['Total chariots',CHARIOTS.length,''],['En stock',stock,'stock'],['En fabrication',fabrication,''],['Réservés',reserved,'reserved'],['Prêts à livrer',ready,'ready'],['Livrés',delivered,'delivered'],['Bloqués',blocked,'blocked']];
+  document.getElementById('dashboardStats').innerHTML=stats.map(([l,v,cl])=>`<div class="dashboard-stat ${cl}" onclick="${l==='En stock'?"dashboardFilter('stock')":l==='Livrés'?"dashboardFilter('delivered')":""}"><div class="ds-label">${l}</div><div class="ds-value">${v}</div></div>`).join('');
+  const parts=[['En stock',stock,'#2f9e70'],['En fabrication',fabrication,'#2684ff'],['Réservés',reserved,'#f59e0b'],['Prêts à livrer',ready,'#7c5ce6'],['Livrés',delivered,'#21a366'],['Bloqués',blocked,'#ef4444']];
+  const total=CHARIOTS.length||1; let deg=0, stops=[];
+  parts.forEach(([l,v,c])=>{const next=deg+(v/total)*360;stops.push(`${c} ${deg}deg ${next}deg`);deg=next});
+  document.getElementById('dashboardStatusChart').innerHTML=`<div class="dashboard-donut" style="background:conic-gradient(${stops.join(',')})"><div class="dashboard-donut-center">${CHARIOTS.length}<span>Chariots</span></div></div><div class="dashboard-legend">${parts.map(([l,v,c])=>`<div class="dashboard-legend-row"><i class="dashboard-dot" style="background:${c}"></i>${l}<b>${v}</b></div>`).join('')}</div>`;
+  const caps={}; CHARIOTS.forEach(c=>{const n=parseFloat(String(c['Capacité (T)']??'').replace(',','.')); if(!Number.isNaN(n)) caps[n]=(caps[n]||0)+1});
+  const capEntries=Object.entries(caps).sort((a,b)=>parseFloat(a[0])-parseFloat(b[0])).slice(0,8); const max=Math.max(1,...capEntries.map(x=>x[1]));
+  document.getElementById('dashboardCapacityChart').innerHTML=capEntries.length?capEntries.map(([cap,v])=>`<div class="dashboard-bar-wrap"><div class="dashboard-bar-num">${v}</div><div class="dashboard-bar" style="height:${Math.max(8,(v/max)*105)}px"></div><div class="dashboard-bar-label">${cap}T</div></div>`).join(''):'<div class="muted">Aucune donnée de capacité.</div>';
+  const missing=CHARIOTS.filter(c=>['N° châssis','Moteur','Capacité (T)','Type de mât'].some(k=>!String(c[k]??'').trim())).length;
+  const maintDue=CHARIOTS.filter(c=>dashboardNormalizeStatus(c['Statut'])==='maintenance').length;
+  document.getElementById('dashboardAlerts').innerHTML=`<div class="dashboard-alert ${blocked?'red':'green'}"><strong>${blocked} chariot(s) bloqué(s)</strong>${blocked?'Vérifier la liste des non conformes.':'Aucun chariot bloqué.'}</div><div class="dashboard-alert ${missing?'orange':'green'}"><strong>${missing} chariot(s) avec informations manquantes</strong>${missing?'Compléter les fiches.':'Toutes les informations principales sont renseignées.'}</div><div class="dashboard-alert blue"><strong>${ready} chariot(s) prêt(s) à livrer</strong>Suivre la préparation et la livraison.</div><div class="dashboard-alert green"><strong>${delivered} chariot(s) livré(s)</strong>Clients associés aux livraisons disponibles dans la liste.</div>`;
+  const escDash=(v)=>esc(v||'—');
+  const added=[...CHARIOTS].slice(-5).reverse();
+  const deliveredRows=CHARIOTS.filter(c=>dashboardNormalizeStatus(c['Statut'])==='livre').slice(-5).reverse();
+  const table=(rows,deliveredMode=false)=>rows.length?`<table class="dashboard-table"><thead><tr><th>N° Chariot</th><th>${deliveredMode?'Client':'N° châssis'}</th><th>${deliveredMode?'Date':'Capacité'}</th><th>Statut</th></tr></thead><tbody>${rows.map(c=>`<tr><td class="linkish" onclick="dashboardOpen('${esc(c['QR ID'])}')">${escDash(c['QR ID'])}</td><td>${escDash(deliveredMode?c['Client']:c['N° châssis'])}</td><td>${escDash(deliveredMode?c['Date livraison']:c['Capacité (T)'])}</td><td><span class="dashboard-status">${escDash(c['Statut'])}</span></td></tr>`).join('')}</tbody></table>`:'<div class="muted">Aucun chariot.</div>';
+  document.getElementById('dashboardRecentAdded').innerHTML=table(added,false); document.getElementById('dashboardRecentDelivered').innerHTML=table(deliveredRows,true);
+}
+
 async function loadChariots(){
   const box=document.getElementById("results");
   const {data,error}=await supabaseClient.from("chariots").select("*").order("qr_id",{ascending:true});
@@ -647,6 +846,7 @@ async function loadChariots(){
   }));
 
   populateSelect();
+  updateDashboard();
 
   const wanted=requested || (current && current["QR ID"]);
   const wantedChariot=findChariot(wanted);
@@ -1815,6 +2015,7 @@ document.getElementById("chariotSelect").addEventListener("change",e=>{
   window.location.href="?id="+encodeURIComponent(e.target.value);
 });
 document.getElementById("search").addEventListener("input",e=>search(e.target.value));
+document.getElementById("dashboardSearch")?.addEventListener("input",e=>{const main=document.getElementById("search");if(main){main.value=e.target.value;search(e.target.value);main.scrollIntoView({behavior:"smooth",block:"center"});}});
 
 supabaseClient.auth.onAuthStateChange((event,session)=>{
   currentUser=session?session.user:null;

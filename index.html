@@ -3,9 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Chariots élévateurs — QR — V44 Export</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2311151b'/%3E%3Cg fill='none' stroke='%23facc15' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 44h32'/%3E%3Cpath d='M16 44V27h16l8 17'/%3E%3Cpath d='M24 27v-9h8v9'/%3E%3Cpath d='M40 44V17h6v27'/%3E%3Cpath d='M46 35h9v9h-9'/%3E%3Ccircle cx='20' cy='47' r='5' fill='%2311151b'/%3E%3Ccircle cx='45' cy='47' r='5' fill='%2311151b'/%3E%3Cpath d='M55 44h6'/%3E%3C/g%3E%3C/svg%3E">
-<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2311151b'/%3E%3Cg fill='none' stroke='%23facc15' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 44h32'/%3E%3Cpath d='M16 44V27h16l8 17'/%3E%3Cpath d='M24 27v-9h8v9'/%3E%3Cpath d='M40 44V17h6v27'/%3E%3Cpath d='M46 35h9v9h-9'/%3E%3Ccircle cx='20' cy='47' r='5' fill='%2311151b'/%3E%3Ccircle cx='45' cy='47' r='5' fill='%2311151b'/%3E%3Cpath d='M55 44h6'/%3E%3C/g%3E%3C/svg%3E">
+<title>SBI Benouatas Industrie — Chariots élévateurs</title>
+<link rel="icon" type="image/png" href="logo-sbi-hangcha.png">
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#090b0e;color:#eef2f7;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
@@ -260,6 +259,55 @@ hr{border:0;border-top:1px solid #242b34;margin:22px 0}
 </style>
 
 
+
+<style id="sbi-brand-theme">
+:root{
+  --sbi-blue:#17356b;
+  --sbi-blue-dark:#102955;
+  --sbi-blue-soft:#eaf0fb;
+  --sbi-red:#d71920;
+  --sbi-red-dark:#b51218;
+  --sbi-white:#ffffff;
+  --sbi-bg:#f4f6fa;
+  --sbi-text:#172033;
+  --sbi-border:#d9e0ec;
+}
+body{background:var(--sbi-bg);color:var(--sbi-text)}
+.wrap{max-width:900px;padding:18px}
+.card{background:#fff;border:1px solid var(--sbi-border);box-shadow:0 12px 35px rgba(16,41,85,.12)}
+.site-brand{display:flex;align-items:center;gap:18px;padding:4px 2px 18px;margin-bottom:8px;border-bottom:3px solid var(--sbi-blue)}
+.site-brand img{width:min(100%,420px);height:auto;max-height:145px;object-fit:contain;object-position:left center}
+.site-brand-text{display:none}
+h1{color:var(--sbi-blue-dark)}
+h2{color:var(--sbi-blue-dark)}
+.sub,.muted{color:#667085}
+.search,.input,.select,.textarea{background:#fff;color:var(--sbi-text);border-color:#cbd5e1;box-shadow:0 1px 2px rgba(16,41,85,.04)}
+.search:focus,.input:focus,.select:focus,.textarea:focus{outline:2px solid rgba(23,53,107,.16);border-color:var(--sbi-blue)}
+.item,.result,.log,.authbox{background:#f9fbfe;border-color:#dbe3ef}
+.label{color:#667085}
+.value{color:var(--sbi-text)}
+.status,.badge{background:var(--sbi-blue);color:#fff}
+button{background:var(--sbi-blue);color:#fff}
+button:hover{background:var(--sbi-blue-dark)}
+button.secondary,.filter-btn{background:#eef2f8;color:var(--sbi-blue-dark);border-color:#d3dce9}
+button.secondary:hover,.filter-btn:hover{background:#e1e8f3}
+.filter-btn.active{background:var(--sbi-blue);color:#fff;border-color:var(--sbi-blue)}
+button.danger{background:var(--sbi-red)}
+button.danger:hover{background:var(--sbi-red-dark)}
+.save-ready-green{background:var(--sbi-red)!important;border-color:var(--sbi-red)!important;box-shadow:0 0 0 2px rgba(215,25,32,.12)}
+.latest-modification{border-color:var(--sbi-red);background:rgba(215,25,32,.055);box-shadow:0 0 0 1px rgba(215,25,32,.06)}
+.latest-modification-title{color:var(--sbi-blue-dark)}
+.license-box{background:#fff;border-color:var(--sbi-border)}
+.license-icon{background:var(--sbi-blue);color:#fff}
+.license-admin{background:#f9fbfe;border-color:#dbe3ef}
+.license-admin input,.license-admin select{background:#fff;color:var(--sbi-text);border-color:#cbd5e1}
+footer{color:#7a8699}
+hr{border-top-color:#dbe3ef}
+@media(max-width:600px){
+ .site-brand{justify-content:center;padding-bottom:14px}
+ .site-brand img{width:92%;max-height:120px;object-position:center}
+}
+</style>
 </head>
 <body>
 <div id="licenseGate" aria-hidden="true">
@@ -288,6 +336,9 @@ hr{border:0;border-top:1px solid #242b34;margin:22px 0}
 </div>
 
 <div class="wrap"><div class="card">
+<div class="site-brand" aria-label="SBI Benouatas Industrie — Hangcha">
+  <img src="logo-sbi-hangcha.png" alt="SBI Benouatas Industrie — Hangcha">
+</div>
 <h1>Chariot élévateur</h1>
 <div class="sub">Fiche technique • QR • Transformations • Gestion</div>
 

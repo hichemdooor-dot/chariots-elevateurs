@@ -384,7 +384,6 @@ button.danger{background:#c62828;color:#fff}
 <div id="userAdmin" class="hidden" style="margin-top:18px">
   <hr>
   <h2>Gestion des utilisateurs SBI</h2>
-  <div class="muted" style="margin-bottom:10px">V43 — création des comptes via Supabase Auth sécurisé, avec rôles Utilisateur / Administrateur.</div>
   <div class="muted" style="margin-bottom:10px">
     Ajouter, désactiver ou supprimer les comptes utilisateurs. Le rôle Administrateur donne accès à la gestion des utilisateurs et reste protégé par Supabase.
   </div>
@@ -985,7 +984,7 @@ function updateAuthUI(){
   updateNewChariotVisibility();
   updateManagementUI();
 
-  // V43: afficher immédiatement la gestion des utilisateurs après
+  // : afficher immédiatement la gestion des utilisateurs après
   // restauration de la session, sans devoir se déconnecter/reconnecter.
   updateUserAdminVisibility();
 }

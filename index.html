@@ -806,8 +806,9 @@ function search(q){
 
  const filterLabel=activeChariotFilter==="stock"?"en stock":activeChariotFilter==="delivered"?"livrés":"au total";
 
- // "Tous" affiche TOUJOURS uniquement le nombre total : aucune liste, même pendant une recherche.
- if(activeChariotFilter==="all"){
+ // "Tous" affiche uniquement le nombre quand il n'y a pas de recherche.
+ // Si une recherche donne un résultat, afficher ces résultats dans "Tous".
+ if(activeChariotFilter==="all" && !x){
    count.textContent=filtered.length+" chariot"+(filtered.length>1?"s":"")+" au total";
    box.innerHTML="";
    return;
@@ -825,10 +826,14 @@ function search(q){
          ["Capacité",c["Capacité (T)"]],
          ["Hauteur de levage",height ? (String(height).trim().match(/[mM]$/) ? String(height).trim() : String(height).trim()+"M") : height],
          ["Type de mât",mast ? String(mast).toUpperCase() : mast]
-       ].filter(([_,v])=>String(v??"").trim()!=="");
+       ];
+       if(activeChariotFilter==="delivered" || (activeChariotFilter==="all" && x)) {
+         info.push(["Client",c["Client"]]);
+       }
+       const displayInfo=info.filter(([_,v])=>String(v??"").trim()!=="");
        return `<div class="result" data-id="${esc(c["QR ID"])}">
          <div class="result-header"><strong>${esc(c["QR ID"])}</strong>${c["Statut"]?`<span class="result-status">${esc(c["Statut"])}</span>`:""}</div>
-         <div class="result-info">${info.map(([label,value])=>`<div class="result-field"><span>${esc(label)}</span><b>${esc(value)}</b></div>`).join("")}</div>
+         <div class="result-info">${displayInfo.map(([label,value])=>`<div class="result-field"><span>${esc(label)}</span><b>${esc(value)}</b></div>`).join("")}</div>
        </div>`;
      }).join("")
    : `<div class="muted" style="padding:12px">Aucun chariot trouvé dans cette catégorie.</div>`;

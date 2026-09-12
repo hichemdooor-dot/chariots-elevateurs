@@ -22,7 +22,7 @@ h1{font-size:29px;margin:0 0 5px} h2{font-size:21px;margin:25px 0 11px}
 .grid{display:grid;grid-template-columns:1fr;gap:9px}.management-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.management-grid .item:last-child{grid-column:1/-1}@media(max-width:760px){.management-grid{grid-template-columns:1fr}}
 .item{background:#0c1015;border:1px solid #20262f;border-radius:15px;padding:13px 15px}
 .label{display:block;color:#8f9aaa;font-size:13px;margin-bottom:4px} .value{font-size:17px;font-weight:650;word-break:break-word}
-.status{display:inline-block;padding:7px 11px;border-radius:999px;background:#202833;font-size:13px;font-weight:700}
+.status{display:inline-block;padding:7px 11px;border-radius:999px;background:#123b69;color:#fff;font-size:13px;font-weight:700}
 button{border:0;border-radius:13px;padding:13px 16px;background:#e9eef5;color:#111;font-weight:750;font-size:15px;cursor:pointer}
 button.secondary{background:#202731;color:#eef2f7}
 .actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}
@@ -132,6 +132,9 @@ h1,h2{color:#123b69}
 button{background:#123b69;color:#fff}
 button.secondary{background:#e8eef5;color:#123b69}
 button.danger{background:#c62828;color:#fff}
+.result{color:#172b40}
+.result strong{color:#123b69}
+.badge{color:#123b69}
 .filter-btn{background:#e8eef5;color:#123b69;border-color:#cbd6e2}
 .filter-btn.active{background:#123b69;color:#fff;border-color:#123b69}
 .authbox,.license-admin{background:#f8fafc;border-color:#d7dee8}
@@ -582,7 +585,7 @@ function populateSelect(){
   CHARIOTS.forEach(c=>{
     const opt=document.createElement("option");
     opt.value=c["QR ID"];
-    opt.textContent=`${c["QR ID"]} — ${c["N° châssis"]||"Châssis non renseigné"} — ${c["Moteur"]||"Moteur non renseigné"} — ${c["Capacité (T)"]||"Capacité non renseignée"}`;
+    opt.textContent=String(c["QR ID"]||"");
     sel.appendChild(opt);
   });
   sel.value = current ? (current["QR ID"]||"") : "";
@@ -787,8 +790,7 @@ function search(q){
 
  box.innerHTML=found.length
    ? found.map(c=>`<div class="result" data-id="${esc(c["QR ID"])}">
-       <strong>${esc(c["QR ID"])} — ${esc(c["N° châssis"]||"—")}</strong><br>
-       <small>${esc(c["Client"]||"—")} • ${esc(c["Moteur"]||"—")} • ${esc(c["Statut"]||"—")}</small>
+       <strong>${esc(c["QR ID"])}</strong>
      </div>`).join("")
    : `<div class="muted" style="padding:12px">Aucun chariot trouvé dans cette catégorie.</div>`;
 
@@ -930,6 +932,10 @@ function updateManagementUI(){
   const s=document.getElementById("managementStatus");
   if(!s) return;
   s.textContent=editingQrId ? "Modification de : "+editingQrId : "Mode : nouveau chariot";
+
+  // La suppression d'un chariot est réservée à l'administrateur.
+  const deleteBtn=document.querySelector('button[onclick="deleteChariot()"]');
+  if(deleteBtn) deleteBtn.classList.toggle("hidden", !isAdmin());
 }
 
 
@@ -1709,6 +1715,7 @@ async function saveChariot(btn){
 
 async function deleteChariot(){
   if(!requireValidLicense()) return;
+  if(!isAdmin()){alert("Suppression d'un chariot réservée à l'administrateur.");return}
 
   if(!currentUser){alert("Connectez-vous pour supprimer un chariot.");return}
   const qr=document.getElementById("m_qr_id").value.trim();

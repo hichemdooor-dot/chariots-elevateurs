@@ -783,10 +783,16 @@ function search(q){
    const chassis=String(c["N° châssis"]||"").toLowerCase();
    const client=String(c["Client"]||"").toLowerCase();
    return qr.includes(x) || chassis.includes(x) || client.includes(x);
- }).slice(0,30);
+ }).slice(0,100);
 
  const filterLabel=activeChariotFilter==="stock"?"en stock":activeChariotFilter==="delivered"?"livrés":"au total";
  count.textContent=filtered.length+" chariot"+(filtered.length>1?"s":"")+" "+filterLabel+(x?" • "+found.length+" résultat"+(found.length>1?"s":"") : "");
+
+ // "Tous" affiche uniquement le nombre. Les filtres Stock/Livrés affichent la liste des chariots.
+ if(activeChariotFilter==="all" && !x){
+   box.innerHTML="";
+   return;
+ }
 
  box.innerHTML=found.length
    ? found.map(c=>`<div class="result" data-id="${esc(c["QR ID"])}">

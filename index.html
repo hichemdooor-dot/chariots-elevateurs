@@ -92,23 +92,27 @@ hr{border:0;border-top:1px solid #242b34;margin:22px 0}
 }
 
 
-/* V-LICENCE-SBI — white SBI/HANGCHA first-load screen */
-#licenseGate{position:fixed;inset:0;z-index:20000;display:flex;align-items:center;justify-content:center;padding:14px;background:#fff;overflow:auto}
+/* V-LICENCE-SBI — clean white first-load screen, CSS loader only */
+#licenseGate{position:fixed;inset:0;z-index:20000;display:flex;align-items:center;justify-content:center;padding:18px;background:#fff;overflow:auto}
 #licenseGate.hidden{display:none}
-.license-box{position:relative;width:min(100%,1180px);min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#fff;text-align:center;color:#123b68}
-.license-loading-wrap{position:relative;width:min(100%,1120px);line-height:0;display:block;flex:0 0 auto}
-.license-loading-image{width:100%;height:auto;display:block;animation:sbiLoaderPulse 1.8s ease-in-out infinite}
-@keyframes sbiLoaderPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:1;transform:scale(1.002)}}
-.sbi-circle-loader{position:absolute;left:50%;top:58.2%;width:27.8%;aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);z-index:3;pointer-events:none;background:conic-gradient(from -25deg,transparent 0deg 25deg,#18a8ff 40deg,#0875e8 105deg,transparent 123deg 360deg);animation:sbiCircleSpin 1.05s linear infinite;filter:drop-shadow(0 0 8px rgba(24,168,255,.65));-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 10px),#000 calc(100% - 8px));mask:radial-gradient(farthest-side,transparent calc(100% - 10px),#000 calc(100% - 8px))}
-@keyframes sbiCircleSpin{to{transform:translate(-50%,-50%) rotate(360deg)}}
-.license-meta{width:min(100%,560px);box-sizing:border-box;margin:10px 0 0;padding:14px 22px;border:1px solid #d7e5f4;border-radius:16px;background:#fff;text-align:left;box-shadow:0 8px 28px rgba(19,59,104,.10)}
+.license-box{position:relative;width:min(100%,980px);min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#fff;text-align:center;color:#123b68}
+.license-brand{width:min(100%,520px);height:auto;display:block;margin-bottom:24px;object-fit:contain}
+.license-loading-wrap{position:relative;width:190px;height:190px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;margin-bottom:18px}
+.sbi-circle-loader{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from -25deg,transparent 0deg 35deg,#9fdcff 42deg,#18a8ff 105deg,#0875e8 155deg,transparent 175deg 360deg);animation:sbiCircleSpin 1.05s linear infinite;filter:drop-shadow(0 0 9px rgba(24,168,255,.55));-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 11px),#000 calc(100% - 9px));mask:radial-gradient(farthest-side,transparent calc(100% - 11px),#000 calc(100% - 9px));z-index:2}
+.sbi-loader-inner{width:145px;height:145px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#f7fbff;border:1px solid #e2edf8;box-shadow:inset 0 0 24px rgba(13,94,170,.05)}
+.sbi-forklift-icon{width:76px;height:76px;display:block}
+@keyframes sbiCircleSpin{to{transform:rotate(360deg)}}
+.license-loading-title{font-size:32px;font-weight:800;color:#0b477f;line-height:1.1;margin:0 0 7px}
+.license-loading-title .dots{display:inline-block;min-width:42px;text-align:left;color:#168cf0;animation:sbiDots 1.2s steps(4,end) infinite}
+@keyframes sbiDots{0%{opacity:.25}25%{opacity:.55}50%{opacity:.8}75%,100%{opacity:1}}
+.license-meta{width:min(100%,560px);box-sizing:border-box;margin:16px 0 0;padding:14px 22px;border:1px solid #d7e5f4;border-radius:16px;background:#fff;text-align:left;box-shadow:0 8px 28px rgba(19,59,104,.10)}
 .license-meta div{margin:6px 0;color:#173b63}
 .license-meta b{color:#123b68}
 .license-meta .license-active{color:#149447;font-weight:700}
 .license-error{color:#d92d20;margin-top:10px;font-size:14px}
-#licenseLoading{display:block;color:#6d86a3;font-size:13px;margin-top:4px;min-height:18px}
+#licenseLoading{display:block;color:#6d86a3;font-size:14px;margin-top:0;min-height:18px}
 .loading-spinner{display:none}
-@media(max-width:600px){#licenseGate{padding:8px}.license-box{width:100%}.license-loading-wrap{width:min(100%,620px)}.license-meta{width:min(100%,94vw);font-size:14px}}
+@media(max-width:600px){#licenseGate{padding:10px}.license-box{width:100%}.license-brand{width:min(100%,360px);margin-bottom:18px}.license-loading-wrap{width:155px;height:155px}.sbi-loader-inner{width:118px;height:118px}.sbi-forklift-icon{width:62px;height:62px}.license-loading-title{font-size:27px}.license-meta{width:min(100%,94vw);font-size:14px}}
 @keyframes sbiSpin{to{transform:rotate(360deg)}}
 /* V-LICENCE-SBI-ADMIN */
 .license-admin{margin-top:14px;padding:15px;border:1px solid #303844;border-radius:16px;background:#0c1015}
@@ -299,10 +303,21 @@ button.danger{background:#c62828;color:#fff}
 <body>
 <div id="licenseGate" aria-hidden="true">
   <div class="license-box">
+    <img class="license-brand" src="logo-sbi-hangcha.png" alt="SBI HANGCHA">
     <div class="license-loading-wrap" aria-label="Chargement SBI HANGCHA">
-      <img class="license-loading-image" src="sbi-first-loading-white.png" alt="SBI HANGCHA — Chargement">
       <div class="sbi-circle-loader" aria-hidden="true"></div>
+      <div class="sbi-loader-inner" aria-hidden="true">
+        <svg class="sbi-forklift-icon" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M18 72H82" stroke="#0B477F" stroke-width="6" stroke-linecap="round"/>
+          <circle cx="30" cy="72" r="9" stroke="#0B477F" stroke-width="5"/>
+          <circle cx="72" cy="72" r="9" stroke="#0B477F" stroke-width="5"/>
+          <path d="M39 72V42C39 37.6 42.6 34 47 34H57L68 52V72" stroke="#0B477F" stroke-width="5" stroke-linejoin="round"/>
+          <path d="M57 34V20M57 20H83M83 20V69M83 69H92" stroke="#0B477F" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M45 43H57" stroke="#E52B32" stroke-width="5" stroke-linecap="round"/>
+        </svg>
+      </div>
     </div>
+    <div class="license-loading-title">Chargement<span class="dots">...</span></div>
     <div id="licenseLoading">Vérification de la licence...</div>
     <div id="licenseDetails" class="license-meta"></div>
     <div id="licenseError" class="license-error"></div>
@@ -838,7 +853,7 @@ function search(q){
      }).join("")
    : `<div class="muted" style="padding:12px">Aucun chariot trouvé dans cette catégorie.</div>`;
 
- box.querySelectorAll(".result").forEach(el=>el.onclick=()=>show(findChariot(el.dataset.id)));
+ box.querySelectorAll(".result").forEach(el=>el.onclick=()=>{ const id=el.dataset.id; if(id) window.location.href="?id="+encodeURIComponent(id); });
 }
 
 

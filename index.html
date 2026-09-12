@@ -18,7 +18,7 @@ h1{font-size:29px;margin:0 0 5px} h2{font-size:21px;margin:25px 0 11px}
 .search,.input,.select,.textarea{width:100%;padding:13px 14px;border-radius:13px;border:1px solid #303844;background:#0c1015;color:#fff;font-size:15px}
 .textarea{min-height:90px;resize:vertical}
 .results{margin:8px 0} .result{padding:12px;border:1px solid #252c36;border-radius:13px;margin:7px 0;background:#0e1217;cursor:pointer}
-.result small{color:#9ca7b7}
+.result small{color:#667085}.result-info{margin-top:10px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}@media(max-width:560px){.result-info{grid-template-columns:1fr}}.result-field{background:#f5f7fa;border:1px solid #e1e7ef;border-radius:9px;padding:8px 10px}.result-field span{display:block;color:#667085;font-size:11px;margin-bottom:2px}.result-field b{color:#123b69;font-size:13px;word-break:break-word}.result-header{display:flex;align-items:center;justify-content:space-between;gap:10px}.result-header strong{font-size:17px;color:#123b69}.result-status{font-size:12px;padding:5px 8px;border-radius:999px;background:#123b69;color:#fff;font-weight:700}
 .grid{display:grid;grid-template-columns:1fr;gap:9px}.management-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.management-grid .item:last-child{grid-column:1/-1}@media(max-width:760px){.management-grid{grid-template-columns:1fr}}
 .item{background:#0c1015;border:1px solid #20262f;border-radius:15px;padding:13px 15px}
 .label{display:block;color:#8f9aaa;font-size:13px;margin-bottom:4px} .value{font-size:17px;font-weight:650;word-break:break-word}
@@ -92,19 +92,24 @@ hr{border:0;border-top:1px solid #242b34;margin:22px 0}
 }
 
 
-/* V-LICENCE-SBI */
-#licenseGate{position:fixed;inset:0;z-index:20000;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(5,7,10,.96);backdrop-filter:blur(8px)}
+/* V-LICENCE-SBI — compact SBI/HANGCHA first-load screen */
+#licenseGate{position:fixed;inset:0;z-index:20000;display:flex;align-items:center;justify-content:center;padding:18px;background:#060b12;overflow:auto}
 #licenseGate.hidden{display:none}
-.license-box{width:min(460px,100%);background:#11151b;border:1px solid #303844;border-radius:24px;padding:25px;box-shadow:0 20px 70px rgba(0,0,0,.6);text-align:center}
-.license-icon{width:64px;height:64px;margin:0 auto 14px;border-radius:18px;display:flex;align-items:center;justify-content:center;background:#202731;font-size:30px}
-.license-box h2{margin:0 0 8px;font-size:23px}
-.license-box p{margin:7px 0;color:#9ca7b7;line-height:1.5}
-.license-meta{margin:17px 0;padding:13px;border:1px solid #303844;border-radius:14px;background:#0c1015;text-align:left}
-.license-meta div{margin:6px 0}
-.license-meta b{color:#eef2f7}
-.license-error{color:#ff8f8f;margin-top:10px;font-size:14px}
-#licenseLoading{font-size:14px;color:#9ca7b7}
-
+.license-box{position:relative;width:min(100%,560px);min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#060b12;text-align:center;color:#eef4fb}
+.license-loading-wrap{position:relative;width:min(100%,520px);line-height:0;display:block;flex:0 0 auto}
+.license-loading-image{width:100%;height:auto;display:block;border-radius:18px;animation:sbiLoaderPulse 1.8s ease-in-out infinite}
+@keyframes sbiLoaderPulse{0%,100%{opacity:.98;transform:scale(1)}50%{opacity:1;transform:scale(1.006)}}
+.sbi-circle-loader{position:absolute;left:50%;top:66.9%;width:14.4%;aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);z-index:3;pointer-events:none;background:conic-gradient(from -25deg,transparent 0deg 25deg,#18a8ff 40deg,#0875e8 105deg,transparent 123deg 360deg);animation:sbiCircleSpin 1.05s linear infinite;filter:drop-shadow(0 0 7px rgba(24,168,255,.7));-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 7px),#000 calc(100% - 6px));mask:radial-gradient(farthest-side,transparent calc(100% - 7px),#000 calc(100% - 6px))}
+@keyframes sbiCircleSpin{to{transform:translate(-50%,-50%) rotate(360deg)}}
+.license-meta{width:min(100%,500px);box-sizing:border-box;margin:10px 0 0;padding:14px 18px;border:1px solid #2b425b;border-radius:14px;background:rgba(10,17,27,.96);text-align:left;box-shadow:0 12px 35px rgba(0,0,0,.22)}
+.license-meta div{margin:6px 0;color:#dce7f4}
+.license-meta b{color:#fff}
+.license-meta .license-active{color:#32d74b;font-weight:700}
+.license-error{color:#ff6b6b;margin-top:10px;font-size:14px}
+#licenseLoading{display:block;color:#8ea6c2;font-size:13px;margin-top:8px;min-height:18px}
+.loading-spinner{display:none}
+@media(max-width:600px){#licenseGate{padding:10px}.license-box{width:100%}.license-loading-wrap{width:min(100%,430px)}.license-meta{width:min(100%,430px);font-size:14px}}
+@keyframes sbiSpin{to{transform:rotate(360deg)}}
 /* V-LICENCE-SBI-ADMIN */
 .license-admin{margin-top:14px;padding:15px;border:1px solid #303844;border-radius:16px;background:#0c1015}
 .license-admin h3{margin:0 0 10px;font-size:16px}
@@ -294,11 +299,12 @@ button.danger{background:#c62828;color:#fff}
 <body>
 <div id="licenseGate" aria-hidden="true">
   <div class="license-box">
-    <div class="license-icon">🔐</div>
-    <h2>Licence du logiciel</h2>
-    <p>Application de gestion des chariots élévateurs</p>
+    <div class="license-loading-wrap" aria-label="Chargement SBI HANGCHA">
+      <img class="license-loading-image" src="sbi-first-loading.png" alt="SBI HANGCHA — Chargement">
+      <div class="sbi-circle-loader" aria-hidden="true"></div>
+    </div>
     <div id="licenseLoading">Vérification de la licence...</div>
-    <div id="licenseDetails" class="license-meta hidden"></div>
+    <div id="licenseDetails" class="license-meta"></div>
     <div id="licenseError" class="license-error"></div>
   </div>
 </div>
@@ -567,7 +573,13 @@ function friendlySupabaseError(e){
 }
 
 function item(label,value){
-  return `<div class="item"><span class="label">${esc(label)}</span><span class="value">${esc(value||"—")}</span></div>`;
+  let display=value;
+  if(label === "Type de mât" && display) display=String(display).toUpperCase();
+  if(label === "Hauteur de levage" && display){
+    display=String(display).trim();
+    if(display && !/[mM]$/.test(display)) display += "M";
+  }
+  return `<div class="item"><span class="label">${esc(label)}</span><span class="value">${esc(display||"—")}</span></div>`;
 }
 
 function findChariot(q){
@@ -585,7 +597,7 @@ function populateSelect(){
   CHARIOTS.forEach(c=>{
     const opt=document.createElement("option");
     opt.value=c["QR ID"];
-    opt.textContent=String(c["QR ID"]||"");
+    opt.textContent=`${c["QR ID"]||""} — ${c["N° châssis"]||"Châssis non renseigné"} — ${c["Moteur"]||"Moteur non renseigné"} — ${c["Capacité (T)"]||"Capacité non renseignée"}`;
     sel.appendChild(opt);
   });
   sel.value = current ? (current["QR ID"]||"") : "";
@@ -626,7 +638,14 @@ async function loadChariots(){
   const wantedChariot=findChariot(wanted);
   // On the initial page, keep the selection completely empty.
   // Only open a chariot when explicitly requested/selected.
-  if(wantedChariot) show(wantedChariot);
+  if(wantedChariot){
+    show(wantedChariot);
+    // Detail page: land directly on the technical fiche, not at the top of the page.
+    setTimeout(()=>{
+      const fiche=document.getElementById("fiche");
+      if(fiche) fiche.scrollIntoView({behavior:"auto",block:"start"});
+    },0);
+  }
 
   updateManagementUI();
   if(!document.getElementById("qrPage")?.classList.contains("hidden")) renderQrCodes();
@@ -797,9 +816,21 @@ function search(q){
  count.textContent=filtered.length+" chariot"+(filtered.length>1?"s":"")+" "+filterLabel+(x?" • "+found.length+" résultat"+(found.length>1?"s":"") : "");
 
  box.innerHTML=found.length
-   ? found.map(c=>`<div class="result" data-id="${esc(c["QR ID"])}">
-       <strong>${esc(c["QR ID"])}</strong>
-     </div>`).join("")
+   ? found.map(c=>{
+       const height=c["Hauteur de levage (m)"];
+       const mast=c["Type de mât"];
+       const info=[
+         ["N° châssis",c["N° châssis"]],
+         ["Moteur",c["Moteur"]],
+         ["Capacité",c["Capacité (T)"]],
+         ["Hauteur de levage",height ? (String(height).trim().match(/[mM]$/) ? String(height).trim() : String(height).trim()+"M") : height],
+         ["Type de mât",mast ? String(mast).toUpperCase() : mast]
+       ].filter(([_,v])=>String(v??"").trim()!=="");
+       return `<div class="result" data-id="${esc(c["QR ID"])}">
+         <div class="result-header"><strong>${esc(c["QR ID"])}</strong>${c["Statut"]?`<span class="result-status">${esc(c["Statut"])}</span>`:""}</div>
+         <div class="result-info">${info.map(([label,value])=>`<div class="result-field"><span>${esc(label)}</span><b>${esc(value)}</b></div>`).join("")}</div>
+       </div>`;
+     }).join("")
    : `<div class="muted" style="padding:12px">Aucun chariot trouvé dans cette catégorie.</div>`;
 
  box.querySelectorAll(".result").forEach(el=>el.onclick=()=>show(findChariot(el.dataset.id)));
@@ -816,9 +847,12 @@ async function verifyLicense(){
   gate.classList.remove("hidden");
   gate.setAttribute("aria-hidden","false");
   loading.classList.remove("hidden");
-  details.classList.add("hidden");
+  details.classList.remove("hidden");
+  details.innerHTML =
+    "<div><b>Entreprise :</b> Vérification...</div>"+
+    "<div><b>Statut :</b> Vérification...</div>"+
+    "<div><b>Expiration :</b> Vérification...</div>";
   errorBox.textContent="";
-
   try{
     const {data,error}=await supabaseClient
       .rpc("check_sbi_license");
@@ -844,7 +878,7 @@ async function verifyLicense(){
     loading.classList.add("hidden");
     details.innerHTML =
       "<div><b>Entreprise :</b> "+esc(license.company_name)+"</div>"+
-      "<div><b>Statut :</b> Active</div>"+
+      "<div><b>Statut :</b> <span class=\"license-active\">Active</span></div>"+
       "<div><b>Expiration :</b> "+esc(license.expiration_date||"Sans expiration")+"</div>";
     details.classList.remove("hidden");
 
@@ -1742,7 +1776,9 @@ async function deleteChariot(){
 }
 
 document.getElementById("chariotSelect").addEventListener("change",e=>{
-  if(e.target.value) show(findChariot(e.target.value));
+  if(!e.target.value) return;
+  // Open the selected chariot as a dedicated detail URL/page.
+  window.location.href="?id="+encodeURIComponent(e.target.value);
 });
 document.getElementById("search").addEventListener("input",e=>search(e.target.value));
 

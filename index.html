@@ -92,23 +92,23 @@ hr{border:0;border-top:1px solid #242b34;margin:22px 0}
 }
 
 
-/* V-LICENCE-SBI — compact SBI/HANGCHA first-load screen */
-#licenseGate{position:fixed;inset:0;z-index:20000;display:flex;align-items:center;justify-content:center;padding:18px;background:#060b12;overflow:auto}
+/* V-LICENCE-SBI — white SBI/HANGCHA first-load screen */
+#licenseGate{position:fixed;inset:0;z-index:20000;display:flex;align-items:center;justify-content:center;padding:14px;background:#fff;overflow:auto}
 #licenseGate.hidden{display:none}
-.license-box{position:relative;width:min(100%,560px);min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#060b12;text-align:center;color:#eef4fb}
-.license-loading-wrap{position:relative;width:min(100%,520px);line-height:0;display:block;flex:0 0 auto}
-.license-loading-image{width:100%;height:auto;display:block;border-radius:18px;animation:sbiLoaderPulse 1.8s ease-in-out infinite}
-@keyframes sbiLoaderPulse{0%,100%{opacity:.98;transform:scale(1)}50%{opacity:1;transform:scale(1.006)}}
-.sbi-circle-loader{position:absolute;left:50%;top:66.9%;width:14.4%;aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);z-index:3;pointer-events:none;background:conic-gradient(from -25deg,transparent 0deg 25deg,#18a8ff 40deg,#0875e8 105deg,transparent 123deg 360deg);animation:sbiCircleSpin 1.05s linear infinite;filter:drop-shadow(0 0 7px rgba(24,168,255,.7));-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 7px),#000 calc(100% - 6px));mask:radial-gradient(farthest-side,transparent calc(100% - 7px),#000 calc(100% - 6px))}
+.license-box{position:relative;width:min(100%,1180px);min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#fff;text-align:center;color:#123b68}
+.license-loading-wrap{position:relative;width:min(100%,1120px);line-height:0;display:block;flex:0 0 auto}
+.license-loading-image{width:100%;height:auto;display:block;animation:sbiLoaderPulse 1.8s ease-in-out infinite}
+@keyframes sbiLoaderPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:1;transform:scale(1.002)}}
+.sbi-circle-loader{position:absolute;left:50%;top:58.2%;width:27.8%;aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);z-index:3;pointer-events:none;background:conic-gradient(from -25deg,transparent 0deg 25deg,#18a8ff 40deg,#0875e8 105deg,transparent 123deg 360deg);animation:sbiCircleSpin 1.05s linear infinite;filter:drop-shadow(0 0 8px rgba(24,168,255,.65));-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 10px),#000 calc(100% - 8px));mask:radial-gradient(farthest-side,transparent calc(100% - 10px),#000 calc(100% - 8px))}
 @keyframes sbiCircleSpin{to{transform:translate(-50%,-50%) rotate(360deg)}}
-.license-meta{width:min(100%,500px);box-sizing:border-box;margin:10px 0 0;padding:14px 18px;border:1px solid #2b425b;border-radius:14px;background:rgba(10,17,27,.96);text-align:left;box-shadow:0 12px 35px rgba(0,0,0,.22)}
-.license-meta div{margin:6px 0;color:#dce7f4}
-.license-meta b{color:#fff}
-.license-meta .license-active{color:#32d74b;font-weight:700}
-.license-error{color:#ff6b6b;margin-top:10px;font-size:14px}
-#licenseLoading{display:block;color:#8ea6c2;font-size:13px;margin-top:8px;min-height:18px}
+.license-meta{width:min(100%,560px);box-sizing:border-box;margin:10px 0 0;padding:14px 22px;border:1px solid #d7e5f4;border-radius:16px;background:#fff;text-align:left;box-shadow:0 8px 28px rgba(19,59,104,.10)}
+.license-meta div{margin:6px 0;color:#173b63}
+.license-meta b{color:#123b68}
+.license-meta .license-active{color:#149447;font-weight:700}
+.license-error{color:#d92d20;margin-top:10px;font-size:14px}
+#licenseLoading{display:block;color:#6d86a3;font-size:13px;margin-top:4px;min-height:18px}
 .loading-spinner{display:none}
-@media(max-width:600px){#licenseGate{padding:10px}.license-box{width:100%}.license-loading-wrap{width:min(100%,430px)}.license-meta{width:min(100%,430px);font-size:14px}}
+@media(max-width:600px){#licenseGate{padding:8px}.license-box{width:100%}.license-loading-wrap{width:min(100%,620px)}.license-meta{width:min(100%,94vw);font-size:14px}}
 @keyframes sbiSpin{to{transform:rotate(360deg)}}
 /* V-LICENCE-SBI-ADMIN */
 .license-admin{margin-top:14px;padding:15px;border:1px solid #303844;border-radius:16px;background:#0c1015}
@@ -300,7 +300,7 @@ button.danger{background:#c62828;color:#fff}
 <div id="licenseGate" aria-hidden="true">
   <div class="license-box">
     <div class="license-loading-wrap" aria-label="Chargement SBI HANGCHA">
-      <img class="license-loading-image" src="sbi-first-loading.png" alt="SBI HANGCHA — Chargement">
+      <img class="license-loading-image" src="sbi-first-loading-white.png" alt="SBI HANGCHA — Chargement">
       <div class="sbi-circle-loader" aria-hidden="true"></div>
     </div>
     <div id="licenseLoading">Vérification de la licence...</div>

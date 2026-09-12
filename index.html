@@ -384,6 +384,7 @@ button.danger{background:#c62828;color:#fff}
 <div id="userAdmin" class="hidden" style="margin-top:18px">
   <hr>
   <h2>Gestion des utilisateurs SBI</h2>
+  <div class="muted" style="margin-bottom:10px">V43 — création des comptes via Supabase Auth sécurisé, avec rôles Utilisateur / Administrateur.</div>
   <div class="muted" style="margin-bottom:10px">
     Ajouter, désactiver ou supprimer les comptes utilisateurs. Le rôle Administrateur donne accès à la gestion des utilisateurs et reste protégé par Supabase.
   </div>
@@ -984,7 +985,7 @@ function updateAuthUI(){
   updateNewChariotVisibility();
   updateManagementUI();
 
-  // : afficher immédiatement la gestion des utilisateurs après
+  // V43: afficher immédiatement la gestion des utilisateurs après
   // restauration de la session, sans devoir se déconnecter/reconnecter.
   updateUserAdminVisibility();
 }
@@ -1668,6 +1669,21 @@ html,body{margin:0;padding:0;width:100%;height:100%;background:#fff}
 body{display:flex;align-items:center;justify-content:center}
 img{width:70mm;height:70mm;object-fit:contain}
 </style>
+
+<style id="backdoor-signature-style">
+.backdoor-signature{
+  text-align:center;
+  padding:18px 12px 24px;
+  color:#6b7f99;
+  font-size:12px;
+  letter-spacing:.08em;
+  font-weight:600;
+}
+.backdoor-signature strong{
+  color:#0b3f78;
+  font-weight:800;
+}
+</style>
 </head>
 <body>
 <img src="${src}" alt="QR Code">
@@ -1865,4 +1881,6 @@ document.addEventListener("change", function(e){
   }
 });
 </script>
+
+<div class="backdoor-signature" aria-label="Créateur du site">© 2026 · Developed by <strong>BaCkDoooR</strong></div>
 </body></html>

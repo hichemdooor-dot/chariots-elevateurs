@@ -2459,6 +2459,18 @@ function renderStockPage(q){
     mobile.querySelectorAll(".sbi-stock-card").forEach(el=>el.onclick=()=>{const id=el.dataset.id;if(id)window.location.href="?id="+encodeURIComponent(id)});
   }
 }
+function openDashboardChariot(qrId){
+  const c=findChariot(qrId);
+  if(!c) return;
+  sbiShowApp();
+  sbiSetActive("all");
+  show(c);
+  setTimeout(()=>{
+    const fiche=document.getElementById("fiche");
+    if(fiche) fiche.scrollIntoView({behavior:"smooth",block:"start"});
+  },50);
+}
+
 function sbiShowStock(){
   const main=document.getElementById("sbiMain"); if(main) main.classList.add("show-app");
   document.getElementById("sbiDashboard")?.classList.remove("show");
@@ -2534,7 +2546,7 @@ function renderSbiDashboard(){
     recent.innerHTML=rows.length?rows.map(c=>{
       const id=esc(c["QR ID"]||"—");
       const meta=[c["N° châssis"],c["Moteur"],c["Capacité (T)"]?fmtCapacity(c["Capacité (T)"]):"",c["Client"]?"Client: "+c["Client"]:""].filter(Boolean).join(" • ");
-      return `<div class="sbi-recent-item" onclick="window.location.href='?id='+encodeURIComponent(${JSON.stringify(String(c["QR ID"]||""))})"><div class="sbi-recent-main"><strong>${id}</strong><span>${esc(meta||"Informations non renseignées")}</span></div><span class="status ${statusClass(c["Statut"])}">${esc(c["Statut"]||"—")}</span></div>`;
+      return `<div class="sbi-recent-item" role="button" tabindex="0" onclick="openDashboardChariot(${JSON.stringify(String(c["QR ID"]||""))})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDashboardChariot(${JSON.stringify(String(c["QR ID"]||""))})}"><div class="sbi-recent-main"><strong>${id}</strong><span>${esc(meta||"Informations non renseignées")}</span></div><span class="status ${statusClass(c["Statut"])}">${esc(c["Statut"]||"—")}</span></div>`;
     }).join(""):'<div class="muted">Aucun chariot.</div>';
   }
   const alert=document.getElementById("dashAlert");

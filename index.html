@@ -388,6 +388,7 @@ body{background:var(--dash-bg)!important;color:var(--dash-text)!important}
 .sbi-recent-item:hover{border-color:#8eb8dd;background:#f5faff}
 .sbi-recent-main strong{display:block;color:var(--sbi-blue);font-size:14px}
 .sbi-recent-main span{display:block;color:var(--dash-muted);font-size:12px;margin-top:3px}
+.sbi-recent-main .sbi-recent-update{font-size:11px;color:#6b7c8f;margin-top:4px}
 .sbi-dash-alert{margin-top:14px;border-radius:13px;border:1px solid #f0d48c;background:#fffaf0;padding:12px 14px;color:#72520b;font-size:13px}
 .sbi-route-hidden{display:none!important}
 .sbi-main>.wrap{max-width:none!important;margin:0!important;padding:0!important}
@@ -636,7 +637,7 @@ body.sbi-management-login-only > .wrap > .card #authBox + .actions{display:none 
           <div id="dashStatuses"></div>
         </section>
         <section class="sbi-panel">
-          <h2>Derniers chariots</h2>
+          <h2>Derniers chariots modifiés</h2>
           <div id="dashRecent" class="sbi-recent"></div>
         </section>
       </div>
@@ -853,12 +854,12 @@ Connecté : vous pouvez ajouter, modifier ou supprimer les données d'un chariot
 <div class="grid management-grid">
   <div class="item"><span class="label">QR ID <input id="m_qr_id" class="input" placeholder="CH-0082"></div>
   <div class="item"><span class="icon-label"><span class="field-icon"><svg viewBox="0 0 24 24"><path d="M3 21V8l9-5 9 5v13"/><path d="M7 21V10h10v11M4 14h16M4 18h16"/></svg></span>Stock<span class="required">*</span></span><select id="m_stock" class="select"><option value="" disabled selected>Choisir un stock...</option><option>STOCK1</option><option>STOCK2</option><option>SHOWROOM</option><option>FABRICATION</option></select></div>
-  <div class="item"><span class="icon-label"><span class="field-icon"><svg viewBox="0 0 24 24"><path d="M5 5h14v14H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span>N° châssis <span class="required">*</span></span><input id="m_chassis" class="input" required aria-required="true"></div>
+  <div class="item"><span class="icon-label"><span class="field-icon"><svg viewBox="0 0 24 24"><path d="M5 5h14v14H5z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span>N° châssis <span class="required">*</span></span><input id="m_chassis" class="input" required aria-required="true"></div><div id="chassisDuplicateWarning" style="display:none;margin-top:7px;padding:10px 12px;border:1px solid #dc2626;background:#fef2f2;color:#b91c1c;border-radius:8px;font-weight:700;font-size:13px"></div>
   <div class="item"><span class="icon-label"><span class="field-icon"><svg viewBox="0 0 24 24"><path d="M5 4v16M19 4v16M9 4v16M15 4v16M3 8h18M3 16h18"/></svg></span>N° de série</span><input id="m_serial_number" class="input"></div>
   <div class="item"><span class="icon-label"><span class="field-icon"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18h1.5a2 2 0 0 0 0-4H12a2 2 0 0 1 0-4h2a7 7 0 0 0-2-10z"/><circle cx="7" cy="11" r="1"/><circle cx="9" cy="7" r="1"/><circle cx="14" cy="7" r="1"/><circle cx="17" cy="10" r="1"/></svg></span>Couleur<span class="required">*</span></span><select id="m_color" class="select"><option value="" disabled selected>Choisir une couleur...</option><option>Jaune</option><option>Orange</option><option>Rouge</option><option>Vert</option><option>Gris</option></select></div>
   <div class="item"><span class="icon-label"><span class="field-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.8 1.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-2.6V20a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1-1.8-1.8.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H6v-2.6h.4a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1 1.8-1.8.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.6V4h2.6v.4a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1 1.8 1.8-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2V13h-.2a1.7 1.7 0 0 0-1.6 1z"/></svg></span>Type moteur<span class="required">*</span></span><select id="m_engine" class="select"><option value="" disabled selected>Choisir un type moteur...</option><option>ISUZU</option><option>MITSUBISHI</option><option>XINSHAI</option><option>GPL</option></select></div>
   <div class="item"><span class="icon-label"><span class="field-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M12 8v8M8 12h8M5 9H3v6h2M19 9h2v6h-2"/></svg></span>N° moteur</span><input id="m_engine_number" class="input"></div>
-  <div class="item"><span class="icon-label"><span class="field-icon"><svg viewBox="0 0 24 24"><path d="M12 3v18M5 6h14M4 6l-3 7h6L4 6zM20 6l-3 7h6l-3-7zM3 17h4M17 17h4"/></svg></span>Capacité<span class="required">*</span></span><select id="m_capacity" class="select"><option value="" disabled selected>Choisir une capacité...</option><option>3T</option><option>3.5T</option><option>3.8T</option><option>5T</option><option>7T</option><option>10T</option></select></div>
+  <div class="item"><span class="icon-label"><span class="field-icon"><svg viewBox="0 0 24 24"><path d="M12 3v18M5 6h14M4 6l-3 7h6L4 6zM20 6l-3 7h6l-3-7zM3 17h4M17 17h4"/></svg></span>Capacité<span class="required">*</span></span><select id="m_capacity" class="select"><option value="" disabled selected>Choisir une capacité...</option><option>3T</option><option>3.5T</option><option>3.8T</option><option>5T</option><option>7T</option><option>10T</option><option>12T</option></select></div>
   <div class="item"><span class="icon-label"><span class="field-icon"><svg viewBox="0 0 24 24"><path d="M6 20V4M6 4l-3 3M6 4l3 3M6 20l-3-3M6 20l3-3"/><path d="M11 7h9M11 12h6M11 17h9"/></svg></span>Hauteur de levage</span><select id="m_lifting_height" class="select">
     <option value="">Choisir une hauteur...</option>
     <option>3M</option><option>4M</option><option>4.3M</option><option>4.5M</option><option>5M</option><option>5.5M</option><option>6M</option>
@@ -955,10 +956,16 @@ function populateSelect(){
   sel.innerHTML='<option value="">Choisir un chariot...</option>';
   // Le dernier chariot ajouté apparaît en premier dans cette liste.
   // L'ID Supabase est utilisé comme ordre d'ajout (auto-incrémenté).
+  const qrNumber=value=>{
+    const m=String(value??"").match(/(\d+)\s*$/);
+    return m ? Number(m[1]) : NaN;
+  };
   const orderedChariots=[...CHARIOTS].sort((a,b)=>{
+    const aq=qrNumber(a["QR ID"]), bq=qrNumber(b["QR ID"]);
+    if(Number.isFinite(aq) && Number.isFinite(bq) && aq!==bq) return bq-aq;
     const ai=Number(a.id), bi=Number(b.id);
-    if(Number.isFinite(ai) && Number.isFinite(bi)) return bi-ai;
-    return String(b.id??"").localeCompare(String(a.id??""),undefined,{numeric:true});
+    if(Number.isFinite(ai) && Number.isFinite(bi) && ai!==bi) return bi-ai;
+    return String(b["QR ID"]??b.id??"").localeCompare(String(a["QR ID"]??a.id??""),undefined,{numeric:true});
   });
   orderedChariots.forEach(c=>{
     const opt=document.createElement("option");
@@ -995,7 +1002,8 @@ async function loadChariots(){
     "Date livraison":c.delivery_date,
     "Observations":c.observations,
     "Engine Number":c.engine_number,
-    "QR ID":c.qr_id
+    "QR ID":c.qr_id,
+    "updated_at":c.updated_at
   }));
 
   populateSelect();
@@ -1140,7 +1148,7 @@ function show(c){
   if(!c) return;
   current=c;
   document.getElementById("fiche").classList.remove("hidden");
-  document.getElementById("search").value=c["QR ID"]||"";
+  document.getElementById("search").value="";
   document.getElementById("chariotSelect").value=c["QR ID"]||"";
   document.getElementById("qrid").textContent=c["QR ID"]||"—";
   document.getElementById("status").innerHTML=`<span class="status ${statusClass(c["Statut"])}">${esc(c["Statut"]||"Statut non renseigné")}</span>`;
@@ -1856,6 +1864,87 @@ async function newChariot(btn){
   document.getElementById("managementStatus").textContent="Mode : nouveau chariot — QR ID automatique";
 }
 
+function normalizeChassisDuplicate(v){
+  return String(v ?? "").trim().replace(/\s+/g, "").replace(/[\-_/\.]/g, "").toUpperCase();
+}
+
+function normalizeCapacityDuplicate(v){
+  let x=String(v ?? "").trim().replace(/\s+/g, "").toUpperCase().replace(/T$/,"" ).replace(/,/g,".");
+  const n=Number(x);
+  return Number.isFinite(n) ? String(n) : x;
+}
+
+function normalizeEngineDuplicate(v){
+  return String(v ?? "").trim().replace(/\s+/g, " ").toUpperCase();
+}
+
+function isChariotInStockForDuplicate(c){
+  // For this rule, every existing record is considered when checking
+  // whether the same chassis + same engine is already registered.
+  return true;
+}
+
+function getChassisValue(c){
+  return c?.chassis ?? c?.["N° châssis"] ?? c?.["N° chassis"] ?? "";
+}
+function getEngineValue(c){
+  return c?.engine ?? c?.Moteur ?? c?.["Moteur"] ?? c?.["Type moteur"] ?? c?.["Type de moteur"] ?? "";
+}
+
+function checkDuplicateChassisAndEngine(chassis, engine, rows){
+  const ch=normalizeChassisDuplicate(chassis);
+  const eng=normalizeEngineDuplicate(engine);
+  if(!ch || !eng) return null;
+  const list=Array.isArray(rows) ? rows : (Array.isArray(CHARIOTS) ? CHARIOTS : []);
+  return list.find(c=>{
+    if(!isChariotInStockForDuplicate(c)) return false;
+    const existingQr=String(c?.["QR ID"] ?? c?.qr_id ?? "").trim();
+    if(editingQrId && existingQr && existingQr.toLowerCase()===String(editingQrId).trim().toLowerCase()) return false;
+    return normalizeChassisDuplicate(getChassisValue(c))===ch &&
+           normalizeEngineDuplicate(getEngineValue(c))===eng;
+  }) || null;
+}
+
+async function findDuplicateChassisAndEngineInDatabase(chassis, engine){
+  const ch=normalizeChassisDuplicate(chassis);
+  const eng=normalizeEngineDuplicate(engine);
+  if(!ch || !eng) return null;
+
+  // Read the actual database records immediately before saving.
+  const {data,error}=await supabaseClient
+    .from("chariots")
+    .select("id,qr_id,chassis,engine,stock,status");
+
+  if(error){
+    console.error("Vérification doublon châssis/moteur :", error);
+    return checkDuplicateChassisAndEngine(chassis,engine,CHARIOTS);
+  }
+
+  return checkDuplicateChassisAndEngine(chassis,engine,data||[]);
+}
+
+async function updateChassisDuplicateWarning(){
+  const warning=document.getElementById("chassisDuplicateWarning");
+  const chassisEl=document.getElementById("m_chassis");
+  const engineEl=document.getElementById("m_engine");
+  if(!warning || !chassisEl || !engineEl) return null;
+  const chassis=String(chassisEl.value||"").trim();
+  const engine=String(engineEl.value||"").trim();
+  if(!chassis || !engine){
+    warning.style.display="none";
+    return null;
+  }
+  const duplicate=await findDuplicateChassisAndEngineInDatabase(chassis,engine);
+  if(duplicate){
+    const existingCapacity=String(duplicate.capacity ?? duplicate["Capacité (T)"] ?? duplicate["Capacité"] ?? "").trim();
+    warning.textContent=`⚠ Le numéro de châssis « ${chassis} » est déjà utilisé avec le même moteur (${engine}). Enregistrement impossible.` + (existingCapacity ? ` Capacité du chariot existant : ${existingCapacity}.` : "");
+    warning.style.display="block";
+  }else{
+    warning.style.display="none";
+  }
+  return duplicate;
+}
+
 function managementPayload(){
   const val=id=>document.getElementById(id).value.trim();
   const date=val("m_delivery_date");
@@ -2181,6 +2270,27 @@ async function saveChariot(btn){
   }
 
   const oldQr = editingQrId;
+
+  // Same chassis is allowed when the engine is different.
+  // Block only when BOTH chassis number and engine type are identical.
+  // Capacity is intentionally NOT part of the duplicate rule.
+  const duplicate = await findDuplicateChassisAndEngineInDatabase(payload.chassis, payload.engine);
+  if(duplicate){
+    const duplicateQr=String(duplicate["QR ID"]||duplicate.qr_id||"").trim();
+    const warning=document.getElementById("chassisDuplicateWarning");
+    if(warning){
+      const existingCapacity=String(duplicate.capacity ?? duplicate["Capacité (T)"] ?? duplicate["Capacité"] ?? "").trim();
+      warning.textContent=`⚠ Le numéro de châssis « ${String(payload.chassis).trim()} » est déjà utilisé avec le même moteur (${String(payload.engine).trim()}). Enregistrement impossible.` + (existingCapacity ? ` Capacité du chariot existant : ${existingCapacity}.` : "");
+      warning.style.display="block";
+    }
+    alert("Le numéro de châssis « " + String(payload.chassis).trim() + " » est déjà utilisé avec le même moteur (" + String(payload.engine).trim() + ").\n\nUn même châssis peut être enregistré avec un moteur différent.");
+    const chassisEl=document.getElementById("m_chassis");
+    if(chassisEl) chassisEl.focus();
+    const statusEl=document.getElementById("managementStatus");
+    if(statusEl) statusEl.textContent="Châssis déjà présent avec le même moteur" + (duplicateQr ? " — " + duplicateQr : "");
+    return;
+  }
+
   const status = document.getElementById("managementStatus");
   if(status) status.textContent="Enregistrement...";
 
@@ -2244,6 +2354,9 @@ async function deleteChariot(){
 
 document.getElementById("chariotSelect").addEventListener("change",e=>{
   if(!e.target.value) return;
+  // Keep the main research bar empty when opening a chariot.
+  const searchBar=document.getElementById("search");
+  if(searchBar) searchBar.value="";
   // Open the selected chariot as a dedicated detail URL/page.
   window.location.href="?id="+encodeURIComponent(e.target.value);
 });
@@ -2271,6 +2384,10 @@ supabaseClient.auth.onAuthStateChange((event,session)=>{
     },0);
   }
 });
+
+document.getElementById("m_chassis")?.addEventListener("input",()=>{ clearTimeout(window.__chassisDupTimer); window.__chassisDupTimer=setTimeout(updateChassisDuplicateWarning,350); });
+document.getElementById("m_engine")?.addEventListener("input",()=>{ clearTimeout(window.__chassisDupTimer); window.__chassisDupTimer=setTimeout(updateChassisDuplicateWarning,350); });
+document.getElementById("m_engine")?.addEventListener("change",updateChassisDuplicateWarning);
 
 (async function init(){
   if(!(await verifyLicense())) return;
@@ -2542,11 +2659,26 @@ function renderSbiDashboard(){
   }
   const recent=document.getElementById("dashRecent");
   if(recent){
-    const rows=CHARIOTS.slice(-6).reverse();
+    const rows=[...CHARIOTS].sort((a,b)=>{
+      const da=Date.parse(a["updated_at"]||"");
+      const db=Date.parse(b["updated_at"]||"");
+      if(Number.isFinite(da) && Number.isFinite(db) && da!==db) return db-da;
+      if(Number.isFinite(db) && !Number.isFinite(da)) return 1;
+      if(Number.isFinite(da) && !Number.isFinite(db)) return -1;
+      const ai=Number(a.id), bi=Number(b.id);
+      if(Number.isFinite(ai) && Number.isFinite(bi)) return bi-ai;
+      return String(b.id??"").localeCompare(String(a.id??""),undefined,{numeric:true});
+    }).slice(0,6);
+    const formatUpdateDate=value=>{
+      const d=new Date(value);
+      if(!value || Number.isNaN(d.getTime())) return "Date de mise à jour non renseignée";
+      return "Mis à jour le "+d.toLocaleDateString("fr-FR")+" à "+d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+    };
     recent.innerHTML=rows.length?rows.map(c=>{
       const id=esc(c["QR ID"]||"—");
       const meta=[c["N° châssis"],c["Moteur"],c["Capacité (T)"]?fmtCapacity(c["Capacité (T)"]):"",c["Client"]?"Client: "+c["Client"]:""].filter(Boolean).join(" • ");
-      return `<div class="sbi-recent-item" role="button" tabindex="0" onclick="openDashboardChariot(${JSON.stringify(String(c["QR ID"]||""))})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDashboardChariot(${JSON.stringify(String(c["QR ID"]||""))})}"><div class="sbi-recent-main"><strong>${id}</strong><span>${esc(meta||"Informations non renseignées")}</span></div><span class="status ${statusClass(c["Statut"])}">${esc(c["Statut"]||"—")}</span></div>`;
+      const update=esc(formatUpdateDate(c["updated_at"]));
+      return `<div class="sbi-recent-item" role="button" tabindex="0" onclick="openDashboardChariot(${JSON.stringify(String(c["QR ID"]||""))})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDashboardChariot(${JSON.stringify(String(c["QR ID"]||""))})}"><div class="sbi-recent-main"><strong>${id}</strong><span>${esc(meta||"Informations non renseignées")}</span><span class="sbi-recent-update">${update}</span></div><span class="status ${statusClass(c["Statut"])}">${esc(c["Statut"]||"—")}</span></div>`;
     }).join(""):'<div class="muted">Aucun chariot.</div>';
   }
   const alert=document.getElementById("dashAlert");

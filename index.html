@@ -668,10 +668,10 @@ body.sbi-management-login-only > .wrap > .card #authBox + .actions{display:none 
         <div class="sbi-special-head"><h1>Chariots en stock</h1></div>
         <input id="stockSearch" class="sbi-special-search" placeholder="Rechercher par N° chariot, châssis, type de moteur ou client..." autocomplete="off">
         <div class="stock-filters" aria-label="Filtres chariots en stock">
-          <select id="stockEngineFilter" class="sbi-special-filter"><option value="">Tous les moteurs</option></select>
-          <select id="stockCapacityFilter" class="sbi-special-filter"><option value="">Toutes les capacités</option></select>
-          <select id="stockMastFilter" class="sbi-special-filter"><option value="">Tous les mâts</option></select>
-          <select id="stockHeightFilter" class="sbi-special-filter"><option value="">Toutes les hauteurs</option></select>
+          <select id="stockEngineFilter" class="sbi-filter-btn"><option value="">Moteur : Tous</option></select>
+          <select id="stockCapacityFilter" class="sbi-filter-btn"><option value="">Capacité : Toutes</option></select>
+          <select id="stockMastFilter" class="sbi-filter-btn"><option value="">Mât : Tous</option></select>
+          <select id="stockHeightFilter" class="sbi-filter-btn"><option value="">Hauteur : Toutes</option></select>
           <button type="button" id="stockClearFilters" class="sbi-filter-clear">Réinitialiser</button>
         </div>
         <div id="stockTableWrap" class="sbi-stock-table-wrap"></div>
@@ -953,7 +953,14 @@ function findChariot(q){
 function populateSelect(){
   const sel=document.getElementById("chariotSelect");
   sel.innerHTML='<option value="">Choisir un chariot...</option>';
-  CHARIOTS.forEach(c=>{
+  // Le dernier chariot ajouté apparaît en premier dans cette liste.
+  // L'ID Supabase est utilisé comme ordre d'ajout (auto-incrémenté).
+  const orderedChariots=[...CHARIOTS].sort((a,b)=>{
+    const ai=Number(a.id), bi=Number(b.id);
+    if(Number.isFinite(ai) && Number.isFinite(bi)) return bi-ai;
+    return String(b.id??"").localeCompare(String(a.id??""),undefined,{numeric:true});
+  });
+  orderedChariots.forEach(c=>{
     const opt=document.createElement("option");
     opt.value=c["QR ID"];
     opt.textContent=`${c["QR ID"]||""} — ${c["N° châssis"]||"Châssis non renseigné"} — ${c["Moteur"]||"Moteur non renseigné"} — ${c["Capacité (T)"]||"Capacité non renseignée"}`;
@@ -2086,11 +2093,28 @@ img{width:70mm;height:70mm;object-fit:contain}
 }
 
 /* V30 — stock filters */
-.stock-filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;gap:9px;margin:10px 0 12px}
-.sbi-special-filter{width:100%;padding:11px 12px;border-radius:11px;border:1px solid #cbd8e6;background:#fff;color:#123b69;font-size:14px;font-weight:600}
-.sbi-filter-clear{padding:11px 14px;border-radius:11px;border:1px solid #cbd8e6;background:#e8f0f7;color:#123b69;font-weight:750;white-space:nowrap}
-@media(max-width:900px){.stock-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:460px){.stock-filters{grid-template-columns:1fr}.sbi-filter-clear{width:100%}}
+.stock-filters{display:flex;gap:9px;flex-wrap:wrap;margin:12px 0 14px;align-items:center}
+.sbi-filter-btn{appearance:none;min-width:150px;padding:10px 34px 10px 13px;border-radius:12px;border:1px solid #cbd8e6;background:#edf3f9;color:#123b69;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 2px 6px rgba(18,59,105,.04);background-image:linear-gradient(45deg,transparent 50%,#123b69 50%),linear-gradient(135deg,#123b69 50%,transparent 50%);background-position:calc(100% - 17px) 14px,calc(100% - 12px) 14px;background-size:5px 5px,5px 5px;background-repeat:no-repeat}
+.sbi-filter-btn:hover{border-color:#9fb8d0;background-color:#e5eef7;transform:translateY(-1px)}
+.sbi-filter-btn:focus{outline:3px solid rgba(24,117,232,.16);outline-offset:1px}
+.sbi-filter-btn:not([value=""]){background-color:#dcecff;border-color:#7fa9d4}
+.sbi-filter-clear{padding:10px 14px;border-radius:12px;border:1px solid #cbd8e6;background:#fff;color:#123b69;font-weight:800;white-space:nowrap;cursor:pointer}
+.sbi-filter-clear:hover{background:#f3f7fb}
+@media(max-width:900px){.sbi-filter-btn{min-width:140px;flex:1 1 calc(50% - 9px)}}
+@media(max-width:460px){.stock-filters{display:grid;grid-template-columns:1fr 1fr}.sbi-filter-btn{width:100%;min-width:0}.sbi-filter-clear{grid-column:1 / -1;width:100%}}
+</style>
+
+<style id="sbi-v33-large-mobile-filters">
+/* V33 — large, touch-friendly stock filters */
+.stock-filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:14px 0 10px}
+.sbi-filter-btn,.sbi-filter-clear{min-height:54px;width:100%;padding:13px 42px 13px 16px;border-radius:14px;font-size:16px;font-weight:800;line-height:1.2;box-sizing:border-box}
+.sbi-filter-btn{appearance:none;border:1px solid #b9cde0;background:#f4f8fc;color:#123b69;cursor:pointer;box-shadow:0 2px 7px rgba(18,59,105,.07);background-image:linear-gradient(45deg,transparent 50%,#123b69 50%),linear-gradient(135deg,#123b69 50%,transparent 50%);background-position:calc(100% - 19px) 23px,calc(100% - 13px) 23px;background-size:6px 6px,6px 6px;background-repeat:no-repeat}
+.sbi-filter-btn:hover{border-color:#7fa9d4;background:#eaf3fc;transform:translateY(-1px)}
+.sbi-filter-btn:focus{outline:3px solid rgba(24,117,232,.22);outline-offset:2px}
+.sbi-filter-clear{padding:13px 16px;border:1px solid #c5d3df;background:#fff;color:#123b69;cursor:pointer;box-shadow:0 2px 7px rgba(18,59,105,.06)}
+.sbi-filter-clear:hover{background:#f1f6fb;border-color:#9fb8d0}
+@media(max-width:900px){.stock-filters{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.sbi-filter-btn,.sbi-filter-clear{min-height:56px;font-size:16px}}
+@media(max-width:520px){.stock-filters{grid-template-columns:1fr;gap:10px}.sbi-filter-btn,.sbi-filter-clear{min-height:58px;font-size:17px;border-radius:14px}.sbi-filter-btn{padding-left:18px;padding-right:46px;background-position:calc(100% - 21px) 25px,calc(100% - 15px) 25px;background-size:6px 6px,6px 6px}.sbi-filter-clear{width:100%}}
 </style>
 </head>
 <body>
@@ -2385,10 +2409,10 @@ function fmtCapacity(v){
 function stockNorm(v){ return String(v??"").trim().toLowerCase(); }
 function stockPopulateFilters(){
   const fields=[
-    ["stockEngineFilter","Moteur","Tous les moteurs"],
-    ["stockCapacityFilter","Capacité (T)","Toutes les capacités"],
-    ["stockMastFilter","Type de mât","Tous les mâts"],
-    ["stockHeightFilter","Hauteur de levage (m)","Toutes les hauteurs"]
+    ["stockEngineFilter","Moteur","Moteur : Tous"],
+    ["stockCapacityFilter","Capacité (T)","Capacité : Toutes"],
+    ["stockMastFilter","Type de mât","Mât : Tous"],
+    ["stockHeightFilter","Hauteur de levage (m)","Hauteur : Toutes"]
   ];
   fields.forEach(([id,key,label])=>{
     const el=document.getElementById(id); if(!el) return;
@@ -2475,6 +2499,16 @@ function dashStatusClass(status){
   if(s.includes("fabrication")) return "#6b7d8e";
   return "#8aa0b4";
 }
+function openDashboardChariot(qrId){
+  const c=findChariot(qrId);
+  if(!c) return;
+  show(c);
+  setTimeout(()=>{
+    const fiche=document.getElementById("fiche");
+    if(fiche) fiche.scrollIntoView({behavior:"auto",block:"start"});
+  },0);
+}
+
 function renderSbiDashboard(){
   if(!Array.isArray(CHARIOTS)) return;
   const total=CHARIOTS.length;

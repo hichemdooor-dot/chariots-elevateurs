@@ -22,7 +22,17 @@ function statusClass(v){const s=normalizeStatus(v);return s==='en stock'?'status
 function isDelivered(c){return normalizeStatus(c.status)==='livre'||!!c.delivery_date}
 function isStock(c){return normalizeStatus(c.status)==='en stock'&&!String(c.client||'').trim()}
 function card(c){const id=String(c.qr_id||'');const delivered=isDelivered(c);return `<div class="item" onclick="location.href='chariot.html?id=${encodeURIComponent(id)}'"><div class="item-main"><div class="item-title">${esc(id)}</div><div class="meta">${esc(c.chassis||'—')} • ${esc(c.engine||'—')} • ${esc(fmtCapacity(c.capacity))}${c.client?' • '+esc(c.client):''}</div><div class="recent-time">${c.updated_at?'Mis à jour : '+new Date(c.updated_at).toLocaleString('fr-FR'):''}</div></div><span class="badge ${statusClass(c.status)}">${esc(c.status||c.stock||'—')}</span>${delivered?'':`<button class="btn delivered-action" onclick="event.stopPropagation();markDelivered('${esc(id)}')">Livrer</button>`}</div>`}
-async function dashboardPage(){if(!await session())return;await loadChariots();$('#total').textContent=CHARIOTS.length;$('#stock').textContent=CHARIOTS.filter(isStock).length;$('#fab').textContent=CHARIOTS.filter(c=>normalizeStatus(c.status).includes('fabrication')).length;$('#delivered').textContent=CHARIOTS.filter(isDelivered).length;const rows=[...CHARIOTS].sort((a,b)=>new Date(b.updated_at||0)-new Date(a.updated_at||0)).slice(0,6);$('#recent').innerHTML=rows.map(card).join('')||'<div class="empty">Aucun chariot.</div>';}
+async function dashboardPage(){
+  if(!await session())return;
+  await loadChariots();
+  $('#total').textContent=CHARIOTS.length;
+  $('#stock').textContent=CHARIOTS.filter(isStock).length;
+  $('#fab').textContent=CHARIOTS.filter(c=>normalizeStatus(c.status).includes('fabrication')).length;
+  $('#delivered').textContent=CHARIOTS.filter(isDelivered).length;
+  const rows=[...CHARIOTS].sort((a,b)=>new Date(b.updated_at||0)-new Date(a.updated_at||0)).slice(0,6);
+  $('#recent').innerHTML=rows.map(card).join('')||'<div class="empty">Aucun chariot.</div>';
+  await loadDashboardNotifications();
+}
 async function chariotsPage(){if(!await session())return;await loadChariots();const ids=['engineFilter','capacityFilter','mastFilter','heightFilter'];function fill(){const defs=[['engineFilter','engine','Moteur : Tous'],['capacityFilter','capacity','Capacité : Toutes'],['mastFilter','mast_type','Mât : Tous'],['heightFilter','lifting_height','Hauteur : Toutes']];defs.forEach(([id,k,label])=>{const e=$('#'+id),old=e.value;if(!e)return;let vals;if(id==='capacityFilter'){vals=['2.5T','3T','3.8T','5T','7T','10T','12T']}else{vals=[...new Set(CHARIOTS.map(c=>String(c[k]||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}))}e.innerHTML=`<option value="">${label}</option>`+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');if(vals.includes(old))e.value=old})}function render(){fill();let rows=CHARIOTS;const sf=$('#statusFilter')?.value||'';if(sf==='stock')rows=rows.filter(isStock);if(sf==='delivered')rows=rows.filter(isDelivered);const q=$('#search')?.value.trim().toLowerCase()||'';const fs=[['engineFilter','engine'],['capacityFilter','capacity'],['mastFilter','mast_type'],['heightFilter','lifting_height']];rows=rows.filter(c=>(!q||[c.qr_id,c.chassis,c.engine,c.client,c.capacity].some(v=>String(v||'').toLowerCase().includes(q)))&&fs.every(([id,k])=>!$('#'+id)?.value||norm(c[k])===norm($('#'+id).value)));$('#count').textContent=rows.length+' chariot'+(rows.length!==1?'s':'');$('#list').innerHTML=rows.map(card).join('')||'<div class="empty">Aucun résultat.</div>'}$('#search').addEventListener('input',render);$('#statusFilter').addEventListener('change',render);ids.forEach(id=>$('#'+id).addEventListener('change',render));$('#clearFilters').onclick=()=>{ids.forEach(id=>$('#'+id).value='');$('#statusFilter').value='';$('#search').value='';render()};render()}
 async function detailPage(){if(!await session())return;await loadChariots();const id=new URLSearchParams(location.search).get('id');current=CHARIOTS.find(c=>String(c.qr_id)===String(id));if(!current){$('#detail').innerHTML='<div class="empty">Chariot introuvable.</div>';return}$('#title').textContent=current.qr_id;$('#status').textContent=current.status||'—';const groups=[['Identification',[['N° châssis',current.chassis],['N° de série',current.serial_number],['N° moteur',current.engine_number],['Moteur',current.engine]]],['Caractéristiques',[['Capacité',fmtCapacity(current.capacity)],['Hauteur de levage',current.lifting_height],['Dimensions des fourches',current.fork_dimension],['Type de mât',String(current.mast_type||'').toUpperCase()],['Type de pneu',current.tire_type],['Couleur',current.color]]],['Informations stock',[['Stock',current.stock],['Statut',current.status],['Client',current.client],['Date de livraison',current.delivery_date]]],['Observations',[['Observations',current.observations]]]];$('#detail').innerHTML=groups.map(g=>`<div class="section"><h3>${esc(g[0])}</h3><div class="details">${g[1].map(([k,v])=>`<div class="kv"><small>${esc(k)}</small><b>${esc(v||'—')}</b></div>`).join('')}</div></div>`).join('');$('#edit').onclick=()=>location.href='nouveau-chariot.html?id='+encodeURIComponent(current.qr_id);const deliverBtn=$('#deliver');if(deliverBtn){if(isDelivered(current)){deliverBtn.style.display='none'}else{deliverBtn.style.display='inline-flex';deliverBtn.onclick=()=>markDelivered(current.qr_id)}}await renderMaintenanceHistory()}
 async function renderMaintenanceHistory(){const box=$('#history');if(!box||!current)return;const {data,error}=await supabaseClient.from('maintenance').select('id,date,technicien,type,travaux,created_at').eq('qr_id',current.qr_id).order('date',{ascending:false}).order('created_at',{ascending:false});if(error){box.innerHTML='<div class="notice red">Erreur historique : '+esc(error.message)+'</div>';return}box.innerHTML=(data||[]).map(x=>`<div class="log"><b>${esc(x.date)} — ${esc(x.type||'Intervention')}</b><small>${esc(x.technicien||'—')}</small><div style="margin-top:7px">${esc(x.travaux||'—')}</div>${isAdmin()&&x.id?`<div class="actions"><button class="btn light" onclick="deleteMaintenance('${esc(x.id)}')">Supprimer</button></div>`:''}</div>`).join('')||'<div class="muted">Aucune intervention enregistrée.</div>'}
@@ -31,8 +41,97 @@ async function deleteMaintenance(id){if(!requireAdmin())return;if(!confirm('Supp
 function nextQr(){let n=Math.max(0,...CHARIOTS.map(c=>Number(String(c.qr_id||'').match(/^CH-(\d+)$/i)?.[1]||0)))+1;return'CH-'+String(n).padStart(4,'0')}
 async function newPage(){if(!await session())return;await loadChariots();const id=new URLSearchParams(location.search).get('id');const old=CHARIOTS.find(c=>String(c.qr_id)===String(id));if(old){editingQrId=old.qr_id;$('#formTitle').textContent='Modifier '+old.qr_id;for(const [k,v] of Object.entries(old)){const el=document.querySelector(`[name="${k}"]`);if(el)el.value=v??''}}else{$('[name="qr_id"]').value=nextQr();editingQrId=null}document.querySelectorAll('#chariotForm input,#chariotForm select,#chariotForm textarea').forEach(el=>el.addEventListener('input',updateSaveButtonState));document.querySelectorAll('#chariotForm select').forEach(el=>el.addEventListener('change',updateSaveButtonState));updateSaveButtonState()}
 function updateSaveButtonState(){const ok=['chassis','color','engine','capacity','fork_dimension','tire_type'].every(k=>String(document.querySelector(`[name="${k}"]`)?.value||'').trim());$('#saveBtn')?.classList.toggle('save-ready',ok)}
-async function saveChariot(){if(!requireValidLicense())return;if(!currentUser){alert('Connectez-vous pour gérer les chariots.');return}const f=$('#chariotForm'),p=Object.fromEntries(new FormData(f).entries());for(const [k,label] of [['chassis','N° châssis'],['color','Couleur'],['engine','Type de moteur'],['capacity','Capacité'],['fork_dimension','Fourche'],['tire_type','Type de pneu']])if(!String(p[k]||'').trim()){alert(label+' obligatoire.');return}const oldId=new URLSearchParams(location.search).get('id')||'';const duplicate=CHARIOTS.find(c=>norm(c.chassis)===norm(p.chassis)&&norm(c.engine)===norm(p.engine)&&String(c.qr_id)!==String(oldId));if(duplicate){alert(`Le numéro de châssis « ${p.chassis} » existe déjà avec le même moteur (${p.engine}) — ${duplicate.qr_id}.`);return}p.updated_at=new Date().toISOString();p.delivery_date=p.delivery_date||null;p.qr_id=p.qr_id||nextQr();const {error}=oldId?await supabaseClient.from('chariots').update(p).eq('qr_id',oldId):await supabaseClient.from('chariots').insert(p);if(error){alert('Erreur : '+error.message);return}location.href='chariot.html?id='+encodeURIComponent(p.qr_id)}
-async function markDelivered(qrId){if(!requireValidLicense()||!currentUser)return alert('Connexion requise pour gérer les chariots.');const c=CHARIOTS.find(x=>String(x.qr_id)===String(qrId));if(!c)return alert('Chariot introuvable.');if(isDelivered(c))return; if(!confirm('Passer le chariot '+qrId+' directement au statut « Livré » ?'))return;const payload={status:'Livré',delivery_date:new Date().toISOString().slice(0,10),updated_at:new Date().toISOString()};const {error}=await supabaseClient.from('chariots').update(payload).eq('qr_id',qrId);if(error){alert('Erreur : '+error.message);return}c.status=payload.status;c.delivery_date=payload.delivery_date;c.updated_at=payload.updated_at;if(typeof chariotsPage==='function'&&document.getElementById('list')){const input=document.getElementById('search');const filter=document.getElementById('filter');if(input&&filter){let rows=CHARIOTS;const f=filter.value||'all';if(f==='stock')rows=rows.filter(isStock);if(f==='delivered')rows=rows.filter(isDelivered);const q=input.value.trim().toLowerCase();if(q)rows=rows.filter(x=>[x.qr_id,x.chassis,x.engine,x.client,x.capacity].some(v=>String(v||'').toLowerCase().includes(q)));document.getElementById('count').textContent=rows.length+' chariot'+(rows.length!==1?'s':'');document.getElementById('list').innerHTML=rows.map(card).join('')||'<div class="empty">Aucun résultat.</div>';}}else location.reload();}
+
+const NOTIFICATION_FIELDS={
+  chassis:'N° châssis', serial_number:'N° de série', engine:'Type moteur',
+  engine_number:'N° moteur', capacity:'Capacité', lifting_height:'Hauteur de levage',
+  fork_dimension:'Fourche', mast_type:'Type de mât', tire_type:'Type de pneu',
+  color:'Couleur', stock:'Stock', status:'Statut', client:'Client',
+  delivery_date:'Date de livraison', observations:'Observations'
+};
+function modificationChanges(old,p){
+  return Object.keys(NOTIFICATION_FIELDS).filter(k=>String(old?.[k]??'')!==String(p?.[k]??''))
+    .map(k=>`${NOTIFICATION_FIELDS[k]} : ${String(old?.[k]??'—')||'—'} → ${String(p?.[k]??'—')||'—'}`);
+}
+async function createModificationNotification(chariot, changes, action='Modification'){
+  if(!currentUser || !chariot?.qr_id || !changes?.length)return;
+  const travaux=`${action} de la fiche du chariot ${chariot.qr_id} par ${currentUser.email||'Utilisateur'}.\n${changes.join('\n')}`;
+  const {error}=await supabaseClient.from('maintenance').insert({
+    qr_id:chariot.qr_id,
+    date:new Date().toISOString().slice(0,10),
+    technicien:currentUser.email||'Utilisateur',
+    type:'Modification fiche',
+    travaux,
+    created_by:currentUser.id
+  });
+  if(error) console.warn('Notification de modification non enregistrée:',error.message);
+}
+function notificationReadKey(id){return `sbi_notification_read_${currentUser?.id||'guest'}_${id}`}
+function renderNotifications(data){
+  const panel=$('#notificationPanel'),box=$('#notifications');
+  if(!panel||!box)return;
+  const rows=(data||[]).slice(0,8);
+  if(!rows.length){panel.classList.add('hidden');return}
+  let hasNew=false;
+  box.innerHTML=rows.map(x=>{
+    const id=String(x.id||x.created_at||Math.random());
+    const read=localStorage.getItem(notificationReadKey(id))==='1';
+    if(!read)hasNew=true;
+    const text=String(x.travaux||'Modification enregistrée');
+    const lines=text.split('\n');
+    const title=lines[0]||'Modification';
+    const changes=lines.slice(1).join('<br>');
+    const time=x.created_at?new Date(x.created_at).toLocaleString('fr-FR'):(x.date||'');
+    return `<div class="notification-item ${read?'':'unread'}" data-notif-id="${esc(id)}" onclick="openNotification('${esc(x.qr_id)}','${esc(id)}')">
+      <div class="notif-title">${read?'':'🔴 '}${esc(title)}</div>
+      <div class="notif-meta">${esc(x.technicien||'Utilisateur')} • ${esc(time)}</div>
+      <div class="notif-change">${changes||'Modification enregistrée'}</div>
+    </div>`;
+  }).join('');
+  panel.classList.remove('hidden');
+  panel.classList.toggle('has-new',hasNew);
+}
+function openNotification(qrId,id){
+  localStorage.setItem(notificationReadKey(id),'1');
+  location.href='chariot.html?id='+encodeURIComponent(qrId);
+}
+function markAllNotificationsRead(){
+  document.querySelectorAll('.notification-item').forEach(el=>{
+    const id=el.dataset.notifId;if(id)localStorage.setItem(notificationReadKey(id),'1');
+  });
+  document.querySelector('#notificationPanel')?.classList.remove('has-new');
+  document.querySelectorAll('.notification-item').forEach(el=>el.classList.remove('unread'));
+}
+async function loadDashboardNotifications(){
+  if(!currentUser)return;
+  const {data,error}=await supabaseClient.from('maintenance')
+    .select('id,qr_id,date,technicien,type,travaux,created_at')
+    .eq('type','Modification fiche')
+    .order('created_at',{ascending:false}).limit(8);
+  if(error){console.warn('Notifications:',error.message);return}
+  renderNotifications(data||[]);
+  $('#markNotificationsRead')?.addEventListener('click',markAllNotificationsRead);
+}
+async function saveChariot(){
+  if(!requireValidLicense())return;
+  if(!currentUser){alert('Connectez-vous pour gérer les chariots.');return}
+  const f=$('#chariotForm'),p=Object.fromEntries(new FormData(f).entries());
+  for(const [k,label] of [['chassis','N° châssis'],['color','Couleur'],['engine','Type de moteur'],['capacity','Capacité'],['fork_dimension','Fourche'],['tire_type','Type de pneu']])
+    if(!String(p[k]||'').trim()){alert(label+' obligatoire.');return}
+  const oldId=new URLSearchParams(location.search).get('id')||'';
+  const old=CHARIOTS.find(c=>String(c.qr_id)===String(oldId));
+  const duplicate=CHARIOTS.find(c=>norm(c.chassis)===norm(p.chassis)&&norm(c.engine)===norm(p.engine)&&String(c.qr_id)!==String(oldId));
+  if(duplicate){alert(`Le numéro de châssis « ${p.chassis} » existe déjà avec le même moteur (${p.engine}) — ${duplicate.qr_id}.`);return}
+  p.updated_at=new Date().toISOString();p.delivery_date=p.delivery_date||null;p.qr_id=p.qr_id||nextQr();
+  const {error}=oldId?await supabaseClient.from('chariots').update(p).eq('qr_id',oldId):await supabaseClient.from('chariots').insert(p);
+  if(error){alert('Erreur : '+error.message);return}
+  if(oldId&&old){
+    const changes=modificationChanges(old,p);
+    await createModificationNotification({...old,...p},changes,'Modification');
+  }
+  location.href='chariot.html?id='+encodeURIComponent(p.qr_id)
+}
+async function markDelivered(qrId){if(!requireValidLicense()||!currentUser)return alert('Connexion requise pour gérer les chariots.');const c=CHARIOTS.find(x=>String(x.qr_id)===String(qrId));if(!c)return alert('Chariot introuvable.');if(isDelivered(c))return; if(!confirm('Passer le chariot '+qrId+' directement au statut « Livré » ?'))return;const payload={status:'Livré',delivery_date:new Date().toISOString().slice(0,10),updated_at:new Date().toISOString()};const {error}=await supabaseClient.from('chariots').update(payload).eq('qr_id',qrId);if(error){alert('Erreur : '+error.message);return}c.status=payload.status;c.delivery_date=payload.delivery_date;c.updated_at=payload.updated_at;await createModificationNotification(c,['Statut : '+(c.status||'—')+' → Livré','Date de livraison : '+(c.delivery_date||'—')],'Modification');if(typeof chariotsPage==='function'&&document.getElementById('list')){const input=document.getElementById('search');const filter=document.getElementById('filter');if(input&&filter){let rows=CHARIOTS;const f=filter.value||'all';if(f==='stock')rows=rows.filter(isStock);if(f==='delivered')rows=rows.filter(isDelivered);const q=input.value.trim().toLowerCase();if(q)rows=rows.filter(x=>[x.qr_id,x.chassis,x.engine,x.client,x.capacity].some(v=>String(v||'').toLowerCase().includes(q)));document.getElementById('count').textContent=rows.length+' chariot'+(rows.length!==1?'s':'');document.getElementById('list').innerHTML=rows.map(card).join('')||'<div class="empty">Aucun résultat.</div>';}}else location.reload();}
 async function deleteChariot(){if(!requireValidLicense()||!requireAdmin())return;const id=new URLSearchParams(location.search).get('id')||$('#qr_id')?.value;if(!id)return;if(!confirm('Supprimer définitivement le chariot '+id+' ?'))return;const {error}=await supabaseClient.from('chariots').delete().eq('qr_id',id);if(error){alert('Erreur : '+error.message);return}location.href='chariots.html'}
 async function stockPage(){if(!await session())return;await loadChariots();const ids=['engineFilter','capacityFilter','mastFilter','heightFilter'];function fill(){const rows=CHARIOTS.filter(isStock);const defs=[['engineFilter','engine','Moteur : Tous'],['capacityFilter','capacity','Capacité : Toutes'],['mastFilter','mast_type','Mât : Tous'],['heightFilter','lifting_height','Hauteur : Toutes']];defs.forEach(([id,k,label])=>{const e=$('#'+id),old=e.value,vals=[...new Set(rows.map(c=>String(c[k]||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));e.innerHTML=`<option value="">${label}</option>`+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');if(vals.includes(old))e.value=old})}function render(){fill();let rows=CHARIOTS.filter(isStock);const q=$('#stockSearch')?.value.trim().toLowerCase()||'';const fs=[['engineFilter','engine'],['capacityFilter','capacity'],['mastFilter','mast_type'],['heightFilter','lifting_height']];rows=rows.filter(c=>(!q||[c.qr_id,c.chassis,c.engine,c.client,c.capacity].some(v=>String(v||'').toLowerCase().includes(q)))&&fs.every(([id,k])=>!$('#'+id).value||norm(c[k])===norm($('#'+id).value)));$('#stockCount').textContent=rows.length+' chariot'+(rows.length!==1?'s':'')+' en stock';$('#stockList').innerHTML=rows.map(card).join('')||'<div class="empty">Aucun chariot en stock.</div>'}$('#stockSearch').addEventListener('input',render);ids.forEach(id=>$('#'+id).addEventListener('change',render));$('#clearFilters').onclick=()=>{ids.forEach(id=>$('#'+id).value='');$('#stockSearch').value='';render()};render()}
 async function deliveredPage(){if(!await session())return;await loadChariots();function render(){const q=$('#deliveredSearch').value.trim().toLowerCase();const rows=CHARIOTS.filter(isDelivered).filter(c=>!q||[c.qr_id,c.chassis,c.engine,c.client].some(v=>String(v||'').toLowerCase().includes(q)));$('#deliveredCount').textContent=rows.length+' chariot'+(rows.length!==1?'s':'')+' livré'+(rows.length!==1?'s':'');$('#deliveredList').innerHTML=rows.map(card).join('')||'<div class="empty">Aucun chariot livré.</div>'}$('#deliveredSearch').addEventListener('input',render);render()}

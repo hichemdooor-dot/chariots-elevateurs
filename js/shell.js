@@ -10,6 +10,7 @@ function nav(){const page=location.pathname.split('/').pop()||'dashboard.html';d
 function toggleMenu(){document.querySelector('.overlay')?.classList.toggle('open')}
 document.addEventListener('DOMContentLoaded',()=>{
   document.querySelectorAll('[data-nav]').forEach(x=>x.innerHTML=menuHTML());
+  document.querySelectorAll('.brand').forEach(el=>{el.innerHTML='<img class="site-logo" src="assets/logo-sbi-hangcha.png" alt="SBI HANGCHA">';});
   document.querySelectorAll('.avatar').forEach(el=>{
     const wrap=document.createElement('div');
     wrap.className='user-menu-wrap';

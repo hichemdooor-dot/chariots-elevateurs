@@ -9,6 +9,34 @@ const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHA
   }
 });
 const ADMIN_EMAIL="HICHEMDOOOR@GMAIL.COM",LICENSE_COMPANY="SBI";
+function maintenanceEnabled(){
+  return !!(window.SBI_MAINTENANCE&&window.SBI_MAINTENANCE.enabled);
+}
+function isMaintenancePage(){
+  const p=location.pathname.split('/').pop()||'index.html';
+  return p==='maintenance.html';
+}
+async function enforceMaintenance(){
+  if(!maintenanceEnabled()||isMaintenancePage())return true;
+  try{
+    const sessionPromise=supabaseClient.auth.getSession();
+    const timeout=new Promise((_,reject)=>setTimeout(()=>reject(new Error('TIMEOUT')),3500));
+    const {data}=await Promise.race([sessionPromise,timeout]);
+    const u=data?.session?.user||null;
+    if(u){
+      const email=String(u.email||'').toLowerCase();
+      let role=String(u.user_metadata?.sbi_role||u.app_metadata?.sbi_role||'').toLowerCase();
+      try{
+        const r=await supabaseClient.rpc('get_my_sbi_status');
+        if(!r.error&&r.data)role=String(r.data.role||role||'').toLowerCase();
+      }catch(_){}
+      if(email===ADMIN_EMAIL.toLowerCase()||role==='admin')return true;
+    }
+  }catch(_){}
+  location.replace('maintenance.html');
+  return false;
+}
+
 let CHARIOTS=[],currentUser=null,current=null,editingQrId=null,licenseValid=false,DELIVERY_PLANS=[];
 const DELIVERY_PLAN_KEY='sbi_delivery_plans_v1',DELIVERY_PLAN_TYPES=['Planification livraison','Annulation planification livraison'];
 const $=s=>document.querySelector(s); const esc=s=>String(s??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -115,13 +143,17 @@ async function verifyLicense(options={}){
 
 async function getSession(){
   try{
-    const {data,error}=await supabaseClient.auth.getSession();
+    const sessionPromise=supabaseClient.auth.getSession();
+    const timeout=new Promise((_,reject)=>setTimeout(()=>reject(new Error('SESSION_TIMEOUT')),4000));
+    const {data,error}=await Promise.race([sessionPromise,timeout]);
     if(error)throw error;
     currentUser=data.session?.user||null;
     if(!currentUser)return false;
     currentUser.user_metadata=currentUser.user_metadata||{};
     try{
-      const {data:s,error:roleError}=await supabaseClient.rpc('get_my_sbi_status');
+      const rolePromise=supabaseClient.rpc('get_my_sbi_status');
+      const roleTimeout=new Promise((_,reject)=>setTimeout(()=>reject(new Error('ROLE_TIMEOUT')),3500));
+      const {data:s,error:roleError}=await Promise.race([rolePromise,roleTimeout]);
       if(!roleError&&s){
         if(s.disabled){await supabaseClient.auth.signOut();currentUser=null;return false}
         currentUser.user_metadata.sbi_role=s.role||currentUser.user_metadata.sbi_role||'user';
@@ -141,17 +173,27 @@ document.addEventListener('keydown',e=>{if(e.key==='Enter'&&$('#email')&&$('#pas
 async function login(){const email=$('#email')?.value.trim(),password=$('#password')?.value,msg=$('#msg');if(!email||!password){if(msg)msg.textContent='Email et mot de passe requis.';return}if(msg)msg.textContent='Connexion...';try{const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});if(error)throw error;const {data:s,error:se}=await supabaseClient.rpc('get_my_sbi_status');if(se)throw se;if(s?.disabled){await supabaseClient.auth.signOut();throw new Error('Accès bloqué : votre compte est désactivé.')}currentUser=data.user;currentUser.user_metadata=currentUser.user_metadata||{};currentUser.user_metadata.sbi_role=s?.role||'user';location.href='dashboard.html'}catch(e){if(msg)msg.textContent=friendlySupabaseError(e)}}
 async function logout(){await supabaseClient.auth.signOut();location.href='index.html'}
 async function restoreLoginSession(){
-  if(location.pathname.split('/').pop()!=='index.html' && location.pathname!=='/' && location.pathname!=='')return;
+  const path=location.pathname;
+  if(path.split('/').pop()!=='index.html' && !path.endsWith('/') && path!=='')return;
+  // Never leave the login page behind the licence spinner while waiting on Supabase.
+  document.getElementById('licenseGate')?.classList.remove('loading-visible');
   try{
     applyLicenseCache();
     const hasSession=await getSession();
+    if(maintenanceEnabled()){
+      if(hasSession && isAdmin()){location.replace('dashboard.html');return}
+      location.replace('maintenance.html');
+      return;
+    }
     if(!hasSession){verifyLicense();return}
     location.replace('dashboard.html');
     verifyLicense();
   }catch(e){
     console.warn('Restauration automatique de la connexion impossible.',e);
+    verifyLicense();
   }
 }
+
 
 async function loadChariots(){const {data,error}=await supabaseClient.from('chariots').select('*').order('id',{ascending:false});if(error)throw error;CHARIOTS=data||[];return CHARIOTS}
 
@@ -361,7 +403,7 @@ async function toggleSbiUser(id,disabled){if(!requireAdmin())return;const {error
 async function deleteSbiUser(id){if(!requireAdmin()||!confirm('Supprimer définitivement cet utilisateur ?'))return;const {error}=await supabaseClient.rpc('admin_delete_sbi_user',{p_user_id:id});if(error)alert('Erreur : '+error.message);else await loadSbiUsers()}
 async function licencePage(){if(!await session())return;if(!isAdmin()){$('#licensePanel').innerHTML='<div class="notice red">Gestion de licence réservée à l’administrateur.</div>';return}const {data,error}=await supabaseClient.from('licenses').select('company_name,status,start_date,expiration_date').eq('company_name',LICENSE_COMPANY).maybeSingle();if(error){$('#licenseMsg').textContent=error.message;return}if(!data){$('#licenseMsg').textContent='Licence introuvable.';return}$('#licenseStatus').value=data.status||'active';$('#licenseStart').value=data.start_date||'';$('#licenseExpiry').value=data.expiration_date||''}
 async function saveLicense(){if(!requireAdmin())return;const status=$('#licenseStatus').value,start_date=$('#licenseStart').value,expiration_date=$('#licenseExpiry').value||null;if(!start_date)return $('#licenseMsg').textContent='Date de début obligatoire.';if(expiration_date&&expiration_date<start_date)return $('#licenseMsg').textContent='Expiration invalide.';const {error}=await supabaseClient.from('licenses').update({status,start_date,expiration_date}).eq('company_name',LICENSE_COMPANY);if(error){$('#licenseMsg').textContent='Erreur : '+error.message;return}$('#licenseMsg').textContent='Licence mise à jour.';await verifyLicense()}
-async function initPage(fn){if(!(await getSession())){location.href='index.html';return}applyLicenseCache();await fn();if(currentUser&&typeof renderConnectedUser==='function')renderConnectedUser();verifyLicense()}
+async function initPage(fn){if(!(await enforceMaintenance()))return;if(!(await getSession())){location.href=maintenanceEnabled()?'maintenance.html':'index.html';return}applyLicenseCache();await fn();if(currentUser&&typeof renderConnectedUser==='function')renderConnectedUser();verifyLicense()}
 
 
 async function deliveryPlanningPage(){

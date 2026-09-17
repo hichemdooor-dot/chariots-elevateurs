@@ -270,3 +270,18 @@ html.mobile-device body{overflow-x:hidden}
   body.dashboard-page .overlay.open{display:block!important;position:fixed!important;inset:52px 0 0 0!important;width:100vw!important;height:calc(100vh - 52px)!important;background:rgba(16,45,80,.38)!important;z-index:100!important;}
   body.dashboard-page .overlay.open .side{display:block!important;position:absolute!important;left:0!important;top:0!important;width:min(82vw,310px)!important;height:100%!important;min-height:100%!important;max-height:none!important;box-sizing:border-box!important;overflow-y:auto!important;background:#fff!important;}
 }
+
+@media(max-width:800px){
+  .dashboard-page .table-scroll{overflow-x:hidden!important}
+  .dashboard-page .dash-table{min-width:0!important;width:100%!important;table-layout:fixed!important;font-size:11px!important}
+  .dashboard-page .dash-table th,.dashboard-page .dash-table td{padding:9px 5px!important;overflow:hidden}
+  .dashboard-page .dash-table th:nth-child(1),.dashboard-page .dash-table td:nth-child(1){width:34%}
+  .dashboard-page .dash-table th:nth-child(2),.dashboard-page .dash-table td:nth-child(2){width:26%}
+  .dashboard-page .dash-table th:nth-child(3),.dashboard-page .dash-table td:nth-child(3){width:14%}
+  .dashboard-page .dash-table th:nth-child(4),.dashboard-page .dash-table td:nth-child(4){width:16%}
+  .dashboard-page .dash-table th:nth-child(5),.dashboard-page .dash-table td:nth-child(5){width:10%}
+  .dashboard-page .dash-table .dash-client{font-size:9px;white-space:normal;line-height:1.15}
+  .dashboard-page .notification-meta{overflow-wrap:anywhere;word-break:break-word}
+  .dashboard-page .activity-main{min-width:0}
+  .dashboard-page .activity-main div{overflow-wrap:anywhere;word-break:break-word}
+}

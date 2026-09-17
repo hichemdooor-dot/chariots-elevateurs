@@ -168,7 +168,7 @@ async function getSession(){
     return false;
   }
 }
-async function session(){if(!(await getSession())){location.href='index.html';return false}verifyLicense();return true}
+async function session(){if(!(await enforceMaintenance()))return false;if(!(await getSession())){location.href='index.html';return false}verifyLicense();return true}
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&$('#email')&&$('#password')&&document.activeElement!==document.body){e.preventDefault();login()}});
 async function login(){const email=$('#email')?.value.trim(),password=$('#password')?.value,msg=$('#msg');if(!email||!password){if(msg)msg.textContent='Email et mot de passe requis.';return}if(msg)msg.textContent='Connexion...';try{const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});if(error)throw error;const {data:s,error:se}=await supabaseClient.rpc('get_my_sbi_status');if(se)throw se;if(s?.disabled){await supabaseClient.auth.signOut();throw new Error('Accès bloqué : votre compte est désactivé.')}currentUser=data.user;currentUser.user_metadata=currentUser.user_metadata||{};currentUser.user_metadata.sbi_role=s?.role||'user';location.href='dashboard.html'}catch(e){if(msg)msg.textContent=friendlySupabaseError(e)}}
 async function logout(){await supabaseClient.auth.signOut();location.href='index.html'}
@@ -335,6 +335,32 @@ function renderDashboardLatest(){
   const rows=[...CHARIOTS].sort((a,b)=>new Date(b.created_at||b.updated_at||0)-new Date(a.created_at||a.updated_at||0)).slice(0,5);
   $('#latestRows').innerHTML=rows.map(c=>`<tr onclick="location.href='chariot.html?id=${encodeURIComponent(c.qr_id||'')}'" style="cursor:pointer"><td><b>${esc(c.chassis||c.qr_id||'—')}</b>${c.client?`<div class="dash-client"><strong>Client :</strong> ${esc(c.client)}</div>`:''}</td><td>${esc(c.engine||'—')}</td><td>${esc(fmtCapacity(c.capacity))}</td><td><span class="dash-status ${isDelivered(c)?'delivered':''}">${esc(c.status||'—')}</span></td><td>${c.created_at?new Date(c.created_at).toLocaleDateString('fr-FR'):c.updated_at?new Date(c.updated_at).toLocaleDateString('fr-FR'):'—'}</td></tr>`).join('')||'<tr><td colspan="5" class="dash-empty">Aucun chariot.</td></tr>';
 }
+function formatMaintenanceEvent(x,c){
+  const type=String(x?.type||'').trim();
+  let payload=null;
+  try{payload=typeof x?.travaux==='string'?JSON.parse(x.travaux):x?.travaux}catch(_){payload=null}
+  const chassis=String(c?.chassis||x?.qr_id||'—');
+  if(type==='Planification livraison' && payload){
+    const parts=[];
+    if(payload.date)parts.push('Date : '+payload.date);
+    if(payload.time)parts.push('Heure : '+payload.time);
+    if(payload.driver)parts.push('Chauffeur : '+payload.driver);
+    if(payload.destination)parts.push('Destination : '+payload.destination);
+    if(payload.note)parts.push('Note : '+payload.note);
+    return {title:'Livraison planifiée — '+chassis,details:parts.join(' • ')||'Planification enregistrée',icon:'▣',kind:'delivery'};
+  }
+  if(type==='Annulation planification livraison' && payload){
+    const parts=[];
+    if(payload.date)parts.push('Date : '+payload.date);
+    if(payload.time)parts.push('Heure : '+payload.time);
+    if(payload.driver)parts.push('Chauffeur : '+payload.driver);
+    if(payload.destination)parts.push('Destination : '+payload.destination);
+    return {title:'Livraison annulée — '+chassis,details:parts.join(' • ')||'Planification annulée',icon:'×',kind:'cancel'};
+  }
+  const delivered=normalizeStatus(type).includes('statut')&&normalizeStatus(x?.travaux).includes('livr');
+  if(delivered)return {title:'Statut changé en Livré — '+chassis,details:String(x?.travaux||'Chariot livré'),icon:'▰',kind:'delivered'};
+  return {title:'Modification du chariot '+chassis,details:String(x?.travaux||type||'Modification'),icon:'✎',kind:'edit'};
+}
 async function loadDashboardNotifications(){
   let data=[];
   try{const r=await supabaseClient.from('maintenance').select('id,qr_id,date,technicien,type,travaux,created_at,created_by').order('created_at',{ascending:false}).limit(8);if(!r.error)data=r.data||[]}catch(e){}
@@ -344,15 +370,20 @@ async function loadDashboardNotifications(){
   $('#notificationCountTitle').textContent=unread;
   $('#notificationsList').innerHTML=rows.length?rows.map((x,i)=>{
     const c=CHARIOTS.find(v=>String(v.qr_id)===String(x.qr_id));
-    const isDelivery=normalizeStatus(x.type).includes('statut')&&normalizeStatus(x.travaux).includes('livr');
-    const title=isDelivery?`Statut changé en Livré — ${esc(c?.chassis||x.qr_id)}`:`Modification du chariot ${esc(c?.chassis||x.qr_id)}`;
+    const ev=formatMaintenanceEvent(x,c);
     const actor=esc(x.technicien||'Utilisateur');
-    const details=esc(x.travaux||x.type||'Modification');
+    const details=esc(ev.details);
     const time=x.created_at?relativeTime(x.created_at):'—';
     const unreadClass=localStorage.getItem('sbi_notif_read_'+x.id)?'':'notification-new';
-    return `<div class="notification-row ${unreadClass}"><div class="notification-dot"></div><div class="notification-icon">${isDelivery?'▰':'✎'}</div><div class="notification-body"><div class="notification-title">${title}${i===0&&!localStorage.getItem('sbi_notif_read_'+x.id)?'<span class="new-badge">Nouveau</span>':''}</div><div class="notification-meta">Par : ${actor} • ${details}</div></div><div class="notification-actions"><div class="notification-time">${time}</div><button class="view-chariot" onclick="event.stopPropagation();localStorage.setItem('sbi_notif_read_${esc(x.id)}','1');location.href='chariot.html?id=${encodeURIComponent(x.qr_id)}'">Voir le chariot</button></div></div>`;
+    return `<div class="notification-row ${unreadClass}"><div class="notification-dot"></div><div class="notification-icon">${ev.icon}</div><div class="notification-body"><div class="notification-title">${esc(ev.title)}${i===0&&!localStorage.getItem('sbi_notif_read_'+x.id)?'<span class="new-badge">Nouveau</span>':''}</div><div class="notification-meta">Par : ${actor} • ${details}</div></div><div class="notification-actions"><div class="notification-time">${time}</div><button class="view-chariot" onclick="event.stopPropagation();localStorage.setItem('sbi_notif_read_${esc(x.id)}','1');location.href='chariot.html?id=${encodeURIComponent(x.qr_id)}'">Voir le chariot</button></div></div>`;
   }).join(''):'<div class="dash-empty">Aucune modification récente.</div>';
-  const acts=rows.slice(0,5);$('#activityList').innerHTML=acts.length?acts.map((x,i)=>{const c=CHARIOTS.find(v=>String(v.qr_id)===String(x.qr_id));const delivered=normalizeStatus(x.type).includes('statut')&&normalizeStatus(x.travaux).includes('livr');return `<div class="activity-item"><span class="activity-line ${delivered?'green':i%3===1?'orange':''}"></span><span class="activity-icon">${delivered?'▰':'✎'}</span><div class="activity-main"><b>${esc(c?.chassis||x.qr_id)} ${delivered?'livré':'modifié'}</b><div>${esc(x.travaux||x.type||'Modification')}</div></div><span class="activity-time">${x.created_at?relativeTime(x.created_at):''}</span></div>`}).join(''):'<div class="dash-empty">Aucune activité.</div>';
+  const acts=rows.slice(0,5);
+  $('#activityList').innerHTML=acts.length?acts.map((x,i)=>{
+    const c=CHARIOTS.find(v=>String(v.qr_id)===String(x.qr_id));
+    const ev=formatMaintenanceEvent(x,c);
+    const line=ev.kind==='delivered'?'green':ev.kind==='delivery'?'blue':ev.kind==='cancel'?'orange':i%3===1?'orange':'';
+    return `<div class="activity-item"><span class="activity-line ${line}"></span><span class="activity-icon">${ev.icon}</span><div class="activity-main"><b>${esc(ev.title)}</b><div>${esc(ev.details)}</div></div><span class="activity-time">${x.created_at?relativeTime(x.created_at):''}</span></div>`;
+  }).join(''):'<div class="dash-empty">Aucune activité.</div>';
 }
 function relativeTime(iso){const ms=Date.now()-new Date(iso).getTime(),m=Math.max(0,Math.floor(ms/60000));if(m<1)return'À l’instant';if(m<60)return`Il y a ${m} min`;const h=Math.floor(m/60);if(h<24)return`Il y a ${h} h`;const d=Math.floor(h/24);return`Il y a ${d} j`}
 function markDashboardNotificationsRead(){document.querySelectorAll('.notification-row').forEach((row)=>{row.classList.remove('notification-new')});document.querySelectorAll('#notificationsList .view-chariot').forEach(b=>{const s=b.getAttribute('onclick')||'',m=s.match(/sbi_notif_read_([^']+)/);if(m)localStorage.setItem('sbi_notif_read_'+m[1],'1')});$('#notificationCount').textContent='0';$('#notificationCountTitle').textContent='0'}

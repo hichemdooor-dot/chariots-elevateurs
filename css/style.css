@@ -285,3 +285,39 @@ html.mobile-device body{overflow-x:hidden}
   .dashboard-page .activity-main{min-width:0}
   .dashboard-page .activity-main div{overflow-wrap:anywhere;word-break:break-word}
 }
+
+/* V5 dashboard mobile: prevent long notification payloads from breaking the layout. */
+@media(max-width:800px){
+  body.dashboard-page{overflow-x:hidden!important}
+  .dashboard-page .notifications-card{padding:10px 8px!important}
+  .dashboard-page .section-heading{padding:5px 5px 10px!important;align-items:flex-start!important}
+  .dashboard-page .section-heading h2{font-size:19px!important}
+  .dashboard-page .notification-row{grid-template-columns:16px 44px minmax(0,1fr)!important;gap:8px!important;align-items:start!important;padding:12px 5px!important}
+  .dashboard-page .notification-icon{width:44px!important;height:44px!important;font-size:21px!important}
+  .dashboard-page .notification-body{min-width:0!important;overflow:hidden!important}
+  .dashboard-page .notification-title{font-size:15px!important;line-height:1.2!important;padding-right:0!important;overflow-wrap:anywhere!important}
+  .dashboard-page .notification-meta{font-size:11px!important;line-height:1.4!important;overflow-wrap:anywhere!important;word-break:break-word!important}
+  .dashboard-page .notification-actions{grid-column:3!important;align-items:flex-start!important;gap:7px!important;margin-top:2px!important}
+  .dashboard-page .notification-time{font-size:11px!important}
+  .dashboard-page .view-chariot{font-size:12px!important;padding:9px 12px!important}
+  .dashboard-page .activity-item{grid-template-columns:8px 38px minmax(0,1fr)!important;gap:8px!important;padding:8px 2px!important}
+  .dashboard-page .activity-icon{width:38px!important;height:38px!important}
+  .dashboard-page .activity-main b{font-size:14px!important;line-height:1.2!important}
+  .dashboard-page .activity-main div{font-size:11px!important;line-height:1.35!important;overflow-wrap:anywhere!important;word-break:break-word!important}
+}
+
+
+/* V6: final modern delivery modal overrides */
+.delivery-modal{position:fixed;inset:0;background:rgba(13,31,52,.44);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:20px;z-index:1000}
+.delivery-modal.hidden{display:none}
+.delivery-dialog{width:min(760px,100%);max-height:min(92vh,900px);overflow:auto;background:#fff;border:1px solid rgba(18,67,115,.16);border-radius:24px;box-shadow:0 28px 80px rgba(13,40,70,.28);padding:0}
+.delivery-form-modern{padding:22px 26px 25px;display:grid;grid-template-columns:1fr 1fr;gap:16px 14px}
+.delivery-field.driver-field{background:linear-gradient(180deg,#eef7ff,#e8f3fd)}
+.delivery-field.destination-field{background:linear-gradient(180deg,#f1fbf3,#e9f7ec)}
+.delivery-field select{appearance:auto;-webkit-appearance:auto}
+@media(max-width:700px){
+  .delivery-modal{padding:8px}
+  .delivery-dialog{width:100%;max-height:96vh;border-radius:18px}
+  .delivery-form-modern{padding:14px;grid-template-columns:1fr;gap:11px}
+  .delivery-field,.delivery-field.full{grid-column:1}
+}

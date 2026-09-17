@@ -26,7 +26,38 @@ function renderConnectedUser(){const name=getUserDisplayName(),role=getUserRoleL
 function toggleUserMenu(){const m=$('#userMenu');if(m)m.classList.toggle('hidden')}
 document.addEventListener('click',e=>{const w=document.querySelector('.user-menu-wrap');if(w&&!w.contains(e.target))$('#userMenu')?.classList.add('hidden')});
 async function profilePage(){if(!await session())return;renderConnectedUser();if($('#profileName'))$('#profileName').textContent=getUserDisplayName();if($('#profileEmail'))$('#profileEmail').textContent=currentUser?.email||'—';if($('#profileRole'))$('#profileRole').textContent=getUserRoleLabel();}
-async async function sendPasswordChangeRequest(){if(!currentUser)return alert('Connexion requise.');const reason=$('#passwordRequestReason')?.value.trim()||'';if(reason.length<3)return alert('Veuillez indiquer la raison de la demande.');const btn=$('#passwordRequestBtn');if(btn)btn.disabled=true;try{const payload={qr_id:String(currentUser.id),date:new Date().toISOString().slice(0,10),technicien:currentUser.email,type:'Demande changement mot de passe',travaux:`Demande de changement de mot de passe. Motif : ${reason}`,created_by:currentUser.id};const {error}=await supabaseClient.from('maintenance').insert(payload);if(error)throw error;$('#passwordRequestReason').value='';$('#passwordRequestMsg').textContent='Demande envoyée à l’administrateur.';$('#passwordRequestMsg').className='notice';}catch(e){if($('#passwordRequestMsg')){ $('#passwordRequestMsg').textContent='Erreur : '+friendlySupabaseError(e); $('#passwordRequestMsg').className='notice red';}}finally{if(btn)btn.disabled=false}}
+async function sendPasswordChangeRequest(){
+  if(!currentUser){alert('Connexion requise.');return}
+  const reason=$('#passwordRequestReason')?.value.trim()||'';
+  if(reason.length<3){alert('Veuillez indiquer la raison de la demande.');return}
+  const btn=$('#passwordRequestBtn');if(btn)btn.disabled=true;
+  try{
+    const name=getUserDisplayName();
+    const email=String(currentUser.email||'');
+    const subject='Demande de changement de mot de passe — '+name;
+    const body=[
+      'Bonjour,',
+      '',
+      'Je demande un changement de mot de passe pour mon compte SBI.',
+      '',
+      'Utilisateur : '+name,
+      'Email : '+email,
+      'Date : '+new Date().toLocaleDateString('fr-FR'),
+      '',
+      'Motif :',
+      reason,
+      '',
+      'Merci.'
+    ].join('\n');
+    const mailto='mailto:'+encodeURIComponent(ADMIN_EMAIL)+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+    window.location.href=mailto;
+    $('#passwordRequestReason').value='';
+    $('#passwordRequestMsg').textContent='Votre demande a été préparée dans votre messagerie pour être envoyée à l’administrateur.';
+    $('#passwordRequestMsg').className='notice';
+  }catch(e){
+    if($('#passwordRequestMsg')){$('#passwordRequestMsg').textContent='Erreur : '+friendlySupabaseError(e);$('#passwordRequestMsg').className='notice red';}
+  }finally{if(btn)btn.disabled=false}
+}
 async function loadPasswordRequests(){if(!requireAdmin())return;const box=$('#passwordRequests');if(!box)return;try{const {data,error}=await supabaseClient.from('maintenance').select('id,date,technicien,type,travaux,created_at,created_by').eq('type','Demande changement mot de passe').order('created_at',{ascending:false}).limit(50);if(error)throw error;box.innerHTML=(data||[]).length?(data||[]).map(x=>`<div class="item"><div class="item-main"><div class="item-title">Demande de ${esc(x.technicien||'Utilisateur')}</div><div class="meta">${esc(x.date||'')} • ${esc(x.travaux||'Demande de changement de mot de passe')}</div></div><span class="badge orange">À traiter</span></div>`).join(''):'<div class="empty">Aucune demande de changement de mot de passe.</div>';}catch(e){box.innerHTML=`<div class="notice red">Erreur : ${esc(friendlySupabaseError(e))}</div>`}}
 
 function statusClass(v){const s=normalizeStatus(v);return s==='en stock'?'status-stock':s==='livre'?'status-delivered':s.includes('reserve')?'status-reserved':s.includes('preparation')?'status-preparation':s.includes('pret a livrer')?'status-ready':s.includes('bloque')||s.includes('non conforme')?'status-blocked':s.includes('fabrication')?'status-fabrication':''}

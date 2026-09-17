@@ -2,7 +2,8 @@ const SUPABASE_URL="https://hkakedonludcqjgjzkei.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_AQWeYHI3Xli_1iBKVr9EPg_8L8PR-Hc";
 const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 const ADMIN_EMAIL="HICHEMDOOOR@GMAIL.COM",LICENSE_COMPANY="SBI";
-let CHARIOTS=[],currentUser=null,current=null,editingQrId=null,licenseValid=false;
+let CHARIOTS=[],currentUser=null,current=null,editingQrId=null,licenseValid=false,DELIVERY_PLANS=[];
+const DELIVERY_PLAN_KEY='sbi_delivery_plans_v1',DELIVERY_PLAN_TYPES=['Planification livraison','Annulation planification livraison'];
 const $=s=>document.querySelector(s); const esc=s=>String(s??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const norm=s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase().replace(/\s+/g,' ');
 function fmtCapacity(v){let x=String(v??'').trim();if(!x)return'—';x=x.replace(/\s*T\s*T?\s*$/i,'').trim();return x+' T'}
@@ -34,35 +35,110 @@ async function sendPasswordChangeRequest(){
   try{
     const name=getUserDisplayName();
     const email=String(currentUser.email||'');
-    const subject='Demande de changement de mot de passe — '+name;
-    const body=[
-      'Bonjour,',
-      '',
-      'Je demande un changement de mot de passe pour mon compte SBI.',
-      '',
+    const requestQrId=String(currentUser.id||'');
+    const requestText=[
+      'Demande de changement de mot de passe',
       'Utilisateur : '+name,
       'Email : '+email,
-      'Date : '+new Date().toLocaleDateString('fr-FR'),
-      '',
       'Motif :',
-      reason,
-      '',
-      'Merci.'
+      reason
     ].join('\n');
-    const mailto='mailto:'+encodeURIComponent(ADMIN_EMAIL)+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
-    window.location.href=mailto;
+    const {error}=await supabaseClient.from('maintenance').insert({
+      qr_id:requestQrId,
+      date:new Date().toISOString().slice(0,10),
+      technicien:name,
+      type:'Demande changement mot de passe',
+      travaux:requestText,
+      created_by:currentUser.id
+    });
+    if(error)throw error;
     $('#passwordRequestReason').value='';
-    $('#passwordRequestMsg').textContent='Votre demande a été préparée dans votre messagerie pour être envoyée à l’administrateur.';
+    $('#passwordRequestMsg').textContent='Votre demande a été envoyée. Elle est maintenant visible dans Gestion utilisateurs pour les administrateurs.';
     $('#passwordRequestMsg').className='notice';
   }catch(e){
     if($('#passwordRequestMsg')){$('#passwordRequestMsg').textContent='Erreur : '+friendlySupabaseError(e);$('#passwordRequestMsg').className='notice red';}
   }finally{if(btn)btn.disabled=false}
 }
-async function loadPasswordRequests(){if(!requireAdmin())return;const box=$('#passwordRequests');if(!box)return;try{const {data,error}=await supabaseClient.from('maintenance').select('id,date,technicien,type,travaux,created_at,created_by').eq('type','Demande changement mot de passe').order('created_at',{ascending:false}).limit(50);if(error)throw error;box.innerHTML=(data||[]).length?(data||[]).map(x=>`<div class="item"><div class="item-main"><div class="item-title">Demande de ${esc(x.technicien||'Utilisateur')}</div><div class="meta">${esc(x.date||'')} • ${esc(x.travaux||'Demande de changement de mot de passe')}</div></div><span class="badge orange">À traiter</span></div>`).join(''):'<div class="empty">Aucune demande de changement de mot de passe.</div>';}catch(e){box.innerHTML=`<div class="notice red">Erreur : ${esc(friendlySupabaseError(e))}</div>`}}
+async function loadPasswordRequests(){
+  if(!requireAdmin())return;
+  const box=$('#passwordRequests');
+  if(!box)return;
+  try{
+    const {data,error}=await supabaseClient.from('maintenance').select('id,date,technicien,type,travaux,created_at,created_by,qr_id').eq('type','Demande changement mot de passe').order('created_at',{ascending:false}).limit(50);
+    if(error)throw error;
+    const rows=data||[];
+    box.innerHTML=rows.length?rows.map(x=>{
+      const lines=String(x.travaux||'').split(/\n/);
+      const emailLine=lines.find(v=>/^Email\s*:/i.test(v));
+      const reasonIndex=lines.findIndex(v=>/^Motif\s*:/i.test(v));
+      const reason=reasonIndex>=0?lines.slice(reasonIndex+1).join(' ').trim():String(x.travaux||'');
+      const email=emailLine?emailLine.replace(/^Email\s*:/i,'').trim():'';
+      const when=x.created_at?new Date(x.created_at).toLocaleString('fr-FR'):(x.date||'');
+      return `<div class="item password-request-item" style="cursor:default"><div class="item-main"><div class="item-title">${esc(x.technicien||'Utilisateur')}</div><div class="meta"><strong>Email :</strong> ${esc(email||'—')}<br><strong>Date :</strong> ${esc(when)}<br><strong>Motif :</strong> ${esc(reason||'—')}</div></div><div class="user-actions"><span class="badge orange">À traiter</span><button class="btn light" type="button" onclick="resolvePasswordRequest('${esc(x.id)}')">Marquer traité</button></div></div>`;
+    }).join(''):'<div class="empty">Aucune demande de changement de mot de passe.</div>';
+  }catch(e){box.innerHTML=`<div class="notice red">Erreur : ${esc(friendlySupabaseError(e))}</div>`}
+}
+async function resolvePasswordRequest(id){
+  if(!requireAdmin())return;
+  if(!id)return;
+  if(!confirm('Marquer cette demande comme traitée et la retirer de la liste ?'))return;
+  const {error}=await supabaseClient.from('maintenance').delete().eq('id',id).eq('type','Demande changement mot de passe');
+  if(error){alert('Erreur : '+friendlySupabaseError(error));return}
+  await loadPasswordRequests();
+}
+
 
 function statusClass(v){const s=normalizeStatus(v);return s==='en stock'?'status-stock':s==='livre'?'status-delivered':s.includes('reserve')?'status-reserved':s.includes('preparation')?'status-preparation':s.includes('pret a livrer')?'status-ready':s.includes('bloque')||s.includes('non conforme')?'status-blocked':s.includes('fabrication')?'status-fabrication':''}
 function isDelivered(c){return normalizeStatus(c.status)==='livre'||!!c.delivery_date}
-function getDeliveryPlan(qrId){try{const raw=localStorage.getItem('sbi_delivery_plans_v1');const plans=raw?JSON.parse(raw):[];if(!Array.isArray(plans))return null;return plans.find(p=>String(p.qr)===String(qrId))||null}catch(e){return null}}
+function getDeliveryPlan(qrId){return DELIVERY_PLANS.find(p=>String(p.qr)===String(qrId))||null}
+function readCachedDeliveryPlans(){try{const raw=localStorage.getItem(DELIVERY_PLAN_KEY);const plans=raw?JSON.parse(raw):[];return Array.isArray(plans)?plans:[]}catch(e){return []}}
+function cacheDeliveryPlans(plans){try{localStorage.setItem(DELIVERY_PLAN_KEY,JSON.stringify(plans||[]))}catch(e){}}
+function parseDeliveryEvent(row){
+  try{
+    const payload=JSON.parse(String(row?.travaux||'{}'));
+    if(!payload||!payload.qr)return null;
+    return {id:String(payload.id||row.id),qr:String(payload.qr),date:String(payload.date||row.date||''),time:String(payload.time||''),note:String(payload.note||''),created_at:row.created_at||'',created_by:row.created_by||null};
+  }catch(e){
+    return null;
+  }
+}
+async function loadDeliveryPlans({migrateLocal=false}={}){
+  const localBefore=readCachedDeliveryPlans();
+  const {data,error}=await supabaseClient.from('maintenance').select('id,qr_id,date,technicien,type,travaux,created_at,created_by').in('type',DELIVERY_PLAN_TYPES).order('created_at',{ascending:true}).limit(1000);
+  if(error)throw error;
+  const map=new Map();
+  for(const row of data||[]){
+    const payload=parseDeliveryEvent(row);
+    if(!payload)continue;
+    if(String(row.type)==='Annulation planification livraison'){
+      map.delete(payload.id);
+    }else{
+      map.set(payload.id,payload);
+    }
+  }
+  DELIVERY_PLANS=[...map.values()].filter(p=>p.date&&p.qr);
+  cacheDeliveryPlans(DELIVERY_PLANS);
+  if(migrateLocal){
+    const local=localBefore;
+    const remoteQrs=new Set(DELIVERY_PLANS.map(p=>String(p.qr)));
+    const missing=local.filter(p=>p&&p.qr&&p.date&&!remoteQrs.has(String(p.qr)));
+    for(const p of missing){
+      const logicalId=String(p.id||('dp_'+Date.now()+'_'+Math.random().toString(36).slice(2,8)));
+      const {error:insertError}=await supabaseClient.from('maintenance').insert({qr_id:p.qr,date:p.date,technicien:currentUser?.email||getUserDisplayName(),type:'Planification livraison',travaux:JSON.stringify({id:logicalId,qr:String(p.qr),date:String(p.date),time:String(p.time||''),note:String(p.note||'')}),created_by:currentUser?.id||null});
+      if(insertError)console.warn('Migration planning non enregistrée',insertError);
+    }
+    if(missing.length){
+      const refreshed=await supabaseClient.from('maintenance').select('id,qr_id,date,technicien,type,travaux,created_at,created_by').in('type',DELIVERY_PLAN_TYPES).order('created_at',{ascending:true}).limit(1000);
+      if(!refreshed.error){
+        const remap=new Map();
+        for(const row of refreshed.data||[]){const payload=parseDeliveryEvent(row);if(!payload)continue;if(String(row.type)==='Annulation planification livraison')remap.delete(payload.id);else remap.set(payload.id,payload)}
+        DELIVERY_PLANS=[...remap.values()].filter(p=>p.date&&p.qr);
+        cacheDeliveryPlans(DELIVERY_PLANS);
+      }
+    }
+  }
+  return DELIVERY_PLANS;
+}
 function formatPlannedDate(iso){if(!iso)return '—';try{return parseLocalDate(iso).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'})}catch(e){return iso}}
 function parseLocalDate(iso){const [y,m,d]=String(iso).split('-').map(Number);return new Date(y||2000,(m||1)-1,d||1)}
 function isStock(c){return normalizeStatus(c.status)==='en stock'&&!String(c.client||'').trim()}
@@ -86,7 +162,7 @@ function renderDashboardLatest(){
 async function loadDashboardNotifications(){
   let data=[];
   try{const r=await supabaseClient.from('maintenance').select('id,qr_id,date,technicien,type,travaux,created_at,created_by').order('created_at',{ascending:false}).limit(8);if(!r.error)data=r.data||[]}catch(e){}
-  const rows=data.filter(x=>x.qr_id).slice(0,6);
+  const rows=data.filter(x=>x.qr_id&&!String(x.type||'').toLowerCase().includes('demande changement mot de passe')).slice(0,6);
   const unread=rows.filter(x=>!localStorage.getItem('sbi_notif_read_'+x.id)).length;
   $('#notificationCount').textContent=unread;
   $('#notificationCountTitle').textContent=unread;
@@ -105,8 +181,8 @@ async function loadDashboardNotifications(){
 function relativeTime(iso){const ms=Date.now()-new Date(iso).getTime(),m=Math.max(0,Math.floor(ms/60000));if(m<1)return'À l’instant';if(m<60)return`Il y a ${m} min`;const h=Math.floor(m/60);if(h<24)return`Il y a ${h} h`;const d=Math.floor(h/24);return`Il y a ${d} j`}
 function markDashboardNotificationsRead(){document.querySelectorAll('.notification-row').forEach((row)=>{row.classList.remove('notification-new')});document.querySelectorAll('#notificationsList .view-chariot').forEach(b=>{const s=b.getAttribute('onclick')||'',m=s.match(/sbi_notif_read_([^']+)/);if(m)localStorage.setItem('sbi_notif_read_'+m[1],'1')});$('#notificationCount').textContent='0';$('#notificationCountTitle').textContent='0'}
 async function chariotsPage(){if(!await session())return;await loadChariots();const ids=['engineFilter','capacityFilter','mastFilter','heightFilter'];function fill(){const defs=[['engineFilter','engine','Moteur : Tous'],['capacityFilter','capacity','Capacité : Toutes'],['mastFilter','mast_type','Mât : Tous'],['heightFilter','lifting_height','Hauteur : Toutes']];defs.forEach(([id,k,label])=>{const e=$('#'+id),old=e.value;if(!e)return;let vals;if(id==='capacityFilter'){vals=['2.5T','3T','3.8T','5T','7T','10T','12T']}else{vals=[...new Set(CHARIOTS.map(c=>String(c[k]||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}))}e.innerHTML=`<option value="">${label}</option>`+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');if(vals.includes(old))e.value=old})}function render(){fill();let rows=CHARIOTS;const sf=$('#statusFilter')?.value||'';if(sf==='stock')rows=rows.filter(isStock);if(sf==='delivered')rows=rows.filter(isDelivered);const q=$('#search')?.value.trim().toLowerCase()||'';const fs=[['engineFilter','engine'],['capacityFilter','capacity'],['mastFilter','mast_type'],['heightFilter','lifting_height']];rows=rows.filter(c=>(!q||[c.qr_id,c.chassis,c.engine,c.client,c.capacity].some(v=>String(v||'').toLowerCase().includes(q)))&&fs.every(([id,k])=>!$('#'+id)?.value||norm(c[k])===norm($('#'+id).value)));$('#count').textContent=rows.length+' chariot'+(rows.length!==1?'s':'');$('#list').innerHTML=rows.map(card).join('')||'<div class="empty">Aucun résultat.</div>'}$('#search').addEventListener('input',render);$('#statusFilter').addEventListener('change',render);ids.forEach(id=>$('#'+id).addEventListener('change',render));$('#clearFilters').onclick=()=>{ids.forEach(id=>$('#'+id).value='');$('#statusFilter').value='';$('#search').value='';render()};render()}
-async function detailPage(){if(!await session())return;await loadChariots();const id=new URLSearchParams(location.search).get('id');current=CHARIOTS.find(c=>String(c.qr_id)===String(id));if(!current){$('#detail').innerHTML='<div class="empty">Chariot introuvable.</div>';return}$('#title').textContent=current.qr_id;$('#status').textContent=current.status||'—';const planned=getDeliveryPlan(current.qr_id);const plannedDate=planned?.date?formatPlannedDate(planned.date):'—';const plannedTime=planned?.time||'—';const groups=[['Identification',[['N° châssis',current.chassis],['N° de série',current.serial_number],['N° moteur',current.engine_number],['Moteur',current.engine]]],['Caractéristiques',[['Capacité',fmtCapacity(current.capacity)],['Hauteur de levage',current.lifting_height],['Dimensions des fourches',current.fork_dimension],['Type de mât',String(current.mast_type||'').toUpperCase()],['Type de pneu',current.tire_type],['Couleur',current.color]]],['Informations stock',[['Stock',current.stock],['Statut',current.status],['Client',current.client],['Date planifiée',plannedDate],['Heure planifiée',plannedTime],['Date de livraison',current.delivery_date]]],['Observations',[['Observations',current.observations]]]];$('#detail').innerHTML=groups.map(g=>`<div class="section"><h3>${esc(g[0])}</h3><div class="details">${g[1].map(([k,v])=>`<div class="kv"><small>${esc(k)}</small><b>${esc(v||'—')}</b></div>`).join('')}</div></div>`).join('');$('#edit').onclick=()=>location.href='nouveau-chariot.html?id='+encodeURIComponent(current.qr_id);const deliverBtn=$('#deliver');if(deliverBtn){if(isDelivered(current)||!isAdmin()){deliverBtn.style.display='none'}else{deliverBtn.style.display='inline-flex';deliverBtn.onclick=()=>markDelivered(current.qr_id)}}await renderMaintenanceHistory()}
-async function renderMaintenanceHistory(){const box=$('#history');if(!box||!current)return;const {data,error}=await supabaseClient.from('maintenance').select('id,date,technicien,type,travaux,created_at').eq('qr_id',current.qr_id).order('date',{ascending:false}).order('created_at',{ascending:false});if(error){box.innerHTML='<div class="notice red">Erreur historique : '+esc(error.message)+'</div>';return}box.innerHTML=(data||[]).map(x=>`<div class="log"><b>${esc(x.date)} — ${esc(x.type||'Intervention')}</b><small>${esc(x.technicien||'—')}</small><div style="margin-top:7px">${esc(x.travaux||'—')}</div>${isAdmin()&&x.id?`<div class="actions"><button class="btn light" onclick="deleteMaintenance('${esc(x.id)}')">Supprimer</button></div>`:''}</div>`).join('')||'<div class="muted">Aucune intervention enregistrée.</div>'}
+async function detailPage(){if(!await session())return;await loadChariots();try{await loadDeliveryPlans()}catch(e){DELIVERY_PLANS=readCachedDeliveryPlans()}const id=new URLSearchParams(location.search).get('id');current=CHARIOTS.find(c=>String(c.qr_id)===String(id));if(!current){$('#detail').innerHTML='<div class="empty">Chariot introuvable.</div>';return}$('#title').textContent=current.qr_id;$('#status').textContent=current.status||'—';const planned=getDeliveryPlan(current.qr_id);const plannedDate=planned?.date?formatPlannedDate(planned.date):'—';const plannedTime=planned?.time||'—';const groups=[['Identification',[['N° châssis',current.chassis],['N° de série',current.serial_number],['N° moteur',current.engine_number],['Moteur',current.engine]]],['Caractéristiques',[['Capacité',fmtCapacity(current.capacity)],['Hauteur de levage',current.lifting_height],['Dimensions des fourches',current.fork_dimension],['Type de mât',String(current.mast_type||'').toUpperCase()],['Type de pneu',current.tire_type],['Couleur',current.color]]],['Informations stock',[['Stock',current.stock],['Statut',current.status],['Client',current.client],['Date planifiée',plannedDate],['Heure planifiée',plannedTime],['Date de livraison',current.delivery_date]]],['Observations',[['Observations',current.observations]]]];$('#detail').innerHTML=groups.map(g=>`<div class="section"><h3>${esc(g[0])}</h3><div class="details">${g[1].map(([k,v])=>`<div class="kv"><small>${esc(k)}</small><b>${esc(v||'—')}</b></div>`).join('')}</div></div>`).join('');$('#edit').onclick=()=>location.href='nouveau-chariot.html?id='+encodeURIComponent(current.qr_id);const deliverBtn=$('#deliver');if(deliverBtn){if(isDelivered(current)||!isAdmin()){deliverBtn.style.display='none'}else{deliverBtn.style.display='inline-flex';deliverBtn.onclick=()=>markDelivered(current.qr_id)}}await renderMaintenanceHistory()}
+async function renderMaintenanceHistory(){const box=$('#history');if(!box||!current)return;const {data,error}=await supabaseClient.from('maintenance').select('id,date,technicien,type,travaux,created_at').eq('qr_id',current.qr_id).order('date',{ascending:false}).order('created_at',{ascending:false});if(error){box.innerHTML='<div class="notice red">Erreur historique : '+esc(error.message)+'</div>';return}box.innerHTML=(data||[]).filter(x=>!DELIVERY_PLAN_TYPES.includes(String(x.type||''))).map(x=>`<div class="log"><b>${esc(x.date)} — ${esc(x.type||'Intervention')}</b><small>${esc(x.technicien||'—')}</small><div style="margin-top:7px">${esc(x.travaux||'—')}</div>${isAdmin()&&x.id?`<div class="actions"><button class="btn light" onclick="deleteMaintenance('${esc(x.id)}')">Supprimer</button></div>`:''}</div>`).join('')||'<div class="muted">Aucune intervention enregistrée.</div>'}
 async function addMaintenance(){if(!requireValidLicense())return;if(!current){alert('Sélectionnez un chariot.');return}if(!currentUser){alert('Connectez-vous.');return}const types=[...document.querySelectorAll('#typeMultiOptions input:checked')].map(x=>x.value).join(', '),travaux=$('#travaux')?.value.trim()||'';if(!types&&!travaux){alert('Sélectionnez un type de modification ou indiquez les détails.');return}const {error}=await supabaseClient.from('maintenance').insert({qr_id:current.qr_id,date:$('#date')?.value||new Date().toISOString().slice(0,10),technicien:$('#technicien')?.value.trim()||currentUser.email,type:types,travaux,created_by:currentUser.id});if(error){alert('Erreur : '+error.message);return}document.querySelectorAll('#typeMultiOptions input').forEach(x=>x.checked=false);if($('#travaux'))$('#travaux').value='';await renderMaintenanceHistory()}
 async function deleteMaintenance(id){if(!requireAdmin())return;if(!confirm('Supprimer définitivement cette intervention ?'))return;const {error}=await supabaseClient.from('maintenance').delete().eq('id',id);if(error)alert('Erreur : '+error.message);else await renderMaintenanceHistory()}
 function nextQr(){let n=Math.max(0,...CHARIOTS.map(c=>Number(String(c.qr_id||'').match(/^CH-(\d+)$/i)?.[1]||0)))+1;return'CH-'+String(n).padStart(4,'0')}
@@ -157,46 +233,40 @@ async function initPage(fn){if(!(await verifyLicense()))return;await fn();if(cur
 async function deliveryPlanningPage(){
   if(!await session())return;
   await loadChariots();
-  const key='sbi_delivery_plans_v1';
+  try{await loadDeliveryPlans({migrateLocal:true})}catch(e){
+    DELIVERY_PLANS=readCachedDeliveryPlans();
+    if(!DELIVERY_PLANS.length)alert('Impossible de charger le planning partagé : '+friendlySupabaseError(e));
+  }
+  let plans=[...DELIVERY_PLANS];
   const els={week:$('#weekDays'),list:$('#deliveryList'),range:$('#rangeTitle'),modal:$('#deliveryModal'),form:$('#deliveryForm'),search:$('#deliverySearch'),searchResults:$('#deliverySearchResults'),chariot:$('#deliveryChariot'),date:$('#deliveryDate'),time:$('#deliveryTime'),note:$('#deliveryNote'),today:$('#todayBtn'),prev:$('#prevWeek'),next:$('#nextWeek'),plan:$('#planBtn'),cancel:$('#cancelDelivery'),todayCount:$('#todayCount'),weekCount:$('#weekCount'),plannedCount:$('#plannedCount')};
-  let plans=readPlans(), selectedDate=localDateISO(new Date()), weekStart=startOfWeek(new Date());
+  let selectedDate=localDateISO(new Date()), weekStart=startOfWeek(new Date()), refreshBusy=false;
   function localDateISO(d){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${day}`}
   function parseDate(s){const [y,m,d]=String(s).split('-').map(Number);return new Date(y||2000,(m||1)-1,d||1)}
   function startOfWeek(d){const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());const n=x.getDay();const diff=n===0?-6:1-n;x.setDate(x.getDate()+diff);return x}
   function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x}
-  function formatDay(d){return d.toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'short'}).replace('.','')}
   function formatLong(s){return parseDate(s).toLocaleDateString('fr-FR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'})}
-  function readPlans(){try{const x=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(x)?x:[]}catch(e){return []}}
-  function savePlans(){localStorage.setItem(key,JSON.stringify(plans))}
+  function syncPlans(next){plans=[...(next||[])];cacheDeliveryPlans(plans)}
   function getMachine(qr){return CHARIOTS.find(c=>String(c.qr_id)===String(qr))}
   function availableChariots(excludeQr=''){
     const excluded=plans.filter(p=>String(p.qr)!==String(excludeQr)).map(p=>String(p.qr));
     return CHARIOTS.filter(c=>normalizeStatus(c.status)!=='livre'&&!c.delivery_date&&!excluded.includes(String(c.qr_id)));
   }
-  function chariotSearchText(c){
-    // Search through every readable field so chassis, motor number, client name, QR ID,
-    // capacity, serial number, etc. are all found even if the database field name differs.
-    return Object.values(c||{}).filter(v=>v!==null&&v!==undefined).map(v=>String(v)).join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
-  }
+  function chariotSearchText(c){return Object.values(c||{}).filter(v=>v!==null&&v!==undefined).map(v=>String(v)).join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase()}
   function searchTokens(s){return norm(s).split(/\s+/).filter(Boolean)}
-  function refreshChariotOptions(excludeQr=''){const old=els.chariot.value;els.chariot.innerHTML='<option value="">Sélectionner un chariot</option>'+availableChariots(excludeQr).map(c=>`<option value="${esc(c.qr_id)}">${esc(c.chassis||c.qr_id)} · ${esc(c.client||'Sans client')} · ${esc(fmtCapacity(c.capacity))}</option>`).join('');if(old)els.chariot.value=old;renderSearchResults()}
+  function refreshChariotOptions(excludeQr=''){
+    const old=els.chariot.value;
+    els.chariot.innerHTML='<option value="">Sélectionner un chariot</option>'+availableChariots(excludeQr).map(c=>`<option value="${esc(c.qr_id)}">${esc(c.chassis||c.qr_id)} · ${esc(c.client||'Sans client')} · ${esc(fmtCapacity(c.capacity))}</option>`).join('');
+    if(old&&availableChariots(excludeQr).some(c=>String(c.qr_id)===String(old)))els.chariot.value=old; else if(excludeQr)els.chariot.value=excludeQr;
+    renderSearchResults();
+  }
   function renderSearchResults(){
     if(!els.searchResults||!els.search)return;
     const raw=els.search.value.trim();
     if(!raw){els.searchResults.innerHTML='';return}
     const tokens=searchTokens(raw);
-    const matches=availableChariots().filter(c=>{const text=chariotSearchText(c);return tokens.every(t=>text.includes(t))}).sort((a,b)=>{
-      const aq=norm(a.qr_id||'')===norm(raw)?0:1;
-      const bq=norm(b.qr_id||'')===norm(raw)?0:1;
-      if(aq!==bq)return aq-bq;
-      return String(a.chassis||a.qr_id||'').localeCompare(String(b.chassis||b.qr_id||''),undefined,{numeric:true,sensitivity:'base'});
-    }).slice(0,20);
+    const matches=availableChariots().filter(c=>{const text=chariotSearchText(c);return tokens.every(t=>text.includes(t))}).sort((a,b)=>String(a.chassis||a.qr_id||'').localeCompare(String(b.chassis||b.qr_id||''),undefined,{numeric:true,sensitivity:'base'})).slice(0,20);
     els.searchResults.innerHTML=matches.length?matches.map(c=>`<button type="button" class="delivery-search-result" data-qr="${esc(c.qr_id)}"><strong>${esc(c.chassis||c.qr_id||'Chariot')}</strong><span>QR: ${esc(c.qr_id||'—')} · N° moteur: ${esc(c.engine_number||'—')} · ${esc(c.engine||'—')} · ${esc(fmtCapacity(c.capacity))} · ${esc(c.client||'Sans client')}</span></button>`).join(''):'<div class="delivery-search-empty">Aucun chariot correspondant.</div>';
-    els.searchResults.querySelectorAll('[data-qr]').forEach(b=>b.addEventListener('click',()=>{
-      els.chariot.value=b.dataset.qr;
-      els.search.value='';
-      els.searchResults.innerHTML='';
-    }));
+    els.searchResults.querySelectorAll('[data-qr]').forEach(b=>b.addEventListener('click',()=>{els.chariot.value=b.dataset.qr;els.search.value='';els.searchResults.innerHTML=''}));
   }
   function weekPlans(){const a=localDateISO(weekStart),b=localDateISO(addDays(weekStart,6));return plans.filter(p=>p.date>=a&&p.date<=b)}
   function renderStats(){const today=localDateISO(new Date());els.todayCount.textContent=plans.filter(p=>p.date===today).length;els.weekCount.textContent=weekPlans().length;els.plannedCount.textContent=plans.length}
@@ -205,8 +275,10 @@ async function deliveryPlanningPage(){
   function openModal(date=selectedDate,qr=''){refreshChariotOptions();els.form.dataset.edit='';els.date.value=date;els.time.value='';els.note.value='';els.chariot.value=qr;els.search.value='';els.searchResults.innerHTML='';els.modal.classList.remove('hidden');setTimeout(()=>els.search.focus(),20)}
   function openEdit(id){const p=plans.find(x=>x.id===id);if(!p)return;refreshChariotOptions(p.qr);els.form.dataset.edit=id;els.date.value=p.date;els.time.value=p.time||'';els.note.value=p.note||'';els.chariot.value=p.qr;els.search.value='';els.searchResults.innerHTML='';els.modal.classList.remove('hidden');setTimeout(()=>els.search.focus(),20)}
   function closeModal(){els.modal.classList.add('hidden');els.form.dataset.edit=''}
-  function removePlan(id){if(!confirm('Supprimer cette livraison du planning ?'))return;plans=plans.filter(p=>p.id!==id);savePlans();renderWeek();renderList()}
-  els.form.onsubmit=e=>{e.preventDefault();const qr=els.chariot.value,date=els.date.value,time=els.time.value,note=els.note.value.trim();if(!qr||!date)return;const edit=els.form.dataset.edit;const duplicate=plans.some(p=>String(p.qr)===String(qr)&&p.id!==edit);if(duplicate){alert('Ce chariot est déjà planifié pour une livraison.');return}if(edit){const p=plans.find(x=>x.id===edit);if(p)Object.assign(p,{qr,date,time,note})}else plans.push({id:'dp_'+Date.now()+'_'+Math.random().toString(36).slice(2,8),qr,date,time,note});savePlans();selectedDate=date;weekStart=startOfWeek(parseDate(date));closeModal();renderWeek();renderList()};
+  async function refreshFromServer(){if(refreshBusy||document.visibilityState==='hidden')return;refreshBusy=true;try{const before=JSON.stringify(plans);const remote=await loadDeliveryPlans();if(JSON.stringify(remote)!==before){syncPlans(remote);renderWeek();renderList()}}catch(e){console.warn('Actualisation planning',e)}finally{refreshBusy=false}}
+  async function removePlan(id){if(!confirm('Supprimer cette livraison du planning ?'))return;const p=plans.find(x=>x.id===id);if(!p)return;const payload={id:p.id,qr:p.qr,date:p.date,time:p.time||'',note:p.note||''};const {error}=await supabaseClient.from('maintenance').insert({qr_id:p.qr,date:p.date,technicien:currentUser?.email||getUserDisplayName(),type:'Annulation planification livraison',travaux:JSON.stringify(payload),created_by:currentUser?.id||null});if(error){alert('Erreur : '+friendlySupabaseError(error));return}try{await loadDeliveryPlans()}catch(e){}syncPlans(DELIVERY_PLANS);renderWeek();renderList()}
+  els.form.onsubmit=async e=>{e.preventDefault();const qr=els.chariot.value,date=els.date.value,time=els.time.value,note=els.note.value.trim();if(!qr||!date)return;const edit=els.form.dataset.edit;const duplicate=plans.some(p=>String(p.qr)===String(qr)&&p.id!==edit);if(duplicate){alert('Ce chariot est déjà planifié pour une livraison.');return}const logicalId=edit||('dp_'+Date.now()+'_'+Math.random().toString(36).slice(2,8));const payload={id:logicalId,qr:String(qr),date:String(date),time:String(time||''),note:String(note||'')};const {error}=await supabaseClient.from('maintenance').insert({qr_id:qr,date,technicien:currentUser?.email||getUserDisplayName(),type:'Planification livraison',travaux:JSON.stringify(payload),created_by:currentUser?.id||null});if(error){alert('Erreur : '+friendlySupabaseError(error));return}try{await loadDeliveryPlans()}catch(e){alert('Planification enregistrée mais actualisation impossible : '+friendlySupabaseError(e))}syncPlans(DELIVERY_PLANS);selectedDate=date;weekStart=startOfWeek(parseDate(date));closeModal();refreshChariotOptions();renderWeek();renderList()};
   els.cancel.onclick=closeModal;els.modal.addEventListener('click',e=>{if(e.target===els.modal)closeModal()});els.search?.addEventListener('input',renderSearchResults);els.search?.addEventListener('search',renderSearchResults);els.chariot?.addEventListener('change',()=>{if(els.search){els.search.value='';els.searchResults.innerHTML=''}});els.plan.onclick=()=>openModal(selectedDate, new URLSearchParams(location.search).get('qr')||'');els.today.onclick=()=>{selectedDate=localDateISO(new Date());weekStart=startOfWeek(new Date());renderWeek();renderList()};els.prev.onclick=()=>{weekStart=addDays(weekStart,-7);renderWeek();renderList()};els.next.onclick=()=>{weekStart=addDays(weekStart,7);renderWeek();renderList()};
+  window.addEventListener('focus',refreshFromServer);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refreshFromServer()});setInterval(refreshFromServer,15000);
   renderWeek();renderList();
 }

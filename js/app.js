@@ -20,7 +20,60 @@ function requireAdmin(){if(!currentUser){alert('Connexion administrateur requise
 function requireAdminForDelivery(){if(!currentUser){alert('Connexion requise pour gérer les chariots.');return false}if(!isAdmin()){alert('Seul un Admin peut mettre un chariot en statut « Livré ».');return false}return true}
 function requireValidLicense(){if(licenseValid)return true;alert('Licence SBI invalide ou expirée.');return false}
 function friendlySupabaseError(e){const m=String(e?.message||e||'');if(/failed to fetch|networkerror|load failed|network request failed/i.test(m))return'Impossible de joindre Supabase. Vérifiez la connexion Internet.';if(/invalid login credentials/i.test(m))return'Email ou mot de passe incorrect.';return m||'Erreur inconnue.'}
-async function verifyLicense(){const gate=$('#licenseGate');if(!gate){licenseValid=true;return true}const info=$('#licenseInfo');const firstLogin=gate.dataset.firstLogin==='true';let slowTimer=null;const show=()=>{gate.classList.remove('hidden');gate.classList.add('loading-visible')};const hide=()=>{gate.classList.remove('loading-visible');gate.classList.add('hidden')};if(firstLogin){show()}else{gate.classList.add('hidden');slowTimer=setTimeout(show,700)}try{const {data,error}=await supabaseClient.rpc('check_sbi_license');if(error)throw error;const l=Array.isArray(data)?data[0]:data;if(!l)throw new Error('Licence introuvable.');const now=new Date(),start=l.start_date?new Date(l.start_date+'T00:00:00'):null,end=l.expiration_date?new Date(l.expiration_date+'T23:59:59'):null;if(String(l.status||'').toLowerCase()!=='active')throw new Error('La licence est désactivée.');if(start&&now<start)throw new Error("La licence n'est pas encore active.");if(end&&now>end)throw new Error('La licence a expiré le '+l.expiration_date+'.');licenseValid=true;if(info)info.innerHTML=`<div><b>Entreprise :</b> ${esc(l.company_name||'—')}</div><div><b>Statut :</b> <span style="color:#16803e;font-weight:800">Active</span></div><div><b>Expiration :</b> ${esc(l.expiration_date||'Sans expiration')}</div>`;if(slowTimer)clearTimeout(slowTimer);setTimeout(hide,firstLogin?450:80);return true}catch(e){if(slowTimer)clearTimeout(slowTimer);licenseValid=false;if(info)info.innerHTML=`<div style="color:#b52631"><b>Accès bloqué :</b> ${esc(friendlySupabaseError(e))}</div>`;show();return false}}
+async function verifyLicense(){
+  const gate=$('#licenseGate');
+  if(!gate){licenseValid=true;return true}
+  const info=$('#licenseInfo');
+  const firstLogin=gate.dataset.firstLogin==='true';
+  let slowTimer=null;
+  const show=()=>{gate.classList.remove('hidden');gate.classList.add('loading-visible')};
+  const hide=()=>{gate.classList.remove('loading-visible');gate.classList.add('hidden')};
+  const cacheKey='sbi-license-check-v1';
+  const nowMs=Date.now();
+  const readCache=()=>{try{const c=JSON.parse(localStorage.getItem(cacheKey)||'null');if(c&&c.checkedAt&&c.license&&nowMs-c.checkedAt<15*60*1000)return c.license}catch(_){ }return null};
+  const saveCache=(l)=>{try{localStorage.setItem(cacheKey,JSON.stringify({checkedAt:Date.now(),license:l}))}catch(_){ }};
+  const withTimeout=(promise,ms)=>Promise.race([promise,new Promise((_,reject)=>setTimeout(()=>reject(new Error('TIMEOUT')),ms))]);
+  const validate=(l)=>{
+    if(!l)throw new Error('Licence introuvable.');
+    const now=new Date(),start=l.start_date?new Date(l.start_date+'T00:00:00'):null,end=l.expiration_date?new Date(l.expiration_date+'T23:59:59'):null;
+    if(String(l.status||'').toLowerCase()!=='active')throw new Error('La licence est désactivée.');
+    if(start&&now<start)throw new Error("La licence n'est pas encore active.");
+    if(end&&now>end)throw new Error('La licence a expiré le '+l.expiration_date+'.');
+    return l;
+  };
+  if(firstLogin)show(); else {gate.classList.add('hidden');slowTimer=setTimeout(show,700)}
+  try{
+    let l=null;
+    try{
+      const result=await withTimeout(supabaseClient.rpc('check_sbi_license'),8000);
+      const {data,error}=result||{};
+      if(error)throw error;
+      l=Array.isArray(data)?data[0]:data;
+    }catch(rpcErr){
+      try{
+        const result=await withTimeout(supabaseClient.from('licenses').select('company_name,status,start_date,expiration_date').eq('company_name',LICENSE_COMPANY).maybeSingle(),5000);
+        if(result?.error)throw result.error;
+        l=result?.data||null;
+      }catch(fallbackErr){
+        l=readCache();
+        if(!l)throw (String(rpcErr?.message||rpcErr)==='TIMEOUT'?new Error('Vérification de la licence trop longue. Vérifiez votre connexion Internet puis rechargez la page.'):fallbackErr);
+      }
+    }
+    l=validate(l);
+    licenseValid=true;
+    saveCache(l);
+    if(info)info.innerHTML=`<div><b>Entreprise :</b> ${esc(l.company_name||'—')}</div><div><b>Statut :</b> <span style="color:#16803e;font-weight:800">Active</span></div><div><b>Expiration :</b> ${esc(l.expiration_date||'Sans expiration')}</div>`;
+    if(slowTimer)clearTimeout(slowTimer);
+    setTimeout(hide,firstLogin?450:80);
+    return true;
+  }catch(e){
+    if(slowTimer)clearTimeout(slowTimer);
+    licenseValid=false;
+    if(info)info.innerHTML=`<div style="color:#b52631"><b>Accès bloqué :</b> ${esc(friendlySupabaseError(e))}</div>`;
+    show();
+    return false;
+  }
+}
 async function getSession(){
   try{
     const {data,error}=await supabaseClient.auth.getSession();

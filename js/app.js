@@ -1,6 +1,13 @@
 const SUPABASE_URL="https://hkakedonludcqjgjzkei.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_AQWeYHI3Xli_1iBKVr9EPg_8L8PR-Hc";
-const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{
+  auth:{
+    persistSession:true,
+    autoRefreshToken:true,
+    detectSessionInUrl:true,
+    storageKey:'sbi-supabase-auth'
+  }
+});
 const ADMIN_EMAIL="HICHEMDOOOR@GMAIL.COM",LICENSE_COMPANY="SBI";
 let CHARIOTS=[],currentUser=null,current=null,editingQrId=null,licenseValid=false,DELIVERY_PLANS=[];
 const DELIVERY_PLAN_KEY='sbi_delivery_plans_v1',DELIVERY_PLAN_TYPES=['Planification livraison','Annulation planification livraison'];
@@ -14,11 +21,46 @@ function requireAdminForDelivery(){if(!currentUser){alert('Connexion requise pou
 function requireValidLicense(){if(licenseValid)return true;alert('Licence SBI invalide ou expirée.');return false}
 function friendlySupabaseError(e){const m=String(e?.message||e||'');if(/failed to fetch|networkerror|load failed|network request failed/i.test(m))return'Impossible de joindre Supabase. Vérifiez la connexion Internet.';if(/invalid login credentials/i.test(m))return'Email ou mot de passe incorrect.';return m||'Erreur inconnue.'}
 async function verifyLicense(){const gate=$('#licenseGate');if(!gate){licenseValid=true;return true}const info=$('#licenseInfo');const firstLogin=gate.dataset.firstLogin==='true';let slowTimer=null;const show=()=>{gate.classList.remove('hidden');gate.classList.add('loading-visible')};const hide=()=>{gate.classList.remove('loading-visible');gate.classList.add('hidden')};if(firstLogin){show()}else{gate.classList.add('hidden');slowTimer=setTimeout(show,700)}try{const {data,error}=await supabaseClient.rpc('check_sbi_license');if(error)throw error;const l=Array.isArray(data)?data[0]:data;if(!l)throw new Error('Licence introuvable.');const now=new Date(),start=l.start_date?new Date(l.start_date+'T00:00:00'):null,end=l.expiration_date?new Date(l.expiration_date+'T23:59:59'):null;if(String(l.status||'').toLowerCase()!=='active')throw new Error('La licence est désactivée.');if(start&&now<start)throw new Error("La licence n'est pas encore active.");if(end&&now>end)throw new Error('La licence a expiré le '+l.expiration_date+'.');licenseValid=true;if(info)info.innerHTML=`<div><b>Entreprise :</b> ${esc(l.company_name||'—')}</div><div><b>Statut :</b> <span style="color:#16803e;font-weight:800">Active</span></div><div><b>Expiration :</b> ${esc(l.expiration_date||'Sans expiration')}</div>`;if(slowTimer)clearTimeout(slowTimer);setTimeout(hide,firstLogin?450:80);return true}catch(e){if(slowTimer)clearTimeout(slowTimer);licenseValid=false;if(info)info.innerHTML=`<div style="color:#b52631"><b>Accès bloqué :</b> ${esc(friendlySupabaseError(e))}</div>`;show();return false}}
-async function getSession(){try{const {data,error}=await supabaseClient.auth.getSession();if(error)throw error;currentUser=data.session?.user||null;if(currentUser){const {data:s}=await supabaseClient.rpc('get_my_sbi_status');if(s?.disabled){await supabaseClient.auth.signOut();currentUser=null}else{currentUser.user_metadata=currentUser.user_metadata||{};currentUser.user_metadata.sbi_role=s?.role||currentUser.user_metadata.sbi_role||'user'}}}catch(e){currentUser=null}return !!currentUser}
+async function getSession(){
+  try{
+    const {data,error}=await supabaseClient.auth.getSession();
+    if(error)throw error;
+    currentUser=data.session?.user||null;
+    if(!currentUser)return false;
+    currentUser.user_metadata=currentUser.user_metadata||{};
+    try{
+      const {data:s,error:roleError}=await supabaseClient.rpc('get_my_sbi_status');
+      if(!roleError&&s){
+        if(s.disabled){await supabaseClient.auth.signOut();currentUser=null;return false}
+        currentUser.user_metadata.sbi_role=s.role||currentUser.user_metadata.sbi_role||'user';
+      }
+    }catch(roleErr){
+      console.warn('Lecture du rôle utilisateur impossible, session conservée.',roleErr);
+    }
+    return !!currentUser;
+  }catch(e){
+    console.warn('Restauration de session impossible.',e);
+    currentUser=null;
+    return false;
+  }
+}
 async function session(){if(!(await getSession())){location.href='index.html';return false}if(!licenseValid&&!(await verifyLicense()))return false;return true}
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&$('#email')&&$('#password')&&document.activeElement!==document.body){e.preventDefault();login()}});
 async function login(){const email=$('#email')?.value.trim(),password=$('#password')?.value,msg=$('#msg');if(!email||!password){if(msg)msg.textContent='Email et mot de passe requis.';return}if(msg)msg.textContent='Connexion...';try{const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});if(error)throw error;const {data:s,error:se}=await supabaseClient.rpc('get_my_sbi_status');if(se)throw se;if(s?.disabled){await supabaseClient.auth.signOut();throw new Error('Accès bloqué : votre compte est désactivé.')}currentUser=data.user;currentUser.user_metadata=currentUser.user_metadata||{};currentUser.user_metadata.sbi_role=s?.role||'user';location.href='dashboard.html'}catch(e){if(msg)msg.textContent=friendlySupabaseError(e)}}
 async function logout(){await supabaseClient.auth.signOut();location.href='index.html'}
+async function restoreLoginSession(){
+  if(location.pathname.split('/').pop()!=='index.html' && location.pathname!=='/' && location.pathname!=='')return;
+  try{
+    const hasSession=await getSession();
+    if(!hasSession)return;
+    const valid=await verifyLicense();
+    if(!valid)return;
+    location.replace('dashboard.html');
+  }catch(e){
+    console.warn('Restauration automatique de la connexion impossible.',e);
+  }
+}
+
 async function loadChariots(){const {data,error}=await supabaseClient.from('chariots').select('*').order('id',{ascending:false});if(error)throw error;CHARIOTS=data||[];return CHARIOTS}
 
 function getUserDisplayName(){return currentUser?.user_metadata?.full_name||currentUser?.user_metadata?.name||currentUser?.email?.split('@')[0]||'Utilisateur'}

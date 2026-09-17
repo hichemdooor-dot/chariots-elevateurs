@@ -1,0 +1,9 @@
+VERSION V6 — PLANNING LIVRAISON
+
+Changements principaux :
+- Chauffeur = liste déroulante fixe : AISSA, YOUNES, BILLAL, HAMZA.
+- Destination = liste déroulante des 69 wilayas d’Algérie, codes 01 à 69.
+- Les 11 nouvelles wilayas sont 59 Aflou, 60 Barika, 61 El Kantara, 62 Bir El Ater, 63 El Aricha, 64 Ksar Chellala, 65 Aïn Oussara, 66 Messaad, 67 Ksar El Boukhari, 68 Bou Saâda, 69 El Abiodh Sidi Cheikh.
+- L’ancien contenu libre chauffeur/destination reste conservé lors de la modification d’une ancienne planification et est présenté comme option temporaire.
+- Style moderne de la fenêtre de planification conservé.
+- Système de maintenance, licence et correction de l’URL racine conservés depuis V5.

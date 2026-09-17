@@ -14,7 +14,7 @@ function toggleMenu(force){
   overlay.classList.toggle('open',open);
   document.body.classList.toggle('menu-open',open);
   const btn=document.querySelector('.menu-btn');
-  if(btn)btn.setAttribute('aria-expanded',open?'true':'false');
+  if(btn){btn.setAttribute('aria-expanded',open?'true':'false'); btn.setAttribute('aria-label',open?'Fermer le menu':'Ouvrir le menu'); btn.textContent=open?'✕':'☰';}
   if(open){
     const first=overlay.querySelector('.nav a');
     if(first) first.setAttribute('tabindex','0');

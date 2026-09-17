@@ -7,9 +7,24 @@
 
 function menuHTML(){return `<div class="nav dash-menu"><a href="dashboard.html"><span class="nav-icon">⌂</span><span>Tableau de bord</span></a><a href="chariots.html"><span class="nav-icon">♧</span><span>Tous les chariots</span></a><a href="stock.html"><span class="nav-icon">◇</span><span>Chariots en stock</span></a><a href="livres.html"><span class="nav-icon">▰</span><span>Chariots livrés</span></a><a href="nouveau-chariot.html"><span class="nav-icon">⊕</span><span>Nouveau chariot</span></a><div class="nav-separator"></div><a href="historique.html"><span class="nav-icon">▤</span><span>Historique</span></a><a href="preparation-livraison.html"><span class="nav-icon">▰</span><span>Préparation livraison</span></a><a href="chariots-prevus-livraison.html"><span class="nav-icon">▣</span><span>Chariots prévus pour livraison</span></a><a href="planning-livraisons.html"><span class="nav-icon">▦</span><span>Planning des livraisons</span></a><a href="export.html"><span class="nav-icon">⇩</span><span>Export Excel / PDF</span></a><a href="gestion.html"><span class="nav-icon">♟</span><span>Gestion utilisateurs</span></a><a href="licence.html"><span class="nav-icon">⚙</span><span>Paramètres</span></a><a href="#" onclick="logout();return false" class="logout-link"><span class="nav-icon">↪</span><span>Déconnexion</span></a></div>`}
 function nav(){const page=location.pathname.split('/').pop()||'dashboard.html';document.querySelectorAll('.nav a').forEach(a=>a.classList.toggle('active',a.getAttribute('href')===page))}
-function toggleMenu(){document.querySelector('.overlay')?.classList.toggle('open')}
+function toggleMenu(force){
+  const overlay=document.querySelector('.overlay');
+  if(!overlay)return;
+  const open=typeof force==='boolean'?force:!overlay.classList.contains('open');
+  overlay.classList.toggle('open',open);
+  document.body.classList.toggle('menu-open',open);
+  const btn=document.querySelector('.menu-btn');
+  if(btn)btn.setAttribute('aria-expanded',open?'true':'false');
+  if(open){
+    const first=overlay.querySelector('.nav a');
+    if(first) first.setAttribute('tabindex','0');
+  }
+}
+function closeMobileMenu(){toggleMenu(false)}
 document.addEventListener('DOMContentLoaded',()=>{
   document.querySelectorAll('[data-nav]').forEach(x=>x.innerHTML=menuHTML());
+  document.querySelectorAll('.menu-btn').forEach(btn=>{btn.setAttribute('aria-expanded','false');btn.setAttribute('aria-controls','mobileMenu');});
+  document.querySelectorAll('.overlay').forEach((ov,i)=>{ov.id=i?'mobileMenu'+i:'mobileMenu';});
   document.querySelectorAll('.brand').forEach(el=>{el.innerHTML='<img class="site-logo" src="assets/logo-sbi-hangcha.png" alt="SBI HANGCHA">';});
   document.querySelectorAll('.avatar').forEach(el=>{
     const wrap=document.createElement('div');
@@ -18,5 +33,10 @@ document.addEventListener('DOMContentLoaded',()=>{
     el.replaceWith(wrap);
   });
   nav();
-  document.querySelector('.overlay')?.addEventListener('click',e=>{if(e.target.classList.contains('overlay'))toggleMenu()});
+  document.querySelectorAll('.overlay').forEach(ov=>{
+    ov.addEventListener('click',e=>{if(e.target===ov)closeMobileMenu()});
+    ov.querySelectorAll('.nav a').forEach(a=>a.addEventListener('click',()=>closeMobileMenu()));
+  });
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMobileMenu()});
+  window.addEventListener('resize',()=>{if(window.innerWidth>800)closeMobileMenu()});
 });

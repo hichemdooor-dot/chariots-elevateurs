@@ -199,16 +199,15 @@ document.addEventListener('keydown',e=>{if(e.key==='Enter'&&$('#email')&&$('#pas
 async function logUserConnection(action){
   try{
     if(!currentUser)return;
-    const now=new Date();
-    const details=JSON.stringify({action:String(action||'Connexion'),user_agent:navigator.userAgent,at:now.toISOString()});
-    const {error}=await supabaseClient.from('maintenance').insert({
-      qr_id:'SYSTEM',
-      date:now.toISOString().slice(0,10),
-      technicien:currentUser.email||getUserDisplayName(),
-      type:action==='Déconnexion'?'Déconnexion utilisateur':'Connexion utilisateur',
-      travaux:details,
-      created_by:currentUser.id
-    });
+    const normalizedAction=action==='Déconnexion'?'Déconnexion':'Connexion';
+    const payload={
+      user_id:currentUser.id,
+      user_email:currentUser.email||getUserDisplayName(),
+      action:normalizedAction,
+      user_agent:navigator.userAgent,
+      created_at:new Date().toISOString()
+    };
+    const {error}=await supabaseClient.from('sbi_user_connection_logs').insert(payload);
     if(error)console.warn('Journal connexion non enregistré',error);
   }catch(e){console.warn('Journal connexion non enregistré',e)}
 }
@@ -520,7 +519,14 @@ async function loadDashboardNotifications(){
     try{const c=JSON.parse(localStorage.getItem('sbi_activity_cache_v1')||'null');if(Array.isArray(c?.rows))data=c.rows}catch(_){}
     if(!data.length){try{data=await restGetTableRows('maintenance','select=id,qr_id,date,technicien,type,travaux,created_at,created_by&order=created_at.desc&limit=8',8)}catch(_) {}}
   }
-  const rows=data.filter(x=>x.qr_id&&!String(x.type||'').toLowerCase().includes('demande changement mot de passe')).slice(0,6);
+  const rows=data.filter(x=>{
+    const type=String(x.type||'').toLowerCase();
+    const qr=String(x.qr_id||'').trim().toLowerCase();
+    if(!x.qr_id||qr==='system')return false;
+    if(type.includes('connexion utilisateur')||type.includes('déconnexion utilisateur'))return false;
+    if(type.includes('demande changement mot de passe'))return false;
+    return true;
+  }).slice(0,6);
   const unread=rows.filter(x=>!localStorage.getItem('sbi_notif_read_'+x.id)).length;
   const bell=$('#notificationCount'); if(bell) bell.textContent=unread>99?'99+':String(unread);
   const titleCount=$('#notificationCountTitle'); if(titleCount) titleCount.textContent=String(unread);
@@ -599,7 +605,15 @@ async function notificationsPage(){
   }catch(e){
     try{data=await restGetTableRows('maintenance','select=id,qr_id,date,technicien,type,travaux,created_at,created_by&order=created_at.desc&limit=100',100)}catch(_){data=[]}
   }
-  NOTIFICATIONS_PAGE_ROWS=(data||[]).filter(x=>x.qr_id&&!String(x.type||'').toLowerCase().includes('demande changement mot de passe'));
+  NOTIFICATIONS_PAGE_ROWS=(data||[]).filter(x=>{
+    const type=String(x.type||'').toLowerCase();
+    const qr=String(x.qr_id||'').trim().toLowerCase();
+    if(!x.qr_id)return false;
+    if(qr==='system')return false;
+    if(type.includes('connexion utilisateur')||type.includes('déconnexion utilisateur'))return false;
+    if(type.includes('demande changement mot de passe'))return false;
+    return true;
+  });
   renderNotificationsPage();
 }
 async function chariotsPage(){if(!await session())return;await loadChariots();const initialSearch=new URLSearchParams(window.location.search).get('search')||'';const searchEl=$('#search');if(searchEl&&initialSearch){searchEl.value=initialSearch;}const ids=['engineFilter','capacityFilter','mastFilter','heightFilter'];function fill(){const defs=[['engineFilter','engine','Moteur : Tous'],['capacityFilter','capacity','Capacité : Toutes'],['mastFilter','mast_type','Mât : Tous'],['heightFilter','lifting_height','Hauteur : Toutes']];defs.forEach(([id,k,label])=>{const e=$('#'+id),old=e.value;if(!e)return;let vals;if(id==='capacityFilter'){vals=['2.5T','3T','3.8T','5T','7T','10T','12T']}else{vals=[...new Set(CHARIOTS.map(c=>String(c[k]||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}))}e.innerHTML=`<option value="">${label}</option>`+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');if(vals.includes(old))e.value=old})}function render(){fill();let rows=CHARIOTS;const sf=$('#statusFilter')?.value||'';if(sf==='stock')rows=rows.filter(isStock);if(sf==='delivered')rows=rows.filter(isDelivered);const q=$('#search')?.value.trim().toLowerCase()||'';const fs=[['engineFilter','engine'],['capacityFilter','capacity'],['mastFilter','mast_type'],['heightFilter','lifting_height']];rows=rows.filter(c=>(!q||[c.qr_id,c.chassis,c.engine,c.client,c.capacity].some(v=>String(v||'').toLowerCase().includes(q)))&&fs.every(([id,k])=>!$('#'+id)?.value||norm(c[k])===norm($('#'+id).value)));$('#count').textContent=rows.length+' chariot'+(rows.length!==1?'s':'');$('#list').innerHTML=rows.map(card).join('')||'<div class="empty">Aucun résultat.</div>'}$('#search').addEventListener('input',render);$('#statusFilter').addEventListener('change',render);ids.forEach(id=>$('#'+id).addEventListener('change',render));$('#clearFilters').onclick=()=>{ids.forEach(id=>$('#'+id).value='');$('#statusFilter').value='';$('#search').value='';render()};render()}
@@ -645,14 +659,21 @@ async function loadConnectionHistory(){
   const box=$('#connectionHistory');
   if(!box)return;
   try{
-    const {data,error}=await withTimeout(supabaseClient.from('maintenance').select('id,technicien,type,travaux,created_at,created_by').in('type',['Connexion utilisateur','Déconnexion utilisateur']).order('created_at',{ascending:false}).limit(200),8000);
+    const {data,error}=await withTimeout(
+      supabaseClient
+        .from('sbi_user_connection_logs')
+        .select('id,user_id,user_email,action,user_agent,created_at')
+        .order('created_at',{ascending:false})
+        .limit(500),
+      8000
+    );
     if(error)throw error;
     const rows=data||[];
     if(!rows.length){box.innerHTML='<div class="empty">Aucune connexion enregistrée.</div>';return}
 
     const groups=new Map();
     rows.forEach(x=>{
-      const user=String(x.technicien||x.created_by||'Utilisateur').trim()||'Utilisateur';
+      const user=String(x.user_email||x.user_id||'Utilisateur').trim()||'Utilisateur';
       if(!groups.has(user))groups.set(user,[]);
       groups.get(user).push(x);
     });
@@ -665,21 +686,23 @@ async function loadConnectionHistory(){
 
     box.innerHTML=sortedGroups.map(([user,events])=>{
       const latest=events[0];
-      const latestAction=latest.type==='Connexion utilisateur'?'Connexion':'Déconnexion';
+      const latestAction=String(latest.action||'Connexion')==='Connexion'?'Connexion':'Déconnexion';
       const latestDt=latest.created_at?new Date(latest.created_at):null;
       const latestWhen=latestDt&&!Number.isNaN(latestDt.getTime())?latestDt.toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'}):String(latest.created_at||'—');
       const eventHtml=events.map(x=>{
-        let details={};try{details=JSON.parse(x.travaux||'{}')}catch(e){}
-        const action=x.type==='Connexion utilisateur'?'Connexion':'Déconnexion';
+        const action=String(x.action||'Connexion')==='Connexion'?'Connexion':'Déconnexion';
         const dt=x.created_at?new Date(x.created_at):null;
         const when=dt&&!Number.isNaN(dt.getTime())?dt.toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'}):String(x.created_at||'—');
-        const device=String(details.user_agent||'').slice(0,120)||'—';
+        const device=String(x.user_agent||'').slice(0,180)||'—';
         return `<div class="connection-event"><div class="connection-event-main"><div class="connection-event-line"><span class="badge ${action==='Connexion'?'connection-green':'red'}">${esc(action)}</span><strong>${esc(when)}</strong></div><div class="meta"><span title="${esc(device)}"><strong>Appareil :</strong> ${esc(device)}</span></div></div></div>`;
       }).join('');
       return `<section class="connection-user-group"><div class="connection-user-head"><div><div class="connection-user-email">${esc(user)}</div><div class="meta">${events.length} événement${events.length>1?'s':''} · Dernière activité : ${esc(latestWhen)}</div></div><span class="badge ${latestAction==='Connexion'?'connection-green':'red'}">${esc(latestAction)}</span></div><div class="connection-user-events">${eventHtml}</div></section>`;
     }).join('');
-  }catch(e){box.innerHTML='<div class="notice red">Impossible de charger l’historique des connexions : '+esc(friendlySupabaseError(e))+'</div>'}
+  }catch(e){
+    box.innerHTML='<div class="notice red">Impossible de charger l’historique des connexions. Exécutez une fois le fichier <strong>SUPABASE_USER_CONNECTION_LOGS.sql</strong> dans Supabase SQL Editor.</div>';
+  }
 }
+
 async function gestionPage(){if(!await session())return;if(!requireAdmin()){$('#users').innerHTML='<div class="notice red">Accès administrateur requis.</div>';return}await loadSbiUsers();await loadPasswordRequests();await loadConnectionHistory()}
 function renderSbiUsers(users){$('#users').innerHTML=users.length?users.map(u=>{const email=String(u.email||'—');const role=String(u.role||'user');const status=u.disabled?'Désactivé':'Actif';return `<div class="item sbi-user-item" style="cursor:default"><div class="item-main sbi-user-main"><div class="item-title sbi-user-email" title="${esc(email)}">${esc(email)}</div><div class="meta sbi-user-meta"><span><strong>Rôle :</strong> ${esc(role)}</span><span><strong>Statut :</strong> ${esc(status)}</span></div></div><span class="badge ${u.disabled?'red':''} sbi-user-badge">${u.disabled?'Inactif':'Actif'}</span><div class="user-actions sbi-user-actions"><button class="btn light" onclick="toggleSbiUser('${esc(u.id)}',${!u.disabled})">${u.disabled?'Réactiver':'Désactiver'}</button><button class="btn danger" onclick="deleteSbiUser('${esc(u.id)}')">Supprimer</button></div></div>`}).join(''):'<div class="empty">Aucun utilisateur.</div>'}
 async function loadSbiUsers(){if(!requireAdmin())return;try{const {data,error}=await supabaseClient.rpc('admin_list_sbi_users');if(error)throw error;renderSbiUsers(data||[]);$('#userAdminMsg').textContent=(data||[]).length+' utilisateur(s).'}catch(e){$('#userAdminMsg').textContent='Erreur : '+friendlySupabaseError(e)}}

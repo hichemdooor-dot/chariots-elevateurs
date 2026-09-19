@@ -4,7 +4,7 @@
    après authentification depuis la page de maintenance.
 */
 window.SBI_MAINTENANCE = {
-  enabled: true,
+  enabled: false,
   title: "Site en maintenance",
   message: "Notre site est momentanément indisponible pendant une opération de maintenance.",
   expectedReturn: ""

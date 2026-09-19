@@ -59,16 +59,20 @@ document.addEventListener('DOMContentLoaded',()=>{
         <nav class="dash-nav" data-nav></nav>
         <div class="sidebar-promo"><img src="assets/sidebar-promo-preview.png" alt="Hangcha en Algérie"></div>
         <div class="sidebar-foot">© 2026 SBI · Hangcha<br><span>Version 4.3</span></div>
-        <button type="button" class="mobile-drawer-close dashboard-menu-close" aria-label="Fermer le menu">×</button>`;
+        <button type="button" class="mobile-drawer-close dashboard-menu-close" aria-label="Fermer le menu" onclick="event.preventDefault();event.stopPropagation();closeMobileMenu();return false;">×</button>`;
     }
   });
   document.querySelectorAll('[data-nav]').forEach(x=>x.innerHTML=menuHTML());
   document.querySelectorAll('.menu-btn').forEach(btn=>{btn.setAttribute('aria-expanded','false');btn.setAttribute('aria-controls','mobileMenu');});
-  document.querySelectorAll('.overlay').forEach((ov,i)=>{
-    const side=ov.querySelector('.side');
-    const close=side?.querySelector('.mobile-drawer-close');
-    if(close) close.addEventListener('click',closeMobileMenu);
-  });
+  // Robust close handling for the mobile drawer (works even when the drawer is rebuilt dynamically).
+  document.addEventListener('click',e=>{
+    const close=e.target.closest?.('.mobile-drawer-close');
+    if(close){e.preventDefault();e.stopPropagation();closeMobileMenu();}
+  },true);
+  document.addEventListener('pointerup',e=>{
+    const close=e.target.closest?.('.mobile-drawer-close');
+    if(close){e.preventDefault();e.stopPropagation();closeMobileMenu();}
+  },true);
   document.querySelectorAll('.brand').forEach(el=>{el.innerHTML='<img class="site-logo" src="assets/logo-sbi-hangcha.png" alt="SBI HANGCHA">';});
   document.querySelectorAll('.avatar').forEach(el=>{
     const wrap=document.createElement('div');
@@ -82,5 +86,8 @@ document.addEventListener('DOMContentLoaded',()=>{
     ov.querySelectorAll('.nav a').forEach(a=>a.addEventListener('click',()=>closeMobileMenu()));
   });
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMobileMenu()});
+  // Android/browser Back: close the drawer first when it is open.
+  window.addEventListener('popstate',()=>{const ov=document.querySelector('.overlay.open');if(ov)closeMobileMenu();});
+
   window.addEventListener('resize',()=>{if(window.innerWidth>800)closeMobileMenu()});
 });

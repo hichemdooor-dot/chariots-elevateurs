@@ -1080,12 +1080,12 @@ body.dashboard-page.sidebar-collapsed .professional-dashboard .pro-site-footer{m
   .overlay.open > .side.dashboard-mobile-drawer .nav .nav-separator{
     display:block!important;width:100%!important;height:1px!important;margin:12px 0!important;background:rgba(255,255,255,.18)!important;
   }
-  .overlay.open > .side.dashboard-mobile-drawer .sidebar-promo{
-    display:block!important;flex:0 0 auto!important;width:100%!important;height:300px!important;margin:8px 0 10px!important;
+   .overlay.open > .side.dashboard-mobile-drawer .sidebar-promo{
+    display:block!important;flex:0 0 auto!important;width:100%!important;height:180px!important;margin:8px 0 10px!important;
     border-radius:12px!important;overflow:hidden!important;background:#0b2235!important;
   }
-  .overlay.open > .side.dashboard-mobile-drawer .sidebar-promo img{
-    display:block!important;width:100%!important;height:300px!important;object-fit:cover!important;object-position:center!important;
+   .overlay.open > .side.dashboard-mobile-drawer .sidebar-promo img{
+    display:block!important;width:100%!important;height:180px!important;object-fit:cover!important;object-position:center!important;
   }
   .overlay.open > .side.dashboard-mobile-drawer .sidebar-foot{
     display:block!important;flex:0 0 auto!important;color:#8ca1b2!important;text-align:left!important;padding:0 8px!important;
@@ -1095,7 +1095,7 @@ body.dashboard-page.sidebar-collapsed .professional-dashboard .pro-site-footer{m
   .overlay.open > .side.dashboard-mobile-drawer .mobile-drawer-close{
     display:grid!important;place-items:center!important;position:absolute!important;right:9px!important;top:10px!important;
     width:36px!important;height:36px!important;padding:0!important;border:1px solid rgba(255,255,255,.18)!important;border-radius:9px!important;
-    background:rgba(255,255,255,.08)!important;color:#fff!important;font-size:25px!important;line-height:1!important;z-index:20!important;
+    background:rgba(255,255,255,.08)!important;color:#fff!important;font-size:25px!important;line-height:1!important;z-index:99999!important;cursor:pointer!important;pointer-events:auto!important;touch-action:manipulation!important;
   }
 }
 @media(max-width:430px){

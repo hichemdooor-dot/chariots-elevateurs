@@ -17,7 +17,7 @@ function menuHTML(){
     <a href="preparation-livraison.html">${icon('<path d="M3 5h11v11H3z"/><path d="M14 9h4l3 3v4h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/>')}<span>Préparation livraison</span></a>
     <a href="chariots-prevus-livraison.html">${icon('<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M7 2v4M17 2v4M3 9h18"/><path d="M8 13h3M8 17h5"/>')}<span>Chariots prévus livraison</span></a>
     <a href="planning-livraisons.html">${icon('<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M7 2v4M17 2v4M3 9h18"/><path d="M8 13h2M12 13h2M16 13h0M8 17h2M12 17h2"/>')}<span>Planning des livraisons</span></a>
-    <a href="gestion.html">${icon('<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-5 6-5s6 1.7 6 5"/><path d="M17 11a3 3 0 1 0 0-6M17 15c2.4 0 4 1.5 4 4"/>')}<span>Gestion utilisateurs</span></a>
+    <a href="gestion.html" class="admin-only-nav hidden">${icon('<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-5 6-5s6 1.7 6 5"/><path d="M17 11a3 3 0 1 0 0-6M17 15c2.4 0 4 1.5 4 4"/>')}<span>Gestion utilisateurs</span></a>
     <a href="licence.html">${icon('<path d="M12 3l2.2 1.5 2.7-.1.8 2.6 2.2 1.6-1 2.5.5 2.7-2.5 1.1-.9 2.5-2.7-.2L12 21l-2.3-1.6-2.7.2-.9-2.5-2.5-1.1.5-2.7-1-2.5L5.3 8.6l.8-2.6 2.7.1L12 3z"/><circle cx="12" cy="12" r="3"/>')}<span>Paramètres</span></a>
     <a href="#" onclick="logout();return false" class="logout-link">${icon('<path d="M9 5H4v14h5M13 8l4 4-4 4M17 12H8"/>')}<span>Déconnexion</span></a>
   </div>`

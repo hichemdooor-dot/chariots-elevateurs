@@ -289,7 +289,7 @@ async function loadChariots(){
 
 function getUserDisplayName(){return currentUser?.user_metadata?.full_name||currentUser?.user_metadata?.name||currentUser?.email?.split('@')[0]||'Utilisateur'}
 function getUserRoleLabel(){return isAdmin()?'Administrateur':'Utilisateur'}
-function renderConnectedUser(){const name=getUserDisplayName(),role=getUserRoleLabel();if($('#welcomeUser'))$('#welcomeUser').textContent=name;if($('#userTopName'))$('#userTopName').textContent=name;if($('#userTopRole'))$('#userTopRole').textContent=role;if($('#userTopAvatar'))$('#userTopAvatar').textContent=String(name).trim().charAt(0).toUpperCase()||'U';if(isAdmin()){$('#userMenuAdmin')?.classList.remove('hidden')}}
+function renderConnectedUser(){const name=getUserDisplayName(),role=getUserRoleLabel();if($('#welcomeUser'))$('#welcomeUser').textContent=name;if($('#userTopName'))$('#userTopName').textContent=name;if($('#userTopRole'))$('#userTopRole').textContent=role;if($('#userTopAvatar'))$('#userTopAvatar').textContent=String(name).trim().charAt(0).toUpperCase()||'U';document.querySelectorAll('.admin-only-nav').forEach(el=>el.classList.toggle('hidden',!isAdmin()));if(isAdmin()){$('#userMenuAdmin')?.classList.remove('hidden')}}
 function toggleUserMenu(){const m=$('#userMenu');if(m)m.classList.toggle('hidden')}
 document.addEventListener('click',e=>{const w=document.querySelector('.user-menu-wrap');if(w&&!w.contains(e.target))$('#userMenu')?.classList.add('hidden')});
 async function profilePage(){if(!await session())return;renderConnectedUser();if($('#profileName'))$('#profileName').textContent=getUserDisplayName();if($('#profileEmail'))$('#profileEmail').textContent=currentUser?.email||'—';if($('#profileRole'))$('#profileRole').textContent=getUserRoleLabel();}
@@ -645,17 +645,38 @@ async function loadConnectionHistory(){
   const box=$('#connectionHistory');
   if(!box)return;
   try{
-    const {data,error}=await withTimeout(supabaseClient.from('maintenance').select('id,technicien,type,travaux,created_at,created_by').in('type',['Connexion utilisateur','Déconnexion utilisateur']).order('created_at',{ascending:false}).limit(100),8000);
+    const {data,error}=await withTimeout(supabaseClient.from('maintenance').select('id,technicien,type,travaux,created_at,created_by').in('type',['Connexion utilisateur','Déconnexion utilisateur']).order('created_at',{ascending:false}).limit(200),8000);
     if(error)throw error;
     const rows=data||[];
     if(!rows.length){box.innerHTML='<div class="empty">Aucune connexion enregistrée.</div>';return}
-    box.innerHTML=rows.map(x=>{
-      let details={};try{details=JSON.parse(x.travaux||'{}')}catch(e){}
-      const action=x.type==='Connexion utilisateur'?'Connexion':'Déconnexion';
-      const dt=x.created_at?new Date(x.created_at):null;
-      const when=dt&&!Number.isNaN(dt.getTime())?dt.toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'}):String(x.created_at||'—');
-      const device=String(details.user_agent||'').slice(0,90)||'—';
-      return `<div class="item sbi-connection-item" style="cursor:default"><div class="item-main"><div class="item-title">${esc(x.technicien||'Utilisateur')}</div><div class="meta"><span><strong>Action :</strong> ${esc(action)}</span><span><strong>Date :</strong> ${esc(when)}</span><span title="${esc(device)}"><strong>Appareil :</strong> ${esc(device)}</span></div></div><span class="badge ${action==='Connexion'?'':'red'}">${esc(action)}</span></div>`;
+
+    const groups=new Map();
+    rows.forEach(x=>{
+      const user=String(x.technicien||x.created_by||'Utilisateur').trim()||'Utilisateur';
+      if(!groups.has(user))groups.set(user,[]);
+      groups.get(user).push(x);
+    });
+
+    const sortedGroups=[...groups.entries()].sort((a,b)=>{
+      const ad=new Date(a[1][0]?.created_at||0).getTime();
+      const bd=new Date(b[1][0]?.created_at||0).getTime();
+      return bd-ad;
+    });
+
+    box.innerHTML=sortedGroups.map(([user,events])=>{
+      const latest=events[0];
+      const latestAction=latest.type==='Connexion utilisateur'?'Connexion':'Déconnexion';
+      const latestDt=latest.created_at?new Date(latest.created_at):null;
+      const latestWhen=latestDt&&!Number.isNaN(latestDt.getTime())?latestDt.toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'}):String(latest.created_at||'—');
+      const eventHtml=events.map(x=>{
+        let details={};try{details=JSON.parse(x.travaux||'{}')}catch(e){}
+        const action=x.type==='Connexion utilisateur'?'Connexion':'Déconnexion';
+        const dt=x.created_at?new Date(x.created_at):null;
+        const when=dt&&!Number.isNaN(dt.getTime())?dt.toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'}):String(x.created_at||'—');
+        const device=String(details.user_agent||'').slice(0,120)||'—';
+        return `<div class="connection-event"><div class="connection-event-main"><div class="connection-event-line"><span class="badge ${action==='Connexion'?'connection-green':'red'}">${esc(action)}</span><strong>${esc(when)}</strong></div><div class="meta"><span title="${esc(device)}"><strong>Appareil :</strong> ${esc(device)}</span></div></div></div>`;
+      }).join('');
+      return `<section class="connection-user-group"><div class="connection-user-head"><div><div class="connection-user-email">${esc(user)}</div><div class="meta">${events.length} événement${events.length>1?'s':''} · Dernière activité : ${esc(latestWhen)}</div></div><span class="badge ${latestAction==='Connexion'?'connection-green':'red'}">${esc(latestAction)}</span></div><div class="connection-user-events">${eventHtml}</div></section>`;
     }).join('');
   }catch(e){box.innerHTML='<div class="notice red">Impossible de charger l’historique des connexions : '+esc(friendlySupabaseError(e))+'</div>'}
 }

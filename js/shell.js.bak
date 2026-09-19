@@ -62,23 +62,7 @@ document.addEventListener('DOMContentLoaded',()=>{
         <button type="button" class="mobile-drawer-close dashboard-menu-close" aria-label="Fermer le menu" onclick="event.preventDefault();event.stopPropagation();closeMobileMenu();return false;">×</button>`;
     }
   });
-  // Populate only the actual navigation containers. Do NOT replace the
-  // mobile drawer itself, because it also contains the logo, promo image,
-  // footer and close button.
-  document.querySelectorAll('.dash-nav[data-nav], .side.desktop[data-nav]').forEach(x=>x.innerHTML=menuHTML());
-
-  // Keep the promotional image visible in the mobile drawer near the first
-  // navigation group, matching the compact mobile layout. The remaining
-  // navigation items stay below it and remain scrollable.
-  document.querySelectorAll('.overlay .dashboard-mobile-drawer').forEach(drawer=>{
-    const navWrap=drawer.querySelector('.dash-nav');
-    const promo=drawer.querySelector('.sidebar-promo');
-    if(navWrap && promo){
-      const separator=navWrap.querySelector('.nav-separator');
-      if(separator) navWrap.insertBefore(promo, separator.nextSibling);
-      else navWrap.appendChild(promo);
-    }
-  });
+  document.querySelectorAll('[data-nav]').forEach(x=>x.innerHTML=menuHTML());
   document.querySelectorAll('.menu-btn').forEach(btn=>{btn.setAttribute('aria-expanded','false');btn.setAttribute('aria-controls','mobileMenu');});
   // Robust close handling for the mobile drawer (works even when the drawer is rebuilt dynamically).
   document.addEventListener('click',e=>{

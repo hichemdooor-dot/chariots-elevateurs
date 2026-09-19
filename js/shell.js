@@ -62,33 +62,13 @@ document.addEventListener('DOMContentLoaded',()=>{
         <button type="button" class="mobile-drawer-close dashboard-menu-close" aria-label="Fermer le menu" onclick="event.preventDefault();event.stopPropagation();closeMobileMenu();return false;">×</button>`;
     }
   });
-  // Populate only the actual navigation containers. Do NOT replace the
-  // mobile drawer itself, because it also contains the logo, promo image,
-  // footer and close button.
-  document.querySelectorAll('.dash-nav[data-nav], .side.desktop[data-nav]').forEach(x=>x.innerHTML=menuHTML());
-
-  // Keep the promotional image visible in the mobile drawer near the first
-  // navigation group, matching the compact mobile layout. The remaining
-  // navigation items stay below it and remain scrollable.
-  document.querySelectorAll('.overlay .dashboard-mobile-drawer').forEach(drawer=>{
-    const navWrap=drawer.querySelector('.dash-nav');
-    const promo=drawer.querySelector('.sidebar-promo');
-    if(navWrap && promo){
-      const separator=navWrap.querySelector('.nav-separator');
-      if(separator) navWrap.insertBefore(promo, separator.nextSibling);
-      else navWrap.appendChild(promo);
-    }
-  });
+  document.querySelectorAll('[data-nav]').forEach(x=>x.innerHTML=menuHTML());
   document.querySelectorAll('.menu-btn').forEach(btn=>{btn.setAttribute('aria-expanded','false');btn.setAttribute('aria-controls','mobileMenu');});
-  // Robust close handling for the mobile drawer (works even when the drawer is rebuilt dynamically).
-  document.addEventListener('click',e=>{
-    const close=e.target.closest?.('.mobile-drawer-close');
-    if(close){e.preventDefault();e.stopPropagation();closeMobileMenu();}
-  },true);
-  document.addEventListener('pointerup',e=>{
-    const close=e.target.closest?.('.mobile-drawer-close');
-    if(close){e.preventDefault();e.stopPropagation();closeMobileMenu();}
-  },true);
+  document.querySelectorAll('.overlay').forEach((ov,i)=>{
+    const side=ov.querySelector('.side');
+    const close=side?.querySelector('.mobile-drawer-close');
+    if(close) close.addEventListener('click',closeMobileMenu);
+  });
   document.querySelectorAll('.brand').forEach(el=>{el.innerHTML='<img class="site-logo" src="assets/logo-sbi-hangcha.png" alt="SBI HANGCHA">';});
   document.querySelectorAll('.avatar').forEach(el=>{
     const wrap=document.createElement('div');
@@ -102,8 +82,5 @@ document.addEventListener('DOMContentLoaded',()=>{
     ov.querySelectorAll('.nav a').forEach(a=>a.addEventListener('click',()=>closeMobileMenu()));
   });
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMobileMenu()});
-  // Android/browser Back: close the drawer first when it is open.
-  window.addEventListener('popstate',()=>{const ov=document.querySelector('.overlay.open');if(ov)closeMobileMenu();});
-
   window.addEventListener('resize',()=>{if(window.innerWidth>800)closeMobileMenu()});
 });

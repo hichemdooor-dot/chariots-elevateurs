@@ -408,7 +408,7 @@ function formatPlannedDate(iso){if(!iso)return '—';try{return parseLocalDate(i
 function parseLocalDate(iso){const [y,m,d]=String(iso).split('-').map(Number);return new Date(y||2000,(m||1)-1,d||1)}
 function localISODateGlobal(d=new Date()){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${day}`}
 function isStock(c){return normalizeStatus(c.status)==='en stock'&&!String(c.client||'').trim()}
-function card(c){const id=String(c.qr_id||'');const delivered=isDelivered(c);const canDeliver=isAdmin()&&!delivered;return `<div class="item" onclick="location.href='chariot.html?id=${encodeURIComponent(id)}'"><div class="item-main"><div class="item-title">${esc(id)}</div><div class="meta">${esc(c.chassis||'—')} • ${esc(c.engine||'—')} • ${esc(fmtCapacity(c.capacity))}</div>${c.client?`<div class="client-line"><strong>Client :</strong> ${esc(c.client)}</div>`:''}<div class="recent-time">${c.updated_at?'Mis à jour : '+new Date(c.updated_at).toLocaleString('fr-FR'):''}</div></div><span class="badge ${statusClass(c.status)}">${esc(c.status||c.stock||'—')}</span>${canDeliver?`<button class="btn delivered-action" onclick="event.stopPropagation();markDelivered('${esc(id)}')">Livrer</button>`:''}</div>`}
+function card(c){const id=String(c.qr_id||'');const delivered=isDelivered(c);const canDeliver=isAdmin()&&!delivered;const href='chariot.html?id='+encodeURIComponent(id);return `<div class="item"><a class="item-open-link" href="${href}" aria-label="Ouvrir le chariot ${esc(id)}"></a><div class="item-main"><div class="item-title">${esc(id)}</div><div class="meta">${esc(c.chassis||'—')} • ${esc(c.engine||'—')} • ${esc(fmtCapacity(c.capacity))}</div>${c.client?`<div class="client-line"><strong>Client :</strong> ${esc(c.client)}</div>`:''}<div class="recent-time">${c.updated_at?'Mis à jour : '+new Date(c.updated_at).toLocaleString('fr-FR'):''}</div></div><span class="badge ${statusClass(c.status)}">${esc(c.status||c.stock||'—')}</span>${canDeliver?`<button class="btn delivered-action" onclick="event.stopPropagation();markDelivered('${esc(id)}')">Livrer</button>`:''}</div>`}
 async function dashboardPage(){
   if(!await session())return;
   renderConnectedUser();
@@ -434,7 +434,7 @@ async function dashboardPage(){
     const msg='Erreur de chargement des chariots : '+friendlySupabaseError(dataLoadError);
     if($('#latestRows'))$('#latestRows').innerHTML=`<tr><td colspan="5" class="dash-empty">${esc(msg)}</td></tr>`;
     if($('#activityList'))$('#activityList').innerHTML='<div class="dash-empty">Données indisponibles.</div>';
-    if($('#upcomingDeliveries'))$('#upcomingDeliveries').innerHTML='<div class="dash-empty">Données indisponibles.</div>';
+    if($('#dashboardUpcomingTimeline'))$('#dashboardUpcomingTimeline').innerHTML='<div class="dash-empty">Données indisponibles.</div>';
     return;
   }
 
@@ -448,7 +448,7 @@ async function dashboardPage(){
   }catch(e){
     console.warn('Prochaines livraisons dashboard',e);
     if($('#plannedKpi'))$('#plannedKpi').textContent='—';
-    if($('#upcomingDeliveries'))$('#upcomingDeliveries').innerHTML='<div class="dash-empty">Impossible de charger les livraisons prévues.</div>';
+    if($('#dashboardUpcomingTimeline'))$('#dashboardUpcomingTimeline').innerHTML='<div class="dash-empty">Impossible de charger les livraisons prévues.</div>';
   }
 
   try{await loadDashboardNotifications()}catch(e){
@@ -456,9 +456,26 @@ async function dashboardPage(){
     if($('#activityList'))$('#activityList').innerHTML='<div class="dash-empty">Aucune activité récente.</div>';
   }
 }
+function renderDashboardWatch(){
+  const set=(id,value)=>{const el=$('#'+id);if(el)el.textContent=String(value)};
+  const today=localISODateGlobal(new Date());
+  const planned=[...DELIVERY_PLANS].filter(p=>p&&p.date&&p.qr);
+  const plannedQrs=new Set(planned.map(p=>String(p.qr)));
+  const getMachine=(qr)=>CHARIOTS.find(c=>String(c.qr_id)===String(qr));
+  const deliveriesToday=planned.filter(p=>p.date===today).length;
+  const toPrepare=planned.filter(p=>!isDelivered(getMachine(p.qr))).length;
+  const reservedUnplanned=CHARIOTS.filter(c=>normalizeStatus(c.status)==='reserve'&&!isDelivered(c)&&!plannedQrs.has(String(c.qr_id))).length;
+  const lateDeliveries=planned.filter(p=>p.date<today&&!isDelivered(getMachine(p.qr))).length;
+  const deliveredToday=CHARIOTS.filter(c=>isDelivered(c)&&String(c.delivery_date||'')===today).length;
+  set('watchToday',deliveriesToday);
+  set('watchPrepare',toPrepare);
+  set('watchUnplanned',reservedUnplanned);
+  set('watchLate',lateDeliveries);
+  set('watchDeliveredToday',deliveredToday);
+}
 function renderDashboardLatest(){
   const rows=[...CHARIOTS].sort((a,b)=>new Date(b.created_at||b.updated_at||0)-new Date(a.created_at||a.updated_at||0)).slice(0,5);
-  $('#latestRows').innerHTML=rows.map(c=>`<tr onclick="location.href='chariot.html?id=${encodeURIComponent(c.qr_id||'')}'" style="cursor:pointer"><td><b>${esc(c.chassis||c.qr_id||'—')}</b>${c.client?`<div class="dash-client"><strong>Client :</strong> ${esc(c.client)}</div>`:''}</td><td>${esc(c.engine||'—')}</td><td>${esc(fmtCapacity(c.capacity))}</td><td><span class="dash-status ${isDelivered(c)?'delivered':''}">${esc(c.status||'—')}</span></td><td>${c.created_at?new Date(c.created_at).toLocaleDateString('fr-FR'):c.updated_at?new Date(c.updated_at).toLocaleDateString('fr-FR'):'—'}</td></tr>`).join('')||'<tr><td colspan="5" class="dash-empty">Aucun chariot.</td></tr>';
+  $('#latestRows').innerHTML=rows.map(c=>{const href='chariot.html?id='+encodeURIComponent(c.qr_id||'');return `<tr onclick="location.href='${href}'" style="cursor:pointer"><td><a class="dash-chariot-link" href="${href}"><b>${esc(c.chassis||c.qr_id||'—')}</b>${c.client?`<div class="dash-client"><strong>Client :</strong> ${esc(c.client)}</div>`:''}</a></td><td>${esc(c.engine||'—')}</td><td>${esc(fmtCapacity(c.capacity))}</td><td><span class="dash-status ${isDelivered(c)?'delivered':''}">${esc(c.status||'—')}</span></td><td>${c.created_at?new Date(c.created_at).toLocaleDateString('fr-FR'):c.updated_at?new Date(c.updated_at).toLocaleDateString('fr-FR'):'—'}</td></tr>`}).join('')||'<tr><td colspan="5" class="dash-empty">Aucun chariot.</td></tr>';
 }
 function parseEventPayload(value){
   if(value&&typeof value==='object')return value;
@@ -530,20 +547,23 @@ async function loadDashboardNotifications(){
   const unread=rows.filter(x=>!localStorage.getItem('sbi_notif_read_'+x.id)).length;
   const bell=$('#notificationCount'); if(bell) bell.textContent=unread>99?'99+':String(unread);
   const titleCount=$('#notificationCountTitle'); if(titleCount) titleCount.textContent=String(unread);
-  $('#notificationsList').innerHTML=rows.length?`<div class="alerts-table-wrap"><table class="alerts-table"><thead><tr><th>Chariot</th><th>Type</th><th>Statut</th><th>Date</th></tr></thead><tbody>${rows.slice(0,5).map((x)=>{
+  const notificationsList=$('#notificationsList');
+  if(notificationsList) notificationsList.innerHTML=rows.length?`<div class="alerts-table-wrap"><table class="alerts-table"><thead><tr><th>Chariot</th><th>Type</th><th>Statut</th><th>Date</th></tr></thead><tbody>${rows.slice(0,5).map((x)=>{
     const c=CHARIOTS.find(v=>String(v.qr_id)===String(x.qr_id));
     const ev=formatMaintenanceEvent(x,c);
     const type=String(x.type||ev.title||'Intervention').replace(/Planification livraison/i,'Livraison').replace(/Modification chariot/i,'Modification');
     const status=ev.kind==='delivered'?'Livré':ev.kind==='cancel'?'Annulée':ev.kind==='delivery'?'Planifiée':'À faire';
     const statusClass=status==='Livré'?'delivered':status==='Planifiée'?'planned':status==='Annulée'?'cancelled':'todo';
-    return `<tr onclick="location.href='chariot.html?id=${encodeURIComponent(x.qr_id)}'" style="cursor:pointer"><td><b>${esc(c?.chassis||x.qr_id||'—')}</b></td><td>${esc(type)}</td><td><span class="alert-status ${statusClass}">${esc(status)}</span></td><td>${esc(formatPlannedDate(x.date)||'—')}</td></tr>`;
+    const href='chariot.html?id='+encodeURIComponent(x.qr_id); return `<tr onclick="location.href='${href}'" style="cursor:pointer"><td><a class="dash-chariot-link" href="${href}"><b>${esc(c?.chassis||x.qr_id||'—')}</b></a></td><td>${esc(type)}</td><td><span class="alert-status ${statusClass}">${esc(status)}</span></td><td>${esc(formatPlannedDate(x.date)||'—')}</td></tr>`;
   }).join('')}</tbody></table></div>`:'<div class="dash-empty">Aucune alerte récente.</div>';
   const acts=rows.slice(0,5);
-  $('#activityList').innerHTML=acts.length?acts.map((x,i)=>{
+  const activityList=$('#activityList');
+  if(!activityList)return;
+  activityList.innerHTML=acts.length?acts.map((x,i)=>{
     const c=CHARIOTS.find(v=>String(v.qr_id)===String(x.qr_id));
     const ev=formatMaintenanceEvent(x,c);
     const line=ev.kind==='delivered'?'green':ev.kind==='delivery'?'blue':ev.kind==='cancel'?'orange':i%3===1?'orange':'';
-    return `<div class="activity-item"><span class="activity-line ${line}"></span><span class="activity-icon">${ev.icon}</span><div class="activity-main"><b>${esc(ev.title)}</b><div>${esc(ev.details)}</div></div><span class="activity-time">${x.created_at?relativeTime(x.created_at):''}</span></div>`;
+    const href=x.qr_id?'chariot.html?id='+encodeURIComponent(x.qr_id):'historique.html'; return `<div class="activity-item"><span class="activity-line ${line}"></span><span class="activity-icon">${ev.icon}</span><div class="activity-main"><a class="dash-chariot-link" href="${href}"><b>${esc(ev.title)}</b></a><div>${esc(ev.details)}</div></div><span class="activity-time">${x.created_at?relativeTime(x.created_at):''}</span></div>`;
   }).join(''):'<div class="dash-empty">Aucune activité.</div>';
 }
 function relativeTime(iso){const ms=Date.now()-new Date(iso).getTime(),m=Math.max(0,Math.floor(ms/60000));if(m<1)return'À l’instant';if(m<60)return`Il y a ${m} min`;const h=Math.floor(m/60);if(h<24)return`Il y a ${h} h`;const d=Math.floor(h/24);return`Il y a ${d} j`}
@@ -722,6 +742,7 @@ async function deliveryPlanningPage(){
     if(!DELIVERY_PLANS.length)alert('Impossible de charger le planning partagé : '+friendlySupabaseError(e));
   }
   let plans=[...DELIVERY_PLANS];
+  renderDashboardWatch();
   const els={week:$('#weekDays'),list:$('#deliveryList'),range:$('#rangeTitle'),modal:$('#deliveryModal'),form:$('#deliveryForm'),search:$('#deliverySearch'),searchResults:$('#deliverySearchResults'),clearSearch:$('#clearDeliverySearch'),chariot:$('#deliveryChariot'),date:$('#deliveryDate'),time:$('#deliveryTime'),driver:$('#deliveryDriver'),destination:$('#deliveryDestination'),note:$('#deliveryNote'),noteCount:$('#deliveryNoteCount'),close:$('#closeDeliveryModal'),today:$('#todayBtn'),prev:$('#prevWeek'),next:$('#nextWeek'),plan:$('#planBtn'),cancel:$('#cancelDelivery'),todayCount:$('#todayCount'),weekCount:$('#weekCount'),plannedCount:$('#plannedCount')};
   let selectedDate=localDateISO(new Date()), weekStart=startOfWeek(new Date()), refreshBusy=false;
   function localDateISO(d){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${day}`}
@@ -755,7 +776,7 @@ async function deliveryPlanningPage(){
   function weekPlans(){const a=localDateISO(weekStart),b=localDateISO(addDays(weekStart,6));return plans.filter(p=>p.date>=a&&p.date<=b)}
   function renderStats(){const today=localDateISO(new Date());els.todayCount.textContent=plans.filter(p=>p.date===today).length;els.weekCount.textContent=weekPlans().length;els.plannedCount.textContent=plans.length}
   function renderWeek(){const dates=Array.from({length:7},(_,i)=>addDays(weekStart,i));els.range.textContent=`Semaine du ${dates[0].toLocaleDateString('fr-FR',{day:'2-digit',month:'long'})} au ${dates[6].toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})}`;els.week.innerHTML=dates.map(d=>{const iso=localDateISO(d);const dayPlans=plans.filter(p=>p.date===iso);const n=dayPlans.length;const delivered=dayPlans.filter(p=>isDelivered(getMachine(p.qr))).length;return `<button type="button" class="delivery-day ${iso===selectedDate?'active':''}" data-date="${iso}"><div class="dow">${esc(d.toLocaleDateString('fr-FR',{weekday:'long'}))}</div><div class="date">${esc(d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}))}</div><div class="num">${n} livraison${n!==1?'s':''}</div><div class="delivered-num">${delivered} chariot${delivered!==1?'s':''} livré${delivered!==1?'s':''}</div></button>`}).join('');els.week.querySelectorAll('[data-date]').forEach(b=>b.onclick=()=>{selectedDate=b.dataset.date;renderWeek();renderList()})}
-  function renderList(){let rows=plans.filter(p=>p.date===selectedDate).sort((a,b)=>(a.time||'99:99').localeCompare(b.time||'99:99'));els.list.innerHTML=rows.length?rows.map(p=>{const c=getMachine(p.qr);return `<div class="delivery-row"><div class="delivery-time">${esc(p.time||'—')}</div><div class="delivery-main"><div class="delivery-title">${esc(c?.chassis||p.qr||'Chariot')}</div><div class="delivery-meta">${esc(c?.engine||'—')} · ${esc(fmtCapacity(c?.capacity))} · ${esc(c?.client||'Sans client')}</div>${p.driver?`<div class="delivery-meta"><strong>Chauffeur :</strong> ${esc(p.driver)}</div>`:''}${p.destination?`<div class="delivery-meta"><strong>Destination :</strong> ${esc(p.destination)}</div>`:''}${p.note?`<div class="delivery-meta">${esc(p.note)}</div>`:''}</div><div class="delivery-actions">${isAdmin()&&!isDelivered(c)?`<button class="btn deliver-plan-btn" type="button" data-deliver-plan="${esc(p.qr)}" data-plan-id="${esc(p.id)}">Livrer</button>`:''}<button class="btn light" type="button" data-edit="${esc(p.id)}">Modifier</button><button class="btn light" type="button" data-delete="${esc(p.id)}">Supprimer</button></div></div>`}).join(''):`<div class="delivery-empty">Aucune livraison planifiée pour ${esc(formatLong(selectedDate))}.</div>`;els.list.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openEdit(b.dataset.edit));els.list.querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>removePlan(b.dataset.delete));els.list.querySelectorAll('[data-deliver-plan]').forEach(b=>b.onclick=()=>deliverPlanned(b.dataset.deliverPlan,b.dataset.planId));renderStats()}
+  function renderList(){let rows=plans.filter(p=>p.date===selectedDate).sort((a,b)=>(a.time||'99:99').localeCompare(b.time||'99:99'));els.list.innerHTML=rows.length?rows.map(p=>{const c=getMachine(p.qr);const href='chariot.html?id='+encodeURIComponent(p.qr||'');return `<div class="delivery-row"><div class="delivery-time">${esc(p.time||'—')}</div><div class="delivery-main"><a class="delivery-chariot-link" href="${href}"><div class="delivery-title">${esc(c?.chassis||p.qr||'Chariot')}</div></a><div class="delivery-meta">${esc(c?.engine||'—')} · ${esc(fmtCapacity(c?.capacity))} · ${esc(c?.client||'Sans client')}</div>${p.driver?`<div class="delivery-meta"><strong>Chauffeur :</strong> ${esc(p.driver)}</div>`:''}${p.destination?`<div class="delivery-meta"><strong>Destination :</strong> ${esc(p.destination)}</div>`:''}${p.note?`<div class="delivery-meta">${esc(p.note)}</div>`:''}</div><div class="delivery-actions">${isAdmin()&&!isDelivered(c)?`<button class="btn deliver-plan-btn" type="button" data-deliver-plan="${esc(p.qr)}" data-plan-id="${esc(p.id)}">Livrer</button>`:''}<button class="btn light" type="button" data-edit="${esc(p.id)}">Modifier</button><button class="btn light" type="button" data-delete="${esc(p.id)}">Supprimer</button></div></div>`}).join(''):`<div class="delivery-empty">Aucune livraison planifiée pour ${esc(formatLong(selectedDate))}.</div>`;els.list.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openEdit(b.dataset.edit));els.list.querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>removePlan(b.dataset.delete));els.list.querySelectorAll('[data-deliver-plan]').forEach(b=>b.onclick=()=>deliverPlanned(b.dataset.deliverPlan,b.dataset.planId));renderStats()}
   async function deliverPlanned(qr,id){if(!requireAdminForDelivery())return;const c=getMachine(qr);if(!c)return alert('Chariot introuvable.');if(isDelivered(c))return;if(!confirm('Passer le chariot '+(c.chassis||qr)+' directement au statut « Livré » ?'))return;const now=new Date(),deliveryDate=localDateISO(now),updatedAt=now.toISOString();const {error}=await supabaseClient.from('chariots').update({status:'Livré',delivery_date:deliveryDate,updated_at:updatedAt}).eq('qr_id',qr);if(error){alert('Erreur : '+friendlySupabaseError(error));return}try{await supabaseClient.from('maintenance').insert({qr_id:qr,date:deliveryDate,technicien:currentUser.email,type:'Statut',travaux:`Statut : ${c.status||'—'} → Livré`,created_by:currentUser.id})}catch(e){console.warn('Notification livraison non enregistrée',e)}c.status='Livré';c.delivery_date=deliveryDate;c.updated_at=updatedAt;cacheDeliveryPlans(plans);renderWeek();renderList();alert('Chariot '+(c.chassis||qr)+' passé au statut « Livré ».')}
   function fillDeliverySuggestions(){const drivers=[...new Set(plans.map(p=>String(p.driver||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fr'));const destinations=[...new Set(plans.map(p=>String(p.destination||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fr'));if(els.driverOptions)els.driverOptions.innerHTML=drivers.map(v=>`<option value="${esc(v)}"></option>`).join('');if(els.destinationOptions)els.destinationOptions.innerHTML=destinations.map(v=>`<option value="${esc(v)}"></option>`).join('')}
   function updateNoteCount(){if(els.noteCount&&els.note)els.noteCount.textContent=`${els.note.value.length}/200`}
@@ -784,9 +805,6 @@ async function renderUpcomingDeliveriesFromPlanning(){
   let cancelRows=[];
   let serverLoaded=false;
 
-  // Use the same source as Planning des livraisons: maintenance events.
-  // Query the two event types separately for maximum compatibility with
-  // existing Supabase/RLS configurations.
   try{
     const [plannedRes,cancelRes]=await Promise.all([
       withTimeout(supabaseClient.from('maintenance').select('id,qr_id,date,type,travaux,created_at,created_by').eq('type','Planification livraison').order('created_at',{ascending:true}).limit(1000),7000),
@@ -814,7 +832,6 @@ async function renderUpcomingDeliveriesFromPlanning(){
     plans.push(payload);
   }
 
-  // Fallback to the shared cache only when the live planning read failed.
   if(!serverLoaded){
     const cached=readCachedDeliveryPlans();
     plans=Array.isArray(cached)?cached.filter(p=>p&&p.qr&&p.date):[];
@@ -822,28 +839,45 @@ async function renderUpcomingDeliveriesFromPlanning(){
     cacheDeliveryPlans(plans);
   }
 
+  const getMachine=(qr)=>CHARIOTS.find(x=>String(x.qr_id)===String(qr));
   const upcoming=plans
-    .filter(p=>String(p.date)>=today)
+    .filter(p=>String(p.date)>=today&&!isDelivered(getMachine(p.qr)))
     .sort((a,b)=>String(a.date+' '+(a.time||'99:99')).localeCompare(String(b.date+' '+(b.time||'99:99'))));
 
   const planned=document.getElementById('plannedKpi');
   if(planned)planned.textContent=String(upcoming.length);
 
-  const el=document.getElementById('upcomingDeliveries');
+  const el=document.getElementById('dashboardUpcomingTimeline');
   if(!el)return;
 
-  const rows=upcoming.slice(0,5);
+  const rows=upcoming.slice(0,4);
   if(!rows.length){
     el.innerHTML='<div class="dash-empty">Aucune livraison à venir dans le planning.</div>';
     return;
   }
 
-  el.innerHTML=`<table><thead><tr><th>Date</th><th>Client</th><th>Destination</th><th>Chariot</th><th>Chauffeur</th></tr></thead><tbody>${rows.map(p=>{
-    const c=CHARIOTS.find(x=>String(x.qr_id)===String(p.qr));
-    const dateObj=parseLocalDate(p.date);
-    const dateText=dateObj.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
-    return `<tr><td><span class="upcoming-badge">${esc(dateText)}${p.time?' · '+esc(p.time):''}</span></td><td>${esc(c?.client||'Sans client')}</td><td>${esc(p.destination||'—')}</td><td>${esc(c?.chassis||c?.qr_id||p.qr)}</td><td>${esc(p.driver||'—')}</td></tr>`;
-  }).join('')}</tbody></table>`;
+  const todayObj=parseLocalDate(today);
+  const tomorrowObj=parseLocalDate(today); tomorrowObj.setDate(tomorrowObj.getDate()+1);
+  const dayLabel=(iso)=>{
+    const d=parseLocalDate(iso);
+    if(d.getTime()===todayObj.getTime())return "Aujourd'hui";
+    if(d.getTime()===tomorrowObj.getTime())return 'Demain';
+    return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}).replace('.', '');
+  };
+
+  el.innerHTML=rows.map((p,index)=>{
+    const c=getMachine(p.qr);
+    const chassis=c?.chassis||c?.qr_id||p.qr;
+    const time=String(p.time||'').trim()||'—';
+    const destination=String(p.destination||'').trim()||'Destination non définie';
+    const client=String(c?.client||'').trim();
+    return `<a class="timeline-item" href="chariot.html?id=${encodeURIComponent(p.qr)}">\
+      <div class="timeline-date"><strong>${esc(time)}</strong><span>${esc(dayLabel(p.date))}</span></div>\
+      <div class="timeline-track"><span class="timeline-dot ${index===0?'active':''}"></span>${index<rows.length-1?'<span class="timeline-line"></span>':''}</div>\
+      <div class="timeline-main"><div class="timeline-title">${esc(chassis)}</div><div class="timeline-meta">${esc(destination)}${client?' · '+esc(client):''}</div></div>\
+      <span class="timeline-status">Prévu</span>\
+    </a>`;
+  }).join('');
 }
 
 // Kept as a compatibility wrapper for older code paths.

@@ -239,6 +239,13 @@ async function restoreLoginSession(){
 
 
 const CHARIOT_SELECT_FIELDS='*';
+function normalizeEngineName(value){
+  const v=String(value??'').trim();
+  return /^XINSHAI$/i.test(v)?'XINCHAI':v;
+}
+function normalizeChariotEngine(c){
+  return c&&typeof c==='object'?{...c,engine:normalizeEngineName(c.engine)}:c;
+}
 async function loadChariots(){
   // Keep the original Supabase query as the primary path because this is the
   // schema/query that the working version of the application used.
@@ -249,7 +256,7 @@ async function loadChariots(){
     );
     const {data,error}=result||{};
     if(error)throw error;
-    CHARIOTS=Array.isArray(data)?data:[];
+    CHARIOTS=(Array.isArray(data)?data:[]).map(normalizeChariotEngine);
     // Newest first. Prefer the same ordering semantics as the original app,
     // while still using timestamps when present.
     CHARIOTS.sort((a,b)=>{
@@ -266,7 +273,7 @@ async function loadChariots(){
       const result=await withTimeout(supabaseClient.from('chariots').select('*'),10000);
       const {data,error}=result||{};
       if(error)throw error;
-      CHARIOTS=Array.isArray(data)?data:[];
+      CHARIOTS=(Array.isArray(data)?data:[]).map(normalizeChariotEngine);
       CHARIOTS.sort((a,b)=>{
         const da=new Date(a.created_at||a.updated_at||0).getTime();
         const db=new Date(b.created_at||b.updated_at||0).getTime();
@@ -279,7 +286,7 @@ async function loadChariots(){
       // Do not silently convert a connection/permission error into a fake 0.
       try{
         const cached=JSON.parse(localStorage.getItem('sbi_chariots_cache_v2')||localStorage.getItem('sbi_chariots_cache_v1')||'null');
-        if(Array.isArray(cached?.rows)&&cached.rows.length){CHARIOTS=cached.rows;return CHARIOTS}
+        if(Array.isArray(cached?.rows)&&cached.rows.length){CHARIOTS=cached.rows.map(normalizeChariotEngine);return CHARIOTS}
       }catch(_){ }
       throw fallbackError||primaryError;
     }
@@ -355,6 +362,7 @@ async function resolvePasswordRequest(id){
 
 function statusClass(v){const s=normalizeStatus(v);return s==='en stock'?'status-stock':s==='livre'?'status-delivered':s.includes('reserve')?'status-reserved':s.includes('preparation')?'status-preparation':s.includes('pret a livrer')?'status-ready':s.includes('bloque')||s.includes('non conforme')?'status-blocked':s.includes('fabrication')?'status-fabrication':''}
 function isDelivered(c){return normalizeStatus(c.status)==='livre'||!!c.delivery_date}
+function isReserved(c){return normalizeStatus(c.status)==='reserve'}
 const AUTO_WORKFLOW_FORWARD={
   'en fabrication':'En stock',
   'en stock':'Réservé',
@@ -688,7 +696,7 @@ async function notificationsPage(){
   });
   renderNotificationsPage();
 }
-async function chariotsPage(){if(!await session())return;await loadChariots();const initialSearch=new URLSearchParams(window.location.search).get('search')||'';const searchEl=$('#search');if(searchEl&&initialSearch){searchEl.value=initialSearch;}const ids=['engineFilter','capacityFilter','mastFilter','heightFilter'];function fill(){const defs=[['engineFilter','engine','Moteur : Tous'],['capacityFilter','capacity','Capacité : Toutes'],['mastFilter','mast_type','Mât : Tous'],['heightFilter','lifting_height','Hauteur : Toutes']];defs.forEach(([id,k,label])=>{const e=$('#'+id),old=e.value;if(!e)return;let vals;if(id==='capacityFilter'){vals=['2.5T','3T','3.8T','5T','7T','10T','12T']}else{vals=[...new Set(CHARIOTS.map(c=>String(c[k]||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}))}e.innerHTML=`<option value="">${label}</option>`+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');if(vals.includes(old))e.value=old})}function render(){fill();let rows=CHARIOTS;const sf=$('#statusFilter')?.value||'';if(sf==='stock')rows=rows.filter(isStock);if(sf==='delivered')rows=rows.filter(isDelivered);const q=$('#search')?.value.trim().toLowerCase()||'';const fs=[['engineFilter','engine'],['capacityFilter','capacity'],['mastFilter','mast_type'],['heightFilter','lifting_height']];rows=rows.filter(c=>(!q||[c.qr_id,c.chassis,c.engine,c.client,c.capacity].some(v=>String(v||'').toLowerCase().includes(q)))&&fs.every(([id,k])=>!$('#'+id)?.value||norm(c[k])===norm($('#'+id).value)));$('#count').textContent=rows.length+' chariot'+(rows.length!==1?'s':'');$('#list').innerHTML=rows.map(card).join('')||'<div class="empty">Aucun résultat.</div>'}$('#search').addEventListener('input',render);$('#statusFilter').addEventListener('change',render);ids.forEach(id=>$('#'+id).addEventListener('change',render));$('#clearFilters').onclick=()=>{ids.forEach(id=>$('#'+id).value='');$('#statusFilter').value='';$('#search').value='';render()};render()}
+async function chariotsPage(){if(!await session())return;await loadChariots();const initialSearch=new URLSearchParams(window.location.search).get('search')||'';const searchEl=$('#search');if(searchEl&&initialSearch){searchEl.value=initialSearch;}const ids=['engineFilter','capacityFilter','mastFilter','heightFilter'];function fill(){const defs=[['engineFilter','engine','Moteur : Tous'],['capacityFilter','capacity','Capacité : Toutes'],['mastFilter','mast_type','Mât : Tous'],['heightFilter','lifting_height','Hauteur : Toutes']];defs.forEach(([id,k,label])=>{const e=$('#'+id),old=e.value;if(!e)return;let vals;if(id==='capacityFilter'){vals=['2.5T','3T','3.8T','5T','7T','10T','12T']}else{vals=[...new Set(CHARIOTS.map(c=>String(c[k]||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}))}e.innerHTML=`<option value="">${label}</option>`+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');if(vals.includes(old))e.value=old})}function render(){fill();let rows=CHARIOTS;const sf=$('#statusFilter')?.value||'';if(sf==='stock')rows=rows.filter(isStock);if(sf==='reserved')rows=rows.filter(isReserved);if(sf==='delivered')rows=rows.filter(isDelivered);const q=$('#search')?.value.trim().toLowerCase()||'';const fs=[['engineFilter','engine'],['capacityFilter','capacity'],['mastFilter','mast_type'],['heightFilter','lifting_height']];rows=rows.filter(c=>(!q||[c.qr_id,c.chassis,c.engine,c.client,c.capacity].some(v=>String(v||'').toLowerCase().includes(q)))&&fs.every(([id,k])=>!$('#'+id)?.value||norm(c[k])===norm($('#'+id).value)));$('#count').textContent=rows.length+' chariot'+(rows.length!==1?'s':'');$('#list').innerHTML=rows.map(card).join('')||'<div class="empty">Aucun résultat.</div>'}$('#search').addEventListener('input',render);$('#statusFilter').addEventListener('change',render);ids.forEach(id=>$('#'+id).addEventListener('change',render));$('#clearFilters').onclick=()=>{ids.forEach(id=>$('#'+id).value='');$('#statusFilter').value='';$('#search').value='';render()};render()}
 async function detailPage(){
   if(!await session())return;
   await loadChariots();

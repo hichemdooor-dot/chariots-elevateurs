@@ -71,7 +71,8 @@ async function preparationLivraisonPage(){
     // le chariot de la liste des chariots disponibles pour préparation.
     window.location.reload();
   }
-  baseRows=CHARIOTS.filter(c=>{const st=normalizeStatus(c.status);return st!=='livré' && st!=='préparation livraison';});
+  // Seuls les chariots avec les statuts autorisés pour la préparation sont affichés.
+  baseRows=CHARIOTS.filter(c=>{const st=normalizeStatus(c.status);return ['en fabrication','reserve','en stock'].includes(st);});
   buildFilters();
   [els.search,els.status,els.engine,els.capacity,els.mast,els.height].forEach(el=>el.addEventListener(el===els.search?'input':'change',render));
   els.reset.onclick=()=>{[els.search,els.status,els.engine,els.capacity,els.mast,els.height].forEach(el=>el.value='');render()};

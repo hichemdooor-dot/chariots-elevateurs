@@ -355,6 +355,58 @@ async function resolvePasswordRequest(id){
 
 function statusClass(v){const s=normalizeStatus(v);return s==='en stock'?'status-stock':s==='livre'?'status-delivered':s.includes('reserve')?'status-reserved':s.includes('preparation')?'status-preparation':s.includes('pret a livrer')?'status-ready':s.includes('bloque')||s.includes('non conforme')?'status-blocked':s.includes('fabrication')?'status-fabrication':''}
 function isDelivered(c){return normalizeStatus(c.status)==='livre'||!!c.delivery_date}
+const AUTO_WORKFLOW_FORWARD={
+  'en fabrication':'En stock',
+  'en stock':'Réservé',
+  'reserve':'Préparation livraison',
+  'preparation livraison':'Prêt à livrer',
+  'pret a livrer':'Livré'
+};
+function statusFromStock(stock,client=''){if(String(client||'').trim())return 'Réservé';return normalizeStatus(stock)==='fabrication'?'En fabrication':(String(stock||'').trim()?'En stock':'En fabrication');}
+function automaticStatusForChariot(old,p){
+  if(!old)return statusFromStock(p.stock,p.client);
+  const oldStatus=normalizeStatus(old.status),stock=normalizeStatus(p.stock),client=String(p.client||'').trim();
+  if(['preparation livraison','pret a livrer','livre','bloque / non conforme'].includes(oldStatus))return old.status;
+  if(oldStatus==='reserve'&&!client&&!getDeliveryPlan(old.qr_id))return stock==='fabrication'?'En fabrication':(p.stock?'En stock':old.status);
+  if(oldStatus==='en stock'&&client)return 'Réservé';
+  if(oldStatus==='en fabrication'&&stock!=='fabrication'&&p.stock)return 'En stock';
+  if(oldStatus==='en fabrication'&&client)return 'Réservé';
+  return old.status||statusFromStock(p.stock,p.client);
+}
+async function transitionChariotStatus(qrId,nextStatus,reason=''){
+  if(!requireValidLicense())return false;
+  if(!currentUser){alert('Connexion requise.');return false}
+  const c=CHARIOTS.find(x=>String(x.qr_id)===String(qrId));
+  if(!c){alert('Chariot introuvable.');return false}
+  const from=normalizeStatus(c.status),to=normalizeStatus(nextStatus);
+  if(from===to)return true;
+  if(AUTO_WORKFLOW_FORWARD[from]!==nextStatus&&!(isAdmin()&&['livre','bloque / non conforme'].includes(to))){alert(`Transition non autorisée : ${c.status||'—'} → ${nextStatus}.`);return false}
+  const now=new Date(),updatedAt=now.toISOString(),payload={status:nextStatus,updated_at:updatedAt};
+  if(to==='livre')payload.delivery_date=localDateISO(now);
+  const {error}=await supabaseClient.from('chariots').update(payload).eq('qr_id',qrId);
+  if(error){alert('Erreur : '+friendlySupabaseError(error));return false}
+  try{await supabaseClient.from('maintenance').insert({qr_id:qrId,date:localDateISO(now),technicien:currentUser.email,type:'Statut',travaux:reason||`Statut : ${c.status||'—'} → ${nextStatus}`,created_by:currentUser.id})}catch(e){console.warn('Historique de statut non enregistré',e)}
+  Object.assign(c,payload);return true;
+}
+function setupAutomaticStatusField(old){
+  const display=document.getElementById('statusDisplay'),hidden=document.getElementById('statusAuto');if(!display||!hidden)return;
+  const stock=document.querySelector('[name="stock"]')?.value||'',client=document.querySelector('[name="client"]')?.value||'',value=String(old?.status||statusFromStock(stock,client));
+  display.value=value;hidden.value=value;
+  if(!isAdmin()){display.disabled=true;display.title='Statut géré automatiquement par le workflow.';}
+  else{display.disabled=false;display.title='Admin : intervention manuelle possible.';display.addEventListener('change',()=>{hidden.value=display.value});}
+}
+function renderWorkflowAction(c,planned){
+  const b=document.getElementById('workflowAction');if(!b)return;
+  b.style.display='none';b.onclick=null;b.textContent='';b.className='btn';
+  const st=normalizeStatus(c.status),id=String(c.qr_id||'');
+  if(st==='en fabrication'){b.textContent='Passer en stock';b.style.display='inline-flex';b.title='Choisir le stock pour passer automatiquement à « En stock ». ';b.onclick=()=>location.href='nouveau-chariot.html?id='+encodeURIComponent(id)}
+  else if(st==='en stock'){b.textContent=String(c.client||'').trim()?'Réserver':'Affecter un client';b.style.display='inline-flex';b.title='Le statut devient automatiquement « Réservé » lorsqu’un client est renseigné.';b.onclick=()=>location.href='nouveau-chariot.html?id='+encodeURIComponent(id)}
+  else if(st==='reserve'){b.textContent=planned?'Passer en préparation':'Planifier';b.style.display='inline-flex';b.title=planned?'Passer automatiquement à « Préparation livraison ».':'Créer la planification de livraison.';b.onclick=()=>planned?workflowPrepareFromDetail(id):location.href='planning-livraisons.html?qr='+encodeURIComponent(id)}
+  else if(st==='preparation livraison'){b.textContent='Prêt à livrer';b.style.display='inline-flex';b.title='Marquer automatiquement la préparation comme terminée.';b.onclick=()=>markReadyToDeliver(id)}
+}
+async function workflowPrepareFromDetail(qrId){const c=CHARIOTS.find(x=>String(x.qr_id)===String(qrId));if(!c)return;if(!getDeliveryPlan(qrId)){alert('Planifiez d’abord une livraison pour ce chariot.');return}if(!confirm(`Passer ${c.chassis||qrId} en « Préparation livraison » ?`))return;const ok=await transitionChariotStatus(qrId,'Préparation livraison');if(ok)location.reload();}
+async function markReadyToDeliver(qrId){const c=CHARIOTS.find(x=>String(x.qr_id)===String(qrId));if(!c)return;if(normalizeStatus(c.status)!=='preparation livraison'){alert('Le chariot doit être en « Préparation livraison ».');return}if(!confirm(`Marquer ${c.chassis||qrId} comme « Prêt à livrer » ?`))return;const ok=await transitionChariotStatus(qrId,'Prêt à livrer');if(ok)location.reload();}
+
 function getDeliveryPlan(qrId){return DELIVERY_PLANS.find(p=>String(p.qr)===String(qrId))||null}
 function readCachedDeliveryPlans(){try{const raw=localStorage.getItem(DELIVERY_PLAN_KEY);const plans=raw?JSON.parse(raw):[];return Array.isArray(plans)?plans:[]}catch(e){return []}}
 function cacheDeliveryPlans(plans){try{localStorage.setItem(DELIVERY_PLAN_KEY,JSON.stringify(plans||[]))}catch(e){}}
@@ -637,30 +689,58 @@ async function notificationsPage(){
   renderNotificationsPage();
 }
 async function chariotsPage(){if(!await session())return;await loadChariots();const initialSearch=new URLSearchParams(window.location.search).get('search')||'';const searchEl=$('#search');if(searchEl&&initialSearch){searchEl.value=initialSearch;}const ids=['engineFilter','capacityFilter','mastFilter','heightFilter'];function fill(){const defs=[['engineFilter','engine','Moteur : Tous'],['capacityFilter','capacity','Capacité : Toutes'],['mastFilter','mast_type','Mât : Tous'],['heightFilter','lifting_height','Hauteur : Toutes']];defs.forEach(([id,k,label])=>{const e=$('#'+id),old=e.value;if(!e)return;let vals;if(id==='capacityFilter'){vals=['2.5T','3T','3.8T','5T','7T','10T','12T']}else{vals=[...new Set(CHARIOTS.map(c=>String(c[k]||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}))}e.innerHTML=`<option value="">${label}</option>`+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');if(vals.includes(old))e.value=old})}function render(){fill();let rows=CHARIOTS;const sf=$('#statusFilter')?.value||'';if(sf==='stock')rows=rows.filter(isStock);if(sf==='delivered')rows=rows.filter(isDelivered);const q=$('#search')?.value.trim().toLowerCase()||'';const fs=[['engineFilter','engine'],['capacityFilter','capacity'],['mastFilter','mast_type'],['heightFilter','lifting_height']];rows=rows.filter(c=>(!q||[c.qr_id,c.chassis,c.engine,c.client,c.capacity].some(v=>String(v||'').toLowerCase().includes(q)))&&fs.every(([id,k])=>!$('#'+id)?.value||norm(c[k])===norm($('#'+id).value)));$('#count').textContent=rows.length+' chariot'+(rows.length!==1?'s':'');$('#list').innerHTML=rows.map(card).join('')||'<div class="empty">Aucun résultat.</div>'}$('#search').addEventListener('input',render);$('#statusFilter').addEventListener('change',render);ids.forEach(id=>$('#'+id).addEventListener('change',render));$('#clearFilters').onclick=()=>{ids.forEach(id=>$('#'+id).value='');$('#statusFilter').value='';$('#search').value='';render()};render()}
-async function detailPage(){if(!await session())return;await loadChariots();try{await loadDeliveryPlans()}catch(e){DELIVERY_PLANS=readCachedDeliveryPlans()}const id=new URLSearchParams(location.search).get('id');current=CHARIOTS.find(c=>String(c.qr_id)===String(id));if(!current){$('#detail').innerHTML='<div class="empty">Chariot introuvable.</div>';return}$('#title').textContent=current.qr_id;$('#status').textContent=current.status||'—';const planned=getDeliveryPlan(current.qr_id);const plannedDate=planned?.date?formatPlannedDate(planned.date):'—';const plannedTime=planned?.time||'—';const plannedDriver=planned?.driver||'—';const plannedDestination=planned?.destination||'—';const groups=[['Identification',[['N° châssis',current.chassis],['N° de série',current.serial_number],['N° moteur',current.engine_number],['Moteur',current.engine]]],['Caractéristiques',[['Capacité',fmtCapacity(current.capacity)],['Hauteur de levage',current.lifting_height],['Dimensions des fourches',current.fork_dimension],['Type de mât',String(current.mast_type||'').toUpperCase()],['Type de pneu',current.tire_type],['Couleur',current.color]]],['Informations stock',[['Stock',current.stock],['Statut',current.status],['Client',current.client],['Date planifiée',plannedDate],['Heure planifiée',plannedTime],['Chauffeur planifié',plannedDriver],['Destination planifiée',plannedDestination],['Date de livraison',current.delivery_date]]],['Observations',[['Observations',current.observations]]]];$('#detail').innerHTML=groups.map(g=>`<div class="section"><h3>${esc(g[0])}</h3><div class="details">${g[1].map(([k,v])=>`<div class="kv"><small>${esc(k)}</small><b>${esc(v||'—')}</b></div>`).join('')}</div></div>`).join('');$('#edit').onclick=()=>location.href='nouveau-chariot.html?id='+encodeURIComponent(current.qr_id);const deliverBtn=$('#deliver');if(deliverBtn){if(isDelivered(current)||!isAdmin()){deliverBtn.style.display='none'}else{deliverBtn.style.display='inline-flex';deliverBtn.onclick=()=>markDelivered(current.qr_id)}}await renderMaintenanceHistory()}
+async function detailPage(){
+  if(!await session())return;
+  await loadChariots();
+  try{await loadDeliveryPlans()}catch(e){DELIVERY_PLANS=readCachedDeliveryPlans()}
+  const id=new URLSearchParams(location.search).get('id');
+  current=CHARIOTS.find(c=>String(c.qr_id)===String(id));
+  if(!current){$('#detail').innerHTML='<div class="empty">Chariot introuvable.</div>';return}
+  $('#title').textContent=current.qr_id;$('#status').textContent=current.status||'—';
+  const planned=getDeliveryPlan(current.qr_id),plannedDate=planned?.date?formatPlannedDate(planned.date):'—',plannedTime=planned?.time||'—',plannedDriver=planned?.driver||'—',plannedDestination=planned?.destination||'—';
+  const groups=[['Identification',[['N° châssis',current.chassis],['N° de série',current.serial_number],['N° moteur',current.engine_number],['Moteur',current.engine]]],['Caractéristiques',[['Capacité',fmtCapacity(current.capacity)],['Hauteur de levage',current.lifting_height],['Dimensions des fourches',current.fork_dimension],['Type de mât',String(current.mast_type||'').toUpperCase()],['Type de pneu',current.tire_type],['Couleur',current.color]]],['Informations stock',[['Stock',current.stock],['Statut',current.status],['Client',current.client],['Date planifiée',plannedDate],['Heure planifiée',plannedTime],['Chauffeur planifié',plannedDriver],['Destination planifiée',plannedDestination],['Date de livraison',current.delivery_date]]],['Observations',[['Observations',current.observations]]]];
+  $('#detail').innerHTML=groups.map(g=>`<div class="section"><h3>${esc(g[0])}</h3><div class="details">${g[1].map(([k,v])=>`<div class="kv"><small>${esc(k)}</small><b>${esc(v||'—')}</b></div>`).join('')}</div></div>`).join('');
+  $('#edit').onclick=()=>location.href='nouveau-chariot.html?id='+encodeURIComponent(current.qr_id);
+  renderWorkflowAction(current,!!planned);
+  const deliverBtn=$('#deliver');
+  if(deliverBtn){if(isDelivered(current)||!isAdmin())deliverBtn.style.display='none';else{deliverBtn.style.display='inline-flex';deliverBtn.onclick=()=>markDelivered(current.qr_id)}}
+  await renderMaintenanceHistory()
+}
 async function renderMaintenanceHistory(){const box=$('#history');if(!box||!current)return;const {data,error}=await supabaseClient.from('maintenance').select('id,date,technicien,type,travaux,created_at').eq('qr_id',current.qr_id).order('date',{ascending:false}).order('created_at',{ascending:false});if(error){box.innerHTML='<div class="notice red">Erreur historique : '+esc(error.message)+'</div>';return}box.innerHTML=(data||[]).filter(x=>!DELIVERY_PLAN_TYPES.includes(String(x.type||''))).map(x=>`<div class="log"><b>${esc(x.date)} — ${esc(x.type||'Intervention')}</b><small>${esc(x.technicien||'—')}</small><div style="margin-top:7px">${esc(x.travaux||'—')}</div>${isAdmin()&&x.id?`<div class="actions"><button class="btn light" onclick="deleteMaintenance('${esc(x.id)}')">Supprimer</button></div>`:''}</div>`).join('')||'<div class="muted">Aucune intervention enregistrée.</div>'}
 async function addMaintenance(){if(!requireValidLicense())return;if(!current){alert('Sélectionnez un chariot.');return}if(!currentUser){alert('Connectez-vous.');return}const types=[...document.querySelectorAll('#typeMultiOptions input:checked')].map(x=>x.value).join(', '),travaux=$('#travaux')?.value.trim()||'';if(!types&&!travaux){alert('Sélectionnez un type de modification ou indiquez les détails.');return}const {error}=await supabaseClient.from('maintenance').insert({qr_id:current.qr_id,date:$('#date')?.value||new Date().toISOString().slice(0,10),technicien:$('#technicien')?.value.trim()||currentUser.email,type:types,travaux,created_by:currentUser.id});if(error){alert('Erreur : '+error.message);return}document.querySelectorAll('#typeMultiOptions input').forEach(x=>x.checked=false);if($('#travaux'))$('#travaux').value='';await renderMaintenanceHistory()}
 async function deleteMaintenance(id){if(!requireAdmin())return;if(!confirm('Supprimer définitivement cette intervention ?'))return;const {error}=await supabaseClient.from('maintenance').delete().eq('id',id);if(error)alert('Erreur : '+error.message);else await renderMaintenanceHistory()}
 function nextQr(){let n=Math.max(0,...CHARIOTS.map(c=>Number(String(c.qr_id||'').match(/^CH-(\d+)$/i)?.[1]||0)))+1;return'CH-'+String(n).padStart(4,'0')}
-async function newPage(){if(!await session())return;await loadChariots();const id=new URLSearchParams(location.search).get('id');const old=CHARIOTS.find(c=>String(c.qr_id)===String(id));if(old){editingQrId=old.qr_id;$('#formTitle').textContent='Modifier '+old.qr_id;for(const [k,v] of Object.entries(old)){const el=document.querySelector(`[name="${k}"]`);if(el)el.value=v??''}}else{$('[name="qr_id"]').value=nextQr();editingQrId=null}if(!isAdmin()){const statusSelect=document.querySelector('[name="status"]');statusSelect?.querySelectorAll('option').forEach(o=>{if(normalizeStatus(o.value)==='livre')o.remove()});}
-  document.querySelectorAll('#chariotForm input,#chariotForm select,#chariotForm textarea').forEach(el=>el.addEventListener('input',updateSaveButtonState));document.querySelectorAll('#chariotForm select').forEach(el=>el.addEventListener('change',updateSaveButtonState));updateSaveButtonState()}
+async function newPage(){
+  if(!await session())return;
+  await loadChariots();
+  const id=new URLSearchParams(location.search).get('id');
+  const old=CHARIOTS.find(c=>String(c.qr_id)===String(id));
+  if(old){editingQrId=old.qr_id;$('#formTitle').textContent='Modifier '+old.qr_id;for(const [k,v] of Object.entries(old)){const el=document.querySelector(`[name="${k}"]`);if(el)el.value=v??''}}
+  else{$('[name="qr_id"]').value=nextQr();editingQrId=null;}
+  setupAutomaticStatusField(old);
+  document.querySelectorAll('#chariotForm input,#chariotForm select,#chariotForm textarea').forEach(el=>el.addEventListener('input',updateSaveButtonState));
+  document.querySelectorAll('#chariotForm select').forEach(el=>el.addEventListener('change',updateSaveButtonState));
+  updateSaveButtonState()
+}
 function updateSaveButtonState(){const ok=['chassis','color','engine','capacity','fork_dimension','tire_type'].every(k=>String(document.querySelector(`[name="${k}"]`)?.value||'').trim());$('#saveBtn')?.classList.toggle('save-ready',ok)}
 async function saveChariot(){
   if(!requireValidLicense())return;if(!currentUser){alert('Connectez-vous pour gérer les chariots.');return}
   const f=$('#chariotForm'),p=Object.fromEntries(new FormData(f).entries());
   for(const [k,label] of [['chassis','N° châssis'],['color','Couleur'],['engine','Type de moteur'],['capacity','Capacité'],['fork_dimension','Fourche'],['tire_type','Type de pneu']])if(!String(p[k]||'').trim()){alert(label+' obligatoire.');return}
-  const oldId=new URLSearchParams(location.search).get('id')||'';
-  const old=CHARIOTS.find(c=>String(c.qr_id)===String(oldId));
-  if(normalizeStatus(p.status)==='livre' && !isAdmin()){alert('Seul un Admin peut mettre un chariot en statut « Livré ».');return}
+  const oldId=new URLSearchParams(location.search).get('id')||'',old=CHARIOTS.find(c=>String(c.qr_id)===String(oldId));
+  const requestedStatus=String(p.status||'').trim();
+  p.status=(old&&isAdmin()&&requestedStatus&&normalizeStatus(requestedStatus)!==normalizeStatus(old.status))?requestedStatus:automaticStatusForChariot(old,p);
   const duplicate=CHARIOTS.find(c=>norm(c.chassis)===norm(p.chassis)&&norm(c.engine)===norm(p.engine)&&String(c.qr_id)!==String(oldId));
   if(duplicate){alert(`Le numéro de châssis « ${p.chassis} » existe déjà avec le même moteur (${p.engine}) — ${duplicate.qr_id}.`);return}
   p.updated_at=new Date().toISOString();p.delivery_date=p.delivery_date||null;p.qr_id=p.qr_id||nextQr();
   const {error}=oldId?await supabaseClient.from('chariots').update(p).eq('qr_id',oldId):await supabaseClient.from('chariots').insert(p);
   if(error){alert('Erreur : '+error.message);return}
   if(oldId&&old){
-    const labels={chassis:'N° châssis',serial_number:'N° de série',engine_number:'N° moteur',engine:'Moteur',capacity:'Capacité',lifting_height:'Hauteur de levage',fork_dimension:'Dimensions des fourches',mast_type:'Type de mât',tire_type:'Type de pneu',color:'Couleur',stock:'Stock',status:'Statut',client:'Client',delivery_date:'Date de livraison',observations:'Observations'};
+    const labels={chassis:'N° châssis',serial_number:'N° de série',engine_number:'N° moteur',engine:'Moteur',capacity:'Capacité',lifting_height:'Hauteur de levage',fork_dimension:'Fourche',mast_type:'Type de mât',tire_type:'Type de pneu',color:'Couleur',stock:'Stock',status:'Statut',client:'Client',delivery_date:'Date de livraison',observations:'Observations'};
     const changes=Object.keys(labels).filter(k=>String(old[k]??'')!==String(p[k]??'')).map(k=>`${labels[k]} : ${old[k]||'—'} → ${p[k]||'—'}`);
     if(changes.length){try{await supabaseClient.from('maintenance').insert({qr_id:p.qr_id,date:new Date().toISOString().slice(0,10),technicien:currentUser.email,type:'Modification chariot',travaux:changes.join(' • '),created_by:currentUser.id})}catch(e){console.warn('Notification modification non enregistrée',e)}}
+  }else{
+    try{await supabaseClient.from('maintenance').insert({qr_id:p.qr_id,date:new Date().toISOString().slice(0,10),technicien:currentUser.email,type:'Statut',travaux:`Statut initial automatique : ${p.status}`,created_by:currentUser.id})}catch(e){console.warn('Historique initial non enregistré',e)}
   }
   location.href='chariot.html?id='+encodeURIComponent(p.qr_id)
 }

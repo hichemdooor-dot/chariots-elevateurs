@@ -1253,3 +1253,170 @@ body.dashboard-page.sidebar-collapsed .professional-dashboard .pro-site-footer{m
   .professional-dashboard .latest-panel .modern-table th{font-size:10px;}
   .professional-dashboard .latest-panel .modern-table td{font-size:11px;}
 }
+
+
+/* V63.8 — mobile usability pass
+   Keep mobile text readable, prevent horizontal overflow, enlarge touch targets,
+   and optimize the delivery workflow for one-hand use. */
+@media (max-width:800px){
+  html,body{width:100%;max-width:100%;overflow-x:hidden}
+  body{font-size:14px;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+  .top{height:58px;min-height:58px;padding:0 10px;gap:8px}
+  .menu-btn{display:grid!important;place-items:center;width:44px;height:44px;min-width:44px;padding:0;border-radius:9px;font-size:26px}
+  .brand{min-width:0;display:flex;align-items:center;margin-left:0;font-size:20px}
+  .brand .site-logo{display:block;width:auto;max-width:128px;height:38px;object-fit:contain}
+  .avatar{width:36px;height:36px;min-width:36px}
+  .content{width:100%!important;max-width:none!important;margin:0!important;padding:12px 10px 28px!important;min-width:0}
+  .page-head{width:100%;gap:10px;margin-bottom:12px}
+  .page-title{font-size:23px;line-height:1.15}
+  .sub{font-size:13px;line-height:1.35}
+  .page-head .actions{width:100%;display:flex;flex-wrap:wrap;gap:8px}
+  .page-head .actions .btn,.page-head .actions a.btn{min-height:48px;font-size:14px;flex:1 1 150px}
+  .page-head .actions #prevWeek,.page-head .actions #nextWeek{flex:0 0 48px;padding:0}
+  .page-head .actions #todayBtn{flex:1 1 auto}
+  .card{width:100%;padding:12px;border-radius:11px;margin-bottom:12px}
+  .search{height:46px;font-size:15px}
+  .filter-grid{width:100%;grid-template-columns:1fr!important;gap:8px}
+  .filter-grid select{height:46px;font-size:14px}
+  .filter-grid .btn{width:100%;min-height:46px}
+  .list{width:100%;min-width:0;gap:8px}
+  .item{width:100%;min-width:0;min-height:68px;padding:12px;gap:9px;border-radius:10px}
+  .item-main{min-width:0;overflow:hidden}
+  .item-title{font-size:15px;line-height:1.2}
+  .meta{font-size:12px;line-height:1.35;white-space:normal;overflow-wrap:anywhere}
+  .badge{font-size:10px;padding:5px 8px}
+  .detail-actions,.user-actions,.qr-actions{width:100%;gap:8px}
+  .detail-actions .btn,.user-actions .btn,.qr-actions .btn{flex:1 1 150px;min-height:48px}
+  .formgrid,.details{grid-template-columns:1fr!important;gap:10px}
+  .field input,.field select,.field textarea{min-height:46px;font-size:15px}
+  .field textarea{min-height:96px}
+  .form-actions{gap:8px}
+  .form-actions .btn,.form-actions a.btn{min-height:50px}
+  .section{margin:10px 0;border-radius:10px}
+  .section h3{font-size:14px;padding:12px}
+  .kv{padding:10px}
+  .kv small{font-size:11px}
+  .kv b{font-size:14px}
+  .empty{padding:30px 16px;font-size:13px}
+  footer{font-size:10px;line-height:1.45;padding:12px 10px;text-align:center}
+}
+
+@media (max-width:560px){
+  .page-head .actions .btn,.page-head .actions a.btn{flex:1 1 100%;width:100%}
+  .page-head .actions #prevWeek,.page-head .actions #nextWeek{flex:0 0 48px;width:48px}
+  .page-head .actions #todayBtn{flex:1 1 0;width:auto}
+  .grid4{grid-template-columns:1fr 1fr;gap:8px}
+  .stat{min-height:92px;padding:11px}
+  .stat b{font-size:25px}
+  .delivery-stat-grid{grid-template-columns:1fr 1fr}
+  .delivery-stat{padding:12px}
+  .delivery-stat:last-child{grid-column:1/-1}
+  .delivery-planning-toolbar{align-items:stretch}
+  .delivery-planning-toolbar>div{min-width:0}
+  .delivery-planning-toolbar>.btn{width:100%;min-height:48px}
+  /* Seven days stay available horizontally instead of becoming a very tall 2-column wall. */
+  .delivery-week{display:grid;grid-auto-flow:column;grid-template-columns:repeat(7,minmax(128px,1fr));grid-template-rows:1fr;gap:8px;overflow-x:auto;overflow-y:hidden;padding:1px 2px 7px 1px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+  .delivery-day{min-height:92px;padding:11px 10px;scroll-snap-align:start}
+  .delivery-day .dow{font-size:11px}
+  .delivery-day .date{font-size:15px}
+  .delivery-day .num,.delivery-day .delivered-num{font-size:10px}
+  .delivery-row{grid-template-columns:58px minmax(0,1fr);gap:9px;padding:11px}
+  .delivery-time{font-size:14px}
+  .delivery-title{font-size:14px}
+  .delivery-meta{font-size:11px}
+  .delivery-actions{grid-column:1/-1;width:100%;justify-content:stretch}
+  .delivery-actions .btn{flex:1 1 0;min-height:48px}
+  .prep-item,.pl-item{gap:10px}
+  .prep-item-actions,.pl-item-actions{width:100%;display:flex;justify-content:stretch;gap:8px}
+  .prep-item-actions .btn,.pl-item-actions .btn{flex:1 1 0;min-height:48px}
+  .prep-item-title,.pl-item-title{font-size:17px}
+  .prep-item-meta,.pl-item-meta{font-size:13px}
+  .qrbox{min-height:0;padding:16px 10px}
+  .qrbox img,.qrbox canvas{max-width:min(220px,72vw)}
+  .user-menu{width:min(250px,calc(100vw - 20px))}
+}
+
+@media (max-width:430px){
+  .top{padding:0 8px}
+  .brand .site-logo{max-width:116px;height:36px}
+  .content{padding:10px 9px 24px!important}
+  .page-title{font-size:22px}
+  .sub{font-size:12.5px}
+  .card{padding:11px}
+  .grid4{gap:7px}
+  .stat{min-height:88px;padding:10px}
+  .stat b{font-size:23px}
+  .item{padding:11px;min-height:66px}
+  .item-title{font-size:15px}
+  .meta{font-size:11.5px}
+  .chip{min-height:42px;padding:10px 12px;font-size:13px}
+  .field input,.field select,.field textarea{font-size:14px}
+  .delivery-week{grid-template-columns:repeat(7,minmax(122px,1fr))}
+  .delivery-day{min-height:88px}
+  .delivery-row{grid-template-columns:54px minmax(0,1fr)}
+}
+
+/* Professional dashboard mobile layout */
+@media (max-width:800px){
+  .professional-dashboard .dash-main{padding:0 10px 16px!important;margin-left:0}
+  .professional-dashboard .dash-header{height:60px;padding:0 8px;gap:7px;position:sticky;top:0;z-index:60}
+  .professional-dashboard .pro-menu-btn{display:grid!important;place-items:center;width:42px;height:42px;min-width:42px;padding:0}
+  .professional-dashboard .pro-header .search-shell{height:42px;min-width:0;max-width:none;flex:1 1 auto;padding:0 8px;gap:6px}
+  .professional-dashboard .pro-header .search-shell input{font-size:13px}
+  .professional-dashboard .pro-header .search-shell .search-action{width:34px;flex-basis:34px}
+  .professional-dashboard .header-actions{gap:5px}
+  .professional-dashboard .notification-bell{width:40px;height:40px;min-width:40px}
+  .professional-dashboard .user-menu-button{width:40px;min-width:40px;height:40px;padding:3px}
+  .professional-dashboard .hero-banner{width:100%;margin:9px 0;height:auto;min-height:0;aspect-ratio:1636/229;border-radius:12px}
+  .professional-dashboard .hero-banner img{width:100%;height:100%;min-height:0;object-fit:cover;object-position:center}
+  .professional-dashboard .stats-grid{width:100%;grid-template-columns:1fr 1fr;gap:8px;margin:9px 0}
+  .professional-dashboard .pro-stats .dash-stat{min-height:88px;padding:10px;gap:8px}
+  .professional-dashboard .pro-stats .stat-icon{width:40px;height:40px;flex-basis:40px;font-size:29px}
+  .professional-dashboard .pro-stats .stat-icon svg{width:25px;height:25px}
+  .professional-dashboard .pro-stats .dash-stat b{font-size:25px}
+  .professional-dashboard .pro-stats .dash-stat div>span{font-size:11px;line-height:1.2}
+  .professional-dashboard .kpi-trend{font-size:9.5px}
+  .professional-dashboard .dashboard-grid-main,.professional-dashboard .dashboard-grid-bottom{width:100%;grid-template-columns:1fr;gap:9px;margin:0}
+  .professional-dashboard .pro-panel{padding:12px}
+  .professional-dashboard .pro-panel .section-heading h2{font-size:16px}
+  .professional-dashboard .latest-panel .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .professional-dashboard .latest-panel .modern-table{min-width:560px}
+  .professional-dashboard .latest-panel .modern-table th{font-size:11px;padding:10px}
+  .professional-dashboard .latest-panel .modern-table td{font-size:12px;padding:10px}
+  .professional-dashboard .timeline-panel{padding:12px}
+  .professional-dashboard .timeline-heading h2{font-size:17px}
+  .professional-dashboard .timeline-item{grid-template-columns:48px 14px minmax(0,1fr) auto;column-gap:7px;min-height:56px}
+  .professional-dashboard .timeline-date strong{font-size:12px}
+  .professional-dashboard .timeline-date span{font-size:8.5px}
+  .professional-dashboard .timeline-title{font-size:12px}
+  .professional-dashboard .timeline-meta{font-size:10px}
+  .professional-dashboard .timeline-status{font-size:9px;padding:4px 6px;min-width:42px}
+  .professional-dashboard .quick-actions{width:100%;grid-template-columns:1fr 1fr;gap:8px;margin:9px 0 14px}
+  .professional-dashboard .quick{min-height:48px;padding:0 10px;font-size:11px}
+  .professional-dashboard .footer-brand,.professional-dashboard .footer-links{font-size:10px}
+}
+
+@media (max-width:430px){
+  .professional-dashboard .dash-main{padding:0 9px 14px!important}
+  .professional-dashboard .dash-header{height:58px}
+  .professional-dashboard .pro-menu-btn{width:40px;min-width:40px;height:40px}
+  .professional-dashboard .pro-header .search-shell{height:40px}
+  .professional-dashboard .notification-bell,.professional-dashboard .user-menu-button{width:38px;min-width:38px;height:38px}
+  .professional-dashboard .hero-banner{margin:8px 0;aspect-ratio:1636/229}
+  .professional-dashboard .pro-stats .dash-stat{min-height:84px;padding:9px}
+  .professional-dashboard .pro-stats .stat-icon{width:36px;height:36px;flex-basis:36px}
+  .professional-dashboard .pro-stats .stat-icon svg{width:22px;height:22px}
+  .professional-dashboard .pro-stats .dash-stat b{font-size:23px}
+  .professional-dashboard .pro-stats .dash-stat div>span{font-size:10.5px}
+  .professional-dashboard .latest-panel .section-heading h2{font-size:15px}
+  .professional-dashboard .timeline-title{font-size:11.5px}
+  .professional-dashboard .quick-actions{grid-template-columns:1fr}
+}
+
+
+/* Global button text alignment */
+button, .btn, a.btn { text-align: center; }
+.btn, button.btn, a.btn { display: inline-flex; align-items: center; justify-content: center; }
+button.menu-btn, button.notification-bell, button.user-admin-top, .text-link, .view-chariot, .delivery-day, .delivery-search-result { text-align: center; }
+button.menu-btn, button.notification-bell, button.user-admin-top, .text-link, .view-chariot { display: inline-flex; align-items: center; justify-content: center; }
+.user-menu a, .user-menu button { justify-content: center; text-align: center; }

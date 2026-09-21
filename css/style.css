@@ -1720,6 +1720,11 @@ button.menu-btn, button.notification-bell, button.user-admin-top, .text-link, .v
   .mobile-chariot-buttons .btn{font-size:11.5px;min-height:43px}
 }
 
-/* V66.10 contextual back button */
+/* V66.11 contextual back button */
 .back-list-btn{display:inline-flex;align-items:center;justify-content:center;min-height:40px;text-decoration:none!important;width:max-content;white-space:nowrap;}
 @media(max-width:800px){.back-list-btn{min-height:44px;font-size:14px;padding:0 15px;border-radius:9px;}}
+
+/* V66.11 — planning is read-only for User accounts */
+.delivery-row-readonly{cursor:default!important}
+.delivery-row-readonly .delivery-drag-hint{opacity:.45}
+.delivery-readonly-label{opacity:.7}

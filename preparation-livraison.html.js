@@ -27,7 +27,7 @@ async function preparationLivraisonPage(){
     const rows=latestFirst(baseRows.filter(match));
     els.count.textContent=rows.length+' chariot'+(rows.length!==1?'s':'');
     els.list.innerHTML=rows.map(c=>{
-      const disabled=normalizeStatus(c.status)==='préparation livraison';
+      const disabled=normalizeStatus(c.status)==='préparation livraison'; const admin=isAdmin();
       return `<div class="card prep-item" role="link" tabindex="0" aria-label="Ouvrir la fiche du chariot ${esc(c.chassis||c.qr_id||'')}" data-chariot-row="${esc(c.qr_id||'')}">
         <div class="prep-item-main">
           <div class="prep-item-title">${esc(c.chassis||c.qr_id||'—')}</div>
@@ -36,13 +36,14 @@ async function preparationLivraisonPage(){
         </div>
         <div class="prep-item-actions">
           <a class="btn light prep-view-link" href="chariot.html?id=${encodeURIComponent(c.qr_id||'')}">Voir la fiche</a>
-          <button class="btn" type="button" data-prep="${esc(c.qr_id)}" ${disabled?'disabled':''}>${disabled?'Déjà en préparation':'Passer en préparation'}</button>
+          ${admin?`<button class="btn" type="button" data-prep="${esc(c.qr_id)}" ${disabled?'disabled':''}>${disabled?'Déjà en préparation':'Passer en préparation'}</button>`:''}
         </div>
       </div>`
     }).join('')||'<div class="empty">Aucun chariot correspondant.</div>';
     els.list.querySelectorAll('[data-prep]').forEach(b=>b.onclick=e=>{e.stopPropagation();passToPreparation(b.dataset.prep)});els.list.querySelectorAll('[data-chariot-row]').forEach(row=>{const go=()=>{const id=row.dataset.chariotRow;if(id)location.href='chariot.html?id='+encodeURIComponent(id)};row.addEventListener('click',e=>{if(e.target.closest('a,button,input,select,textarea'))return;go()});row.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&!e.target.closest('a,button,input,select,textarea')){e.preventDefault();go()}})});
   }
   async function passToPreparation(qrId){
+    if(!requireAdmin())return;
     if(!currentUser){alert('Connexion requise.');return}
     const c=CHARIOTS.find(x=>String(x.qr_id)===String(qrId));if(!c)return;
     if(normalizeStatus(c.status)==='préparation livraison')return;

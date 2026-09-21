@@ -1678,3 +1678,48 @@ button.menu-btn, button.notification-bell, button.user-admin-top, .text-link, .v
   .workflow-step-dot{width:23px;height:23px;min-width:23px;font-size:9px}
   .workflow-connector{margin-top:11px}
 }
+
+/* V66.8 — Mobile chariot cards and actions */
+.mobile-chariot-tech,.mobile-chariot-client,.mobile-chariot-workflow-wrap,.mobile-chariot-buttons,.mobile-chariot-action{display:none}
+@media(max-width:800px){
+  .chariot-list-card{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"main badge" "main badge" "workflow workflow" "buttons buttons";align-items:start;column-gap:10px;row-gap:8px;padding:13px 12px;min-height:0}
+  .chariot-list-card .item-main{grid-area:main;overflow:visible;min-width:0}
+  .chariot-list-card .chariot-status-badge{grid-area:badge;align-self:start;max-width:46vw;font-size:10px;padding:6px 8px}
+  .chariot-list-card .desktop-card-action{display:none}
+  .chariot-list-card .item-open-link{z-index:1}
+  .chariot-list-id{font-size:19px;line-height:1.15;margin-bottom:7px}
+  .chariot-desktop-meta{display:none}
+  .mobile-chariot-tech{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:1px}
+  .mobile-chariot-tech span,.mobile-chariot-client span{display:flex;flex-direction:column;gap:2px;min-width:0;padding:7px 8px;border:1px solid #e0e9f1;border-radius:8px;background:#f8fbfe}
+  .mobile-chariot-tech small,.mobile-chariot-client small{font-size:9px;color:#73869a;font-weight:700;text-transform:uppercase;letter-spacing:.02em}
+  .mobile-chariot-tech strong,.mobile-chariot-client strong{font-size:12px;color:#173f63;line-height:1.2;overflow-wrap:anywhere}
+  .chariot-list-card .client-line{display:none}
+  .mobile-chariot-client{display:block;margin-top:7px}
+  .mobile-chariot-client span{padding:7px 8px}
+  .mobile-chariot-client strong{font-size:12px}
+  .chariot-list-card .recent-time{font-size:9px;margin-top:6px;color:#7d8e9f}
+  .mobile-chariot-workflow-wrap{display:block;grid-area:workflow;position:relative;z-index:2;pointer-events:none}
+  .mobile-chariot-workflow-wrap .mobile-chariot-workflow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px;align-items:start;padding:8px 4px 4px;border-top:1px solid #edf2f6}
+  .mobile-workflow-step{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:4px;min-width:0;text-align:center;color:#96a3af;font-size:8.5px;font-weight:800;line-height:1.12}
+  .mobile-workflow-dot{width:22px;height:22px;min-width:22px;border-radius:50%;display:grid;place-items:center;border:2px solid #d4dde5;background:#fff;font-size:9px;box-sizing:border-box}
+  .mobile-workflow-step.complete{color:#1f7b4b}.mobile-workflow-step.complete .mobile-workflow-dot{border-color:#63b28a;background:#eef8f2;color:#1f7b4b}
+  .mobile-workflow-step.current{color:#176fae}.mobile-workflow-step.current .mobile-workflow-dot{border-color:#2d83c5;background:#edf5fb;color:#176fae}
+  .mobile-chariot-buttons{display:flex;grid-area:buttons;gap:8px;position:relative;z-index:4;width:100%}
+  .mobile-chariot-buttons .btn,.mobile-chariot-buttons button{flex:1 1 0;min-height:44px;font-size:12px;padding:8px 10px;text-align:center}
+  .mobile-chariot-no-action{display:flex;align-items:center;justify-content:center;flex:1 1 0;min-height:44px;border:1px dashed #d6e0e8;border-radius:8px;color:#81909d;font-size:11px;font-weight:700}
+  .mobile-chariot-action{display:none}
+}
+@media(max-width:430px){
+  .chariot-list-card{padding:12px 10px}
+  .chariot-list-id{font-size:18px}
+  .mobile-chariot-tech{gap:5px}
+  .mobile-chariot-tech span,.mobile-chariot-client span{padding:6px 7px}
+  .mobile-chariot-tech strong,.mobile-chariot-client strong{font-size:11.5px}
+  .mobile-workflow-step{font-size:8px}
+  .mobile-workflow-dot{width:21px;height:21px;min-width:21px}
+  .mobile-chariot-buttons .btn{font-size:11.5px;min-height:43px}
+}
+
+/* V66.10 contextual back button */
+.back-list-btn{display:inline-flex;align-items:center;justify-content:center;min-height:40px;text-decoration:none!important;width:max-content;white-space:nowrap;}
+@media(max-width:800px){.back-list-btn{min-height:44px;font-size:14px;padding:0 15px;border-radius:9px;}}

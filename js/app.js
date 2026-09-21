@@ -436,8 +436,17 @@ function renderWorkflowAction(c,planned){
   else if(st==='pret a livrer'&&isAdmin()){b.textContent='Livrer';b.style.display='inline-flex';b.title='Réservé à l’administrateur.';b.onclick=async()=>{const ok=await performWorkflowAction(id,'deliver');if(ok)location.reload()}}
 }
 async function workflowPrepareFromDetail(qrId){const c=CHARIOTS.find(x=>String(x.qr_id)===String(qrId));if(!c)return;if(!getDeliveryPlan(qrId)){alert('Planifiez d’abord une livraison pour ce chariot.');return}if(!confirm(`Passer ${c.chassis||qrId} en « Préparation livraison » ?`))return;const ok=await transitionChariotStatus(qrId,'Préparation livraison');if(ok)location.reload();}
-async function markReadyToDeliver(qrId){const c=CHARIOTS.find(x=>String(x.qr_id)===String(qrId));if(!c)return;if(normalizeStatus(c.status)!=='preparation livraison'){alert('Le chariot doit être en « Préparation livraison ».');return}if(!confirm(`Marquer ${c.chassis||qrId} comme « Prêt à livrer » ?\n\nLe contrôle avant livraison est informatif : les champs manquants ne bloquent pas le passage.`))return;const ok=await transitionChariotStatus(qrId,'Prêt à livrer');if(ok)location.reload();}
-
+async function markReadyToDeliver(qrId){
+  const c=CHARIOTS.find(x=>String(x.qr_id)===String(qrId));
+  if(!c)return;
+  if(normalizeStatus(c.status)!=='preparation livraison'){alert('Le chariot doit être en « Préparation livraison ».');return}
+  const plan=getDeliveryPlan(qrId);
+  const proceed=await openReadinessConfirmation(c,plan);
+  if(!proceed)return;
+  if(proceed.save){try{await saveReadinessDetails(qrId,plan,proceed)}catch(e){console.warn('Contrôle avant livraison non enregistré',e);alert('Les informations saisies n’ont pas pu être enregistrées. Le passage à « Prêt à livrer » reste possible.')}}
+  const ok=await transitionChariotStatus(qrId,'Prêt à livrer','Workflow livraison');
+  if(ok)location.reload();
+}
 function getDeliveryPlan(qrId){return DELIVERY_PLANS.find(p=>String(p.qr)===String(qrId))||null}
 function readCachedDeliveryPlans(){try{const raw=localStorage.getItem(DELIVERY_PLAN_KEY);const plans=raw?JSON.parse(raw):[];return Array.isArray(plans)?plans:[]}catch(e){return []}}
 function cacheDeliveryPlans(plans){try{localStorage.setItem(DELIVERY_PLAN_KEY,JSON.stringify(plans||[]))}catch(e){}}
@@ -491,6 +500,16 @@ function formatPlannedDate(iso){if(!iso)return '—';try{return parseLocalDate(i
 function parseLocalDate(iso){const [y,m,d]=String(iso).split('-').map(Number);return new Date(y||2000,(m||1)-1,d||1)}
 function localISODateGlobal(d=new Date()){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${day}`}
 function isStock(c){return normalizeStatus(c.status)==='en stock'&&!String(c.client||'').trim()}
+function compactWorkflowHtml(c){
+  const st=normalizeStatus(c?.status);
+  const order={'en stock':0,'reserve':1,'preparation livraison':2,'pret a livrer':3,'livre':4};
+  const current=order[st]??-1;
+  const steps=['En stock','Réservé','Préparation','Prêt à livrer','Livré'];
+  return `<div class="mobile-chariot-workflow" aria-label="Workflow ${esc(c?.status||'—')}">${steps.map((short,i)=>{
+    const state=i<current?'complete':i===current?'current':'pending';
+    return `<div class="mobile-workflow-step ${state}"><span class="mobile-workflow-dot">${state==='complete'?'✓':i+1}</span><span>${esc(short)}</span></div>`;
+  }).join('')}</div>`;
+}
 function card(c){
   const id=String(c.qr_id||'');
   const delivered=isDelivered(c);
@@ -503,7 +522,7 @@ function card(c){
   else if(st==='reserve') action=planned?`<button class="btn light card-action" type="button" data-card-action="prepare" data-qr="${esc(id)}">Préparation</button>`:`<button class="btn light card-action" type="button" data-card-action="plan" data-qr="${esc(id)}">Planifier</button>`;
   else if(st==='preparation livraison') action=`<button class="btn light card-action" type="button" data-card-action="ready" data-qr="${esc(id)}">Prêt à livrer</button>`;
   else if(st==='pret a livrer' && canDeliver) action=`<button class="btn delivered-action card-action" type="button" data-card-action="deliver" data-qr="${esc(id)}">Livrer</button>`;
-  return `<div class="item interactive-card" data-card-id="${esc(id)}"><a class="item-open-link" href="${href}" aria-label="Ouvrir le chariot ${esc(id)}"></a><div class="item-main"><div class="item-title">${esc(id)}</div><div class="meta">${esc(c.chassis||'—')} • ${esc(c.engine||'—')} • ${esc(fmtCapacity(c.capacity))}</div>${c.client?`<div class="client-line"><strong>Client :</strong> ${esc(c.client)}</div>`:''}<div class="recent-time">${c.updated_at?'Mis à jour : '+new Date(c.updated_at).toLocaleString('fr-FR'):''}</div></div><span class="badge ${statusClass(c.status)}">${esc(c.status||c.stock||'—')}</span>${action}</div>`;
+  return `<div class="item interactive-card chariot-list-card" data-card-id="${esc(id)}"><a class="item-open-link" href="${href}" aria-label="Ouvrir le chariot ${esc(id)}"></a><div class="item-main"><div class="item-title chariot-list-id">${esc(id)}</div><div class="mobile-chariot-tech"><span><small>Châssis</small><strong>${esc(c.chassis||'—')}</strong></span><span><small>Moteur</small><strong>${esc(c.engine||'—')}</strong></span><span><small>Capacité</small><strong>${esc(fmtCapacity(c.capacity)||'—')}</strong></span></div><div class="meta chariot-desktop-meta">${esc(c.chassis||'—')} • ${esc(c.engine||'—')} • ${esc(fmtCapacity(c.capacity))}</div>${c.client?`<div class="client-line"><strong>Client :</strong> ${esc(c.client)}</div>`:''}<div class="mobile-chariot-client">${c.client?`<span><small>Client</small><strong>${esc(c.client)}</strong></span>`:'<span><small>Client</small><strong>—</strong></span>'}</div><div class="recent-time">${c.updated_at?'Mis à jour : '+new Date(c.updated_at).toLocaleString('fr-FR'):''}</div></div><span class="badge ${statusClass(c.status)} chariot-status-badge">${esc(c.status||c.stock||'—')}</span><div class="desktop-card-action">${action}</div><div class="mobile-chariot-workflow-wrap">${compactWorkflowHtml(c)}</div><div class="mobile-chariot-buttons"><a class="btn light" href="${href}">Voir la fiche</a>${action||'<span class="mobile-chariot-no-action">Aucune action</span>'}</div></div>`;
 }
 function initInteractiveCards(){
   if(window.__sbiInteractiveCardsBound)return;
@@ -520,10 +539,9 @@ function initInteractiveCards(){
     if(action==='plan'){location.href='planning-livraisons.html?qr='+encodeURIComponent(id);return}
     const next=action==='prepare'?'Préparation livraison':action==='ready'?'Prêt à livrer':action==='deliver'?'Livré':'';
     if(!next)return;
-    if(!confirm(`Passer ${c.chassis||id} au statut « ${next} » ?`))return;
     btn.dataset.busy='1';btn.disabled=true;const original=btn.textContent;btn.textContent='...';
     try{
-      const ok=await transitionChariotStatus(id,next);
+      const ok=await performWorkflowAction(id,action);
       if(ok){
         toastCardUpdate(id,next);
         const page=location.pathname.split('/').pop();
@@ -976,31 +994,77 @@ function renderWorkflowSteps(c,planned){
   if(!box)return;
   const steps=['En stock','Réservé','Préparation','Prêt à livrer','Livré'];
   const current=normalizeStatus(c?.status);
-  const labels={
-    'en fabrication':'En fabrication',
-    'en stock':'En stock',
-    'reserve':'Réservé',
-    'preparation livraison':'Préparation',
-    'pret a livrer':'Prêt à livrer',
-    'livre':'Livré'
-  };
+  const labels={'en fabrication':'En fabrication','en stock':'En stock','reserve':'Réservé','preparation livraison':'Préparation','pret a livrer':'Prêt à livrer','livre':'Livré'};
   const currentLabel=labels[current]||String(c?.status||'—');
-  const plan=getDeliveryPlan(c?.qr_id);
-  const checks=[
-    ['Client',!!String(c?.client||'').trim()],
-    ['Date',!!String(plan?.date||'').trim()],
-    ['Heure',!!String(plan?.time||'').trim()],
-    ['Chauffeur',!!String(plan?.driver||'').trim()],
-    ['Destination',!!String(plan?.destination||'').trim()]
-  ];
-  const ready=checks.every(x=>x[1]);
-  const readiness=checks.map(([label,ok])=>`<span class="workflow-check ${ok?'ok':'missing'}"><span>${ok?'✓':'!'}</span>${esc(label)}</span>`).join('');
   const stepsHtml=steps.map((label,i)=>{
     const state=workflowStepState(c,i+1,planned);
     const connector=i<steps.length-1?'<span class="workflow-connector"></span>':'';
     return '<div class="workflow-step '+state+'"><span class="workflow-step-dot">'+(state==='complete'?'✓':i+1)+'</span><span>'+esc(label)+'</span></div>'+connector;
   }).join('');
-  box.innerHTML='<div class="workflow-card"><div class="workflow-head"><div><strong>Workflow livraison</strong><div class="workflow-current">Étape actuelle : '+esc(currentLabel)+'</div></div>'+(planned?'<span class="workflow-planned">✓ Livraison planifiée</span>':'')+'</div><div class="workflow-steps">'+stepsHtml+'</div><div class="workflow-readiness"><div class="workflow-readiness-title"><strong>Contrôle avant livraison</strong><span class="workflow-readiness-state '+(ready?'ready':'not-ready')+'">'+(ready?'✓ Prêt':'À compléter')+'</span></div><div class="workflow-checks">'+readiness+'</div>'+(!ready&&current==='preparation livraison'?'<div class="workflow-readiness-note">Contrôle informatif uniquement : les éléments manquants sont signalés mais ne bloquent pas le passage à « Prêt à livrer ».</div>':'')+'</div></div>';
+  box.innerHTML='<div class="workflow-card"><div class="workflow-head"><div><strong>Workflow livraison</strong><div class="workflow-current">Étape actuelle : '+esc(currentLabel)+'</div></div>'+(planned?'<span class="workflow-planned">✓ Livraison planifiée</span>':'')+'</div><div class="workflow-steps">'+stepsHtml+'</div></div>';
+}
+function ensureReadinessModalStyles(){
+  if(document.getElementById('sbi-readiness-modal-styles'))return;
+  const style=document.createElement('style');style.id='sbi-readiness-modal-styles';style.textContent=`
+.sbi-readiness-modal-backdrop{position:fixed;inset:0;background:rgba(15,27,39,.52);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10000;backdrop-filter:blur(2px)}
+.sbi-readiness-modal{width:min(520px,100%);max-height:min(760px,92vh);overflow:auto;background:#fff;border:1px solid #dbe5ef;border-radius:18px;box-shadow:0 24px 70px rgba(20,35,50,.24)}
+.sbi-readiness-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:18px 20px 12px;border-bottom:1px solid #e8eef4}.sbi-readiness-head h3{margin:0;font-size:19px;color:#183043}.sbi-readiness-head p{margin:5px 0 0;font-size:12px;color:#6c7d8c}.sbi-readiness-close{border:0;background:transparent;font-size:25px;line-height:1;cursor:pointer;color:#7e8e9d;padding:0 2px}
+.sbi-readiness-body{padding:16px 20px}.sbi-readiness-state{display:flex;align-items:center;gap:9px;padding:11px 12px;border-radius:11px;font-size:13px;font-weight:800;margin-bottom:13px}.sbi-readiness-state.warning{background:#fff4df;color:#8a5a00}.sbi-readiness-edit-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.sbi-readiness-field{display:flex;flex-direction:column;gap:6px}.sbi-readiness-field label{font-size:12px;font-weight:800;color:#455868}.sbi-readiness-field label span{display:inline-flex;align-items:center;justify-content:center;min-width:18px;margin-right:4px}.sbi-readiness-field input{width:100%;box-sizing:border-box;border:1px solid #d5e0e9;border-radius:10px;padding:10px 11px;background:#fff;color:#233746;font:inherit}.sbi-readiness-field input:focus{outline:none;border-color:#2d83c5;box-shadow:0 0 0 3px rgba(45,131,197,.12)}.sbi-readiness-note{margin-top:13px;padding:10px 12px;border-radius:10px;background:#f6f9fc;color:#5b6d7b;font-size:12px;line-height:1.45}
+.sbi-readiness-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;padding:14px 20px 18px;border-top:1px solid #e8eef4}.sbi-readiness-actions .btn{min-height:42px}.sbi-readiness-pass{box-shadow:0 6px 16px rgba(28,117,205,.16)}.sbi-readiness-pass.warning{background:#e08b00;border-color:#e08b00;color:#fff}
+@media(max-width:560px){.sbi-readiness-head,.sbi-readiness-body,.sbi-readiness-actions{padding-left:14px;padding-right:14px}.sbi-readiness-edit-grid{grid-template-columns:1fr}.sbi-readiness-actions{justify-content:stretch}.sbi-readiness-actions .btn{flex:1 1 100%}.sbi-readiness-pass{order:-1}}
+`;document.head.appendChild(style)
+}
+function openReadinessConfirmation(c,plan){
+  ensureReadinessModalStyles();
+  return new Promise(resolve=>{
+    const old=document.getElementById('sbiReadinessModal');if(old)old.remove();
+    const p=plan||{};
+    const values={date:String(p.date||''),time:String(p.time||''),driver:String(p.driver||''),destination:String(p.destination||'')};
+    const escv=v=>esc(String(v||''));
+    const backdrop=document.createElement('div');backdrop.id='sbiReadinessModal';backdrop.className='sbi-readiness-modal-backdrop';
+    backdrop.innerHTML=`<div class="sbi-readiness-modal" role="dialog" aria-modal="true" aria-labelledby="sbiReadinessTitle">
+      <div class="sbi-readiness-head"><div><h3 id="sbiReadinessTitle">Contrôle avant livraison</h3><p>${escv(c?.chassis||c?.qr_id||'Chariot')} · Avant « Prêt à livrer »</p></div><button type="button" class="sbi-readiness-close" aria-label="Fermer">×</button></div>
+      <div class="sbi-readiness-body">
+        <div class="sbi-readiness-state warning"><span>!</span><span>Tous les champs sont facultatifs.</span></div>
+        <div class="sbi-readiness-note">Vous pouvez compléter ou modifier les informations ci-dessous. Rien n'est obligatoire pour passer à « Prêt à livrer ».</div>
+        <div class="sbi-readiness-edit-grid">
+          <div class="sbi-readiness-field"><label for="sbiReadyDate"><span data-field-state="date">!</span> Date</label><input id="sbiReadyDate" type="date" value="${escv(values.date)}"></div>
+          <div class="sbi-readiness-field"><label for="sbiReadyTime"><span data-field-state="time">!</span> Heure</label><input id="sbiReadyTime" type="time" value="${escv(values.time)}"></div>
+          <div class="sbi-readiness-field"><label for="sbiReadyDriver"><span data-field-state="driver">!</span> Chauffeur</label><input id="sbiReadyDriver" type="text" value="${escv(values.driver)}" placeholder="Chauffeur"></div>
+          <div class="sbi-readiness-field"><label for="sbiReadyDestination"><span data-field-state="destination">!</span> Destination</label><input id="sbiReadyDestination" type="text" value="${escv(values.destination)}" placeholder="Destination"></div>
+        </div>
+      </div>
+      <div class="sbi-readiness-actions"><button type="button" class="btn light" data-cancel>Annuler</button><button type="button" class="btn light" data-skip>Passer sans compléter</button><button type="button" class="btn sbi-readiness-pass" data-pass>Enregistrer et passer</button></div>
+    </div>`;
+    document.body.appendChild(backdrop);
+    const fields={date:backdrop.querySelector('#sbiReadyDate'),time:backdrop.querySelector('#sbiReadyTime'),driver:backdrop.querySelector('#sbiReadyDriver'),destination:backdrop.querySelector('#sbiReadyDestination')};
+    const updateStates=()=>Object.entries(fields).forEach(([key,el])=>{const state=backdrop.querySelector(`[data-field-state="${key}"]`);if(!state)return;state.textContent=String(el?.value||'').trim()?'✓':'!';});
+    Object.values(fields).forEach(el=>el?.addEventListener('input',updateStates));
+    updateStates();
+    const cleanup=value=>{document.removeEventListener('keydown',onKey);backdrop.remove();resolve(value)};
+    const onKey=e=>{if(e.key==='Escape')cleanup(null)};
+    document.addEventListener('keydown',onKey);
+    backdrop.querySelector('.sbi-readiness-close').onclick=()=>cleanup(null);
+    backdrop.querySelector('[data-cancel]').onclick=()=>cleanup(null);
+    backdrop.querySelector('[data-skip]').onclick=()=>cleanup({save:false});
+    backdrop.querySelector('[data-pass]').onclick=()=>cleanup({save:true,date:String(fields.date?.value||'').trim(),time:String(fields.time?.value||'').trim(),driver:String(fields.driver?.value||'').trim(),destination:String(fields.destination?.value||'').trim()});
+    backdrop.addEventListener('click',e=>{if(e.target===backdrop)cleanup(null)});
+    setTimeout(()=>fields.driver?.focus(),20);
+  });
+}
+function saveReadinessDetails(qrId,plan,details){
+  if(!plan||!details?.save)return Promise.resolve(true);
+  const previous={date:String(plan.date||''),time:String(plan.time||''),driver:String(plan.driver||''),destination:String(plan.destination||'')};
+  const next={date:details.date||previous.date,time:details.time||previous.time,driver:details.driver||previous.driver,destination:details.destination||previous.destination};
+  const changed=['date','time','driver','destination'].some(k=>next[k]!==previous[k]);
+  if(!changed)return Promise.resolve(true);
+  const payload={id:String(plan.id),qr:String(qrId),date:String(next.date||''),time:String(next.time||''),driver:String(next.driver||''),destination:String(next.destination||''),note:String(plan.note||'')};
+  return supabaseClient.from('maintenance').insert({qr_id:qrId,date:next.date||localDateISO(new Date()),technicien:getUserDisplayName(),type:'Planification livraison',travaux:JSON.stringify(payload),created_by:currentUser?.id||null}).then(({error})=>{
+    if(error)throw error;
+    DELIVERY_PLANS=DELIVERY_PLANS.map(p=>String(p.id)===String(plan.id)?{...p,...payload}:p);
+    cacheDeliveryPlans(DELIVERY_PLANS);
+    return true;
+  });
 }
 function deliveryModalStylesLoaded(){return document.getElementById('sbi-delivery-modal-styles')}
 function ensureDeliveryModalStyles(){
@@ -1050,14 +1114,9 @@ async function performWorkflowAction(qrId,action){
   if(action==='ready'){
     if(normalizeStatus(c.status)!=='preparation livraison'){alert('Le chariot doit être en « Préparation livraison ».');return false}
     const plan=getDeliveryPlan(qrId);
-    const missing=[];
-    if(!String(c.client||'').trim())missing.push('Client');
-    if(!String(plan?.date||'').trim())missing.push('Date');
-    if(!String(plan?.time||'').trim())missing.push('Heure');
-    if(!String(plan?.driver||'').trim())missing.push('Chauffeur');
-    if(!String(plan?.destination||'').trim())missing.push('Destination');
-    const warning=missing.length?`\n\nChamps non renseignés : ${missing.join(', ')}\nLe contrôle est informatif et ne bloque pas le passage.`:'';
-    if(!confirm(`Marquer ${c.chassis||qrId} comme « Prêt à livrer » ?${warning}`))return false;
+    const proceed=await openReadinessConfirmation(c,plan);
+    if(!proceed)return false;
+    if(proceed.save){try{await saveReadinessDetails(qrId,plan,proceed)}catch(e){console.warn('Contrôle avant livraison non enregistré',e);alert('Les informations saisies n’ont pas pu être enregistrées. Le passage à « Prêt à livrer » reste possible.')}}
     return await transitionChariotStatus(qrId,'Prêt à livrer','Workflow livraison');
   }
   if(action==='deliver'){
@@ -1086,7 +1145,15 @@ async function detailPage(){
   if(!await session())return;
   await loadChariots();
   try{await loadDeliveryPlans()}catch(e){DELIVERY_PLANS=readCachedDeliveryPlans()}
-  const id=new URLSearchParams(location.search).get('id');
+  const params=new URLSearchParams(location.search);
+  const id=params.get('id');
+  const from=params.get('from');
+  const backToList=$('#backToList');
+  if(backToList){
+    if(from==='preparation'){backToList.href='preparation-livraison.html';backToList.textContent='← Retour à Préparation livraison';backToList.setAttribute('aria-label','Retour à Préparation livraison')}
+    else if(from==='prevus'){backToList.href='chariots-prevus-livraison.html';backToList.textContent='← Retour à Chariots prévus livraison';backToList.setAttribute('aria-label','Retour à Chariots prévus livraison')}
+    else {backToList.href='chariots.html';backToList.textContent='← Retour aux chariots';backToList.setAttribute('aria-label','Retour aux chariots')}
+  }
   current=CHARIOTS.find(c=>String(c.qr_id)===String(id));
   if(!current){$('#detail').innerHTML='<div class="empty">Chariot introuvable.</div>';return}
   $('#title').textContent=current.qr_id;$('#status').textContent=current.status||'—';
@@ -1095,8 +1162,6 @@ async function detailPage(){
   $('#detail').innerHTML=groups.map(g=>`<div class="section"><h3>${esc(g[0])}</h3><div class="details">${g[1].map(([k,v])=>`<div class="kv"><small>${esc(k)}</small><b>${esc(v||'—')}</b></div>`).join('')}</div></div>`).join('');
   $('#edit').onclick=()=>location.href='nouveau-chariot.html?id='+encodeURIComponent(current.qr_id);
   renderWorkflowAction(current,!!planned);
-  const deliverBtn=$('#deliver');
-  if(deliverBtn){if(isDelivered(current)||!isAdmin()||normalizeStatus(current.status)!=='pret a livrer')deliverBtn.style.display='none';else{deliverBtn.style.display='inline-flex';deliverBtn.textContent='Livrer';deliverBtn.onclick=()=>markDelivered(current.qr_id)}}
   await renderMaintenanceHistory()
 }
 async function renderMaintenanceHistory(){const box=$('#history');if(!box||!current)return;const {data,error}=await supabaseClient.from('maintenance').select('id,date,technicien,type,travaux,created_at').eq('qr_id',current.qr_id).order('date',{ascending:false}).order('created_at',{ascending:false});if(error){box.innerHTML='<div class="notice red">Erreur historique : '+esc(error.message)+'</div>';return}box.innerHTML=(data||[]).filter(x=>!DELIVERY_PLAN_TYPES.includes(String(x.type||''))).map(x=>`<div class="log"><b>${esc(x.date)} — ${esc(x.type||'Intervention')}</b><small>${esc(x.technicien||'—')}</small><div style="margin-top:7px">${esc(x.travaux||'—')}</div>${isAdmin()&&x.id?`<div class="actions"><button class="btn light" onclick="deleteMaintenance('${esc(x.id)}')">Supprimer</button></div>`:''}</div>`).join('')||'<div class="muted">Aucune intervention enregistrée.</div>'}

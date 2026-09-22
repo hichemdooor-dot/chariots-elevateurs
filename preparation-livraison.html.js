@@ -47,7 +47,6 @@ async function preparationLivraisonPage(){
     if(!currentUser){alert('Connexion requise.');return}
     const c=CHARIOTS.find(x=>String(x.qr_id)===String(qrId));if(!c)return;
     if(normalizeStatus(c.status)==='préparation livraison')return;
-    if(!confirm('Passer le chariot '+(c.chassis||c.qr_id)+' en « Préparation livraison » ?'))return;
     const ok=await performWorkflowAction(qrId,'prepare');
     if(!ok)return;
     await loadChariots();

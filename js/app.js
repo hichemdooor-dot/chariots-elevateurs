@@ -1090,9 +1090,14 @@ function openDeliveryConfirmation(c,plan){
   return new Promise(resolve=>{
     const old=document.getElementById('sbiDeliveryModal');if(old)old.remove();
     const now=new Date(),today=localISODateGlobal(now),time=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+    const entryDate=today;
+    const entryTime=time;
+    const entryDriver='';
+    const entryDestination='';
+    const entryClient='';
     const escv=v=>esc(String(v||''));
     const backdrop=document.createElement('div');backdrop.id='sbiDeliveryModal';backdrop.className='sbi-delivery-modal-backdrop';
-    backdrop.innerHTML=`<div class="sbi-delivery-modal" role="dialog" aria-modal="true" aria-labelledby="sbiDeliveryTitle"><div class="sbi-delivery-modal-head"><div><h3 id="sbiDeliveryTitle">Confirmer la livraison</h3><p>${escv(c?.chassis||c?.qr_id||'Chariot')} · Les informations ci-dessous sont facultatives.</p></div><button type="button" class="sbi-delivery-modal-close" aria-label="Fermer">×</button></div><form class="sbi-delivery-modal-body" id="sbiDeliveryForm"><div class="sbi-delivery-modal-note">Les champs peuvent être laissés vides. Les valeurs planifiées sont proposées lorsqu’elles existent, mais restent modifiables.</div><div class="sbi-delivery-modal-grid"><div class="sbi-delivery-modal-field"><label for="sbiActualDate">Date de livraison</label><input id="sbiActualDate" name="actualDate" type="date" value="${today}"></div><div class="sbi-delivery-modal-field"><label for="sbiActualTime">Heure de livraison</label><input id="sbiActualTime" name="actualTime" type="time" value="${time}"></div><div class="sbi-delivery-modal-field"><label for="sbiActualDriver">Chauffeur</label><input id="sbiActualDriver" name="driver" value="${escv(plan?.driver)}" placeholder="Chauffeur"></div><div class="sbi-delivery-modal-field"><label for="sbiActualDestination">Destination</label><input id="sbiActualDestination" name="destination" value="${escv(plan?.destination)}" placeholder="Destination"></div><div class="sbi-delivery-modal-field full"><label for="sbiActualClient">Client</label><input id="sbiActualClient" name="client" value="${escv(c?.client)}" placeholder="Client"></div><div class="sbi-delivery-modal-field full"><label for="sbiActualNote">Observation / note</label><textarea id="sbiActualNote" name="note" placeholder="Observation facultative"></textarea></div></div></form><div class="sbi-delivery-modal-actions"><button type="button" class="btn light sbi-delivery-skip" data-skip>Livrer sans compléter</button><button type="button" class="btn light" data-cancel>Annuler</button><button type="button" class="btn" data-confirm>Confirmer la livraison</button></div></div>`;
+    backdrop.innerHTML=`<div class="sbi-delivery-modal" role="dialog" aria-modal="true" aria-labelledby="sbiDeliveryTitle"><div class="sbi-delivery-modal-head"><div><h3 id="sbiDeliveryTitle">Confirmer la livraison</h3><p>${escv(c?.chassis||c?.qr_id||'Chariot')} · Les informations ci-dessous sont facultatives.</p></div><button type="button" class="sbi-delivery-modal-close" aria-label="Fermer">×</button></div><form class="sbi-delivery-modal-body" id="sbiDeliveryForm"><div class="sbi-delivery-modal-note">Les informations saisies ici seront enregistrées dans « Informations stock ». Elles restent modifiables.</div><div class="sbi-delivery-modal-grid"><div class="sbi-delivery-modal-field"><label for="sbiActualDate">Date de livraison</label><input id="sbiActualDate" name="actualDate" type="date" value="${entryDate}"></div><div class="sbi-delivery-modal-field"><label for="sbiActualTime">Heure de livraison</label><input id="sbiActualTime" name="actualTime" type="time" value="${entryTime}"></div><div class="sbi-delivery-modal-field"><label for="sbiActualDriver">Chauffeur</label><input id="sbiActualDriver" name="driver" value="${escv(entryDriver)}" placeholder="Chauffeur"></div><div class="sbi-delivery-modal-field"><label for="sbiActualDestination">Destination</label><input id="sbiActualDestination" name="destination" value="${escv(entryDestination)}" placeholder="Destination"></div><div class="sbi-delivery-modal-field full"><label for="sbiActualClient">Client</label><input id="sbiActualClient" name="client" value="${escv(entryClient)}" placeholder="Client"></div><div class="sbi-delivery-modal-field full"><label for="sbiActualNote">Observation / note</label><textarea id="sbiActualNote" name="note" placeholder="Observation facultative"></textarea></div></div></form><div class="sbi-delivery-modal-actions"><button type="button" class="btn light sbi-delivery-skip" data-skip>Livrer sans compléter</button><button type="button" class="btn light" data-cancel>Annuler</button><button type="button" class="btn" data-confirm>Confirmer la livraison</button></div></div>`;
     document.body.appendChild(backdrop);
     const cleanup=value=>{document.removeEventListener('keydown',onKey);backdrop.remove();resolve(value)};
     const onKey=e=>{if(e.key==='Escape')cleanup(null)};
@@ -1107,6 +1112,32 @@ function openDeliveryConfirmation(c,plan){
     backdrop.addEventListener('click',e=>{if(e.target===backdrop)cleanup(null)});
     backdrop.querySelector('#sbiActualDriver')?.focus();
   });
+}
+
+async function saveDeliveryConfirmationToStock(qrId,plan,details){
+  if(!currentUser)throw new Error('Connexion requise.');
+  const c=CHARIOTS.find(x=>String(x.qr_id)===String(qrId));
+  const now=new Date();
+  const nextDate=String(details.date||plan?.date||localISODateGlobal(now)).trim();
+  const nextTime=String(details.time||plan?.time||'').trim();
+  const nextDriver=String(details.driver||plan?.driver||'').trim();
+  const nextDestination=String(details.destination||plan?.destination||'').trim();
+  const nextClient=String(details.client||c?.client||'').trim();
+  if(details.client){
+    const {error}=await supabaseClient.from('chariots').update({client:String(details.client).trim(),updated_at:now.toISOString()}).eq('qr_id',qrId);
+    if(error)throw error;
+    if(c){c.client=String(details.client).trim();c.updated_at=now.toISOString();}
+  }
+  if(plan?.id){
+    const payload={id:String(plan.id),qr:String(qrId),date:nextDate,time:nextTime,driver:nextDriver,destination:nextDestination,note:String(details.note||plan.note||'')};
+    const {error}=await supabaseClient.from('maintenance').insert({qr_id:qrId,date:nextDate,technicien:getUserDisplayName(),type:'Planification livraison',travaux:JSON.stringify(payload),created_by:currentUser.id});
+    if(error)throw error;
+    const index=DELIVERY_PLANS.findIndex(x=>String(x.id)===String(plan.id));
+    const updated={...plan,...payload};
+    if(index>=0)DELIVERY_PLANS[index]=updated;else DELIVERY_PLANS.push(updated);
+    cacheDeliveryPlans(DELIVERY_PLANS);
+  }
+  return {date:nextDate,time:nextTime,driver:nextDriver,destination:nextDestination,client:nextClient};
 }
 
 async function performWorkflowAction(qrId,action){
@@ -1134,6 +1165,7 @@ async function performWorkflowAction(qrId,action){
     const ok=await transitionChariotStatus(qrId,'Livré','Workflow livraison',{deliveryDate:details.skip?'':details.date});
     if(!ok)return false;
     if(!details.skip){
+      try{await saveDeliveryConfirmationToStock(qrId,getDeliveryPlan(qrId),details)}catch(e){console.warn('Informations de livraison non copiées dans Informations stock',e);alert('La livraison est confirmée, mais certaines informations n’ont pas pu être enregistrées dans « Informations stock ».')}
       const detailParts=[];
       if(details.date)detailParts.push('Date : '+details.date);
       if(details.time)detailParts.push('Heure : '+details.time);

@@ -433,11 +433,11 @@ function renderWorkflowAction(c,planned){
   const st=normalizeStatus(c.status),id=String(c.qr_id||'');
   if(st==='en fabrication'){b.textContent='Passer en stock';b.style.display='inline-flex';b.title='Compléter les informations du chariot pour le passer en stock.';b.onclick=()=>location.href='nouveau-chariot.html?id='+encodeURIComponent(id)}
   else if(st==='en stock'){b.textContent=String(c.client||'').trim()?'Réserver':'Affecter un client';b.style.display='inline-flex';b.title='Le statut devient automatiquement « Réservé » lorsqu’un client est renseigné.';b.onclick=()=>location.href='nouveau-chariot.html?id='+encodeURIComponent(id)}
-  else if(st==='reserve'){b.textContent=planned?'Passer en préparation':'Planifier';b.style.display='inline-flex';b.title=planned?'Passer automatiquement à « Préparation livraison ».':'Créer la planification de livraison.';b.onclick=()=>planned?workflowPrepareFromDetail(id):location.href='planning-livraisons.html?qr='+encodeURIComponent(id)}
+  else if(st==='reserve'){b.textContent='En préparation';b.style.display='inline-flex';b.className='btn save-ready workflow-preparation-action';b.title='Passer directement à « Préparation livraison ». ';b.onclick=()=>workflowPrepareFromDetail(id)}
   else if(st==='preparation livraison'){b.textContent='Prêt à livrer';b.style.display='inline-flex';b.title='Marquer la préparation comme terminée.';b.onclick=()=>markReadyToDeliver(id)}
   else if(st==='pret a livrer'&&isAdmin()){b.textContent='Livrer';b.style.display='inline-flex';b.title='Réservé à l’administrateur.';b.onclick=async()=>{const ok=await performWorkflowAction(id,'deliver');if(ok)location.reload()}}
 }
-async function workflowPrepareFromDetail(qrId){if(!requireAdmin())return;const c=CHARIOTS.find(x=>String(x.qr_id)===String(qrId));if(!c)return;if(!getDeliveryPlan(qrId)){alert('Planifiez d’abord une livraison pour ce chariot.');return}if(!confirm(`Passer ${c.chassis||qrId} en « Préparation livraison » ?`))return;const ok=await transitionChariotStatus(qrId,'Préparation livraison');if(ok)location.reload();}
+async function workflowPrepareFromDetail(qrId){if(!requireAdmin())return;const c=CHARIOTS.find(x=>String(x.qr_id)===String(qrId));if(!c)return;if(!confirm(`Passer ${c.chassis||qrId} en « Préparation livraison » ?`))return;const ok=await transitionChariotStatus(qrId,'Préparation livraison','Workflow livraison');if(ok)location.reload();}
 async function markReadyToDeliver(qrId){
   if(!requireAdmin())return;
   const c=CHARIOTS.find(x=>String(x.qr_id)===String(qrId));

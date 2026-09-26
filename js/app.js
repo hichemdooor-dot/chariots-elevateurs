@@ -383,12 +383,13 @@ async function resolvePasswordRequest(id){
 }
 
 
-function statusClass(v){const s=normalizeStatus(v);return s==='en stock'?'status-stock':s==='livre'?'status-delivered':s.includes('reserve')?'status-reserved':s.includes('preparation')?'status-preparation':s.includes('pret a livrer')?'status-ready':s.includes('bloque')||s.includes('non conforme')?'status-blocked':s.includes('fabrication')?'status-fabrication':''}
+function statusClass(v){const s=normalizeStatus(v);return s==='en stock'?'status-stock':s==='livre'?'status-delivered':s.includes('reserve')?'status-reserved':s.includes('modification production')?'status-modification':s.includes('preparation')?'status-preparation':s.includes('pret a livrer')?'status-ready':s.includes('bloque')||s.includes('non conforme')?'status-blocked':s.includes('fabrication')?'status-fabrication':''}
 function isDelivered(c){return normalizeStatus(c.status)==='livre'||!!c.delivery_date}
 const AUTO_WORKFLOW_FORWARD={
   'en fabrication':'En stock',
   'en stock':'Réservé',
-  'reserve':'Préparation livraison',
+  'reserve':'Modification production',
+  'modification production':'Préparation livraison',
   'preparation livraison':'Prêt à livrer',
   'pret a livrer':'Livré'
 };
@@ -433,11 +434,14 @@ function renderWorkflowAction(c,planned){
   const st=normalizeStatus(c.status),id=String(c.qr_id||'');
   if(st==='en fabrication'){b.textContent='Passer en stock';b.style.display='inline-flex';b.title='Compléter les informations du chariot pour le passer en stock.';b.onclick=()=>location.href='nouveau-chariot.html?id='+encodeURIComponent(id)}
   else if(st==='en stock'){b.textContent=String(c.client||'').trim()?'Réserver':'Affecter un client';b.style.display='inline-flex';b.title='Le statut devient automatiquement « Réservé » lorsqu’un client est renseigné.';b.onclick=()=>location.href='nouveau-chariot.html?id='+encodeURIComponent(id)}
-  else if(st==='reserve'){b.textContent='En préparation';b.style.display='inline-flex';b.className='btn save-ready workflow-preparation-action';b.title='Passer directement à « Préparation livraison ». ';b.onclick=()=>workflowPrepareFromDetail(id)}
+  else if(st==='reserve'){b.textContent='Envoyer en modification';b.style.display='inline-flex';b.title='Envoyer le chariot en production pour sa modification.';b.onclick=()=>startModificationFromDetail(id)}
+  else if(st==='modification production'){b.textContent='Modification terminée';b.style.display='inline-flex';b.className='btn save-ready workflow-preparation-action';b.title='Transférer le chariot vers Préparation livraison.';b.onclick=()=>finishModificationFromDetail(id)}
   else if(st==='preparation livraison'){b.textContent='Prêt à livrer';b.style.display='inline-flex';b.title='Marquer la préparation comme terminée.';b.onclick=()=>markReadyToDeliver(id)}
   else if(st==='pret a livrer'&&isAdmin()){b.textContent='Livrer';b.style.display='inline-flex';b.title='Réservé à l’administrateur.';b.onclick=async()=>{const ok=await performWorkflowAction(id,'deliver');if(ok)location.reload()}}
 }
-async function workflowPrepareFromDetail(qrId){if(!requireAdmin())return;const c=CHARIOTS.find(x=>String(x.qr_id)===String(qrId));if(!c)return;if(!confirm(`Passer ${c.chassis||qrId} en « Préparation livraison » ?`))return;const ok=await transitionChariotStatus(qrId,'Préparation livraison','Workflow livraison');if(ok)location.reload();}
+async function startModificationFromDetail(qrId){if(!requireAdmin())return;const ok=await performWorkflowAction(qrId,'start-modification');if(ok)location.reload();}
+async function finishModificationFromDetail(qrId){if(!requireAdmin())return;const ok=await performWorkflowAction(qrId,'finish-modification');if(ok)location.reload();}
+async function workflowPrepareFromDetail(qrId){return finishModificationFromDetail(qrId)}
 async function markReadyToDeliver(qrId){
   if(!requireAdmin())return;
   const c=CHARIOTS.find(x=>String(x.qr_id)===String(qrId));
@@ -505,9 +509,9 @@ function localISODateGlobal(d=new Date()){const y=d.getFullYear(),m=String(d.get
 function isStock(c){return normalizeStatus(c.status)==='en stock'&&!String(c.client||'').trim()}
 function compactWorkflowHtml(c){
   const st=normalizeStatus(c?.status);
-  const order={'en stock':0,'reserve':1,'preparation livraison':2,'pret a livrer':3,'livre':4};
+  const order={'en stock':0,'reserve':1,'modification production':2,'preparation livraison':3,'pret a livrer':4,'livre':5};
   const current=order[st]??-1;
-  const steps=['En stock','Réservé','Préparation','Prêt à livrer','Livré'];
+  const steps=['En stock','Réservé','Modification','Préparation','Prêt à livrer','Livré'];
   return `<div class="mobile-chariot-workflow" aria-label="Workflow ${esc(c?.status||'—')}">${steps.map((short,i)=>{
     const state=i<current?'complete':i===current?'current':'pending';
     return `<div class="mobile-workflow-step ${state}"><span class="mobile-workflow-dot">${state==='complete'?'✓':i+1}</span><span>${esc(short)}</span></div>`;
@@ -523,7 +527,8 @@ function card(c,from=''){
   let action='';
   if(isAdmin()){
     if(st==='en stock') action=`<button class="btn light card-action" type="button" data-card-action="assign" data-qr="${esc(id)}">Affecter client</button>`;
-    else if(st==='reserve') action=planned?`<button class="btn light card-action" type="button" data-card-action="prepare" data-qr="${esc(id)}">Préparation</button>`:`<button class="btn light card-action" type="button" data-card-action="plan" data-qr="${esc(id)}">Planifier</button>`;
+    else if(st==='reserve') action=`<button class="btn light card-action" type="button" data-card-action="start-modification" data-qr="${esc(id)}">Envoyer en modification</button>`;
+    else if(st==='modification production') action=`<button class="btn light card-action" type="button" data-card-action="finish-modification" data-qr="${esc(id)}">Modification terminée</button>`;
     else if(st==='preparation livraison') action=`<button class="btn light card-action" type="button" data-card-action="ready" data-qr="${esc(id)}">Prêt à livrer</button>`;
     else if(st==='pret a livrer' && canDeliver) action=`<button class="btn delivered-action card-action" type="button" data-card-action="deliver" data-qr="${esc(id)}">Livrer</button>`;
   }
@@ -540,10 +545,10 @@ function initInteractiveCards(){
     const id=btn.dataset.qr,action=btn.dataset.cardAction;
     const c=CHARIOTS.find(x=>String(x.qr_id)===String(id));
     if(!c)return;
-    if(!isAdmin()&&['assign','plan','prepare','ready'].includes(action)){requireAdmin();return}
+    if(!isAdmin()&&['assign','plan','prepare','ready','start-modification','finish-modification'].includes(action)){requireAdmin();return}
     if(action==='assign'){location.href='nouveau-chariot.html?id='+encodeURIComponent(id);return}
     if(action==='plan'){location.href='planning-livraisons.html?qr='+encodeURIComponent(id);return}
-    const next=action==='prepare'?'Préparation livraison':action==='ready'?'Prêt à livrer':action==='deliver'?'Livré':'';
+    const next=action==='start-modification'?'Modification production':action==='finish-modification'?'Préparation livraison':action==='prepare'?'Préparation livraison':action==='ready'?'Prêt à livrer':action==='deliver'?'Livré':'';
     if(!next)return;
     btn.dataset.busy='1';btn.disabled=true;const original=btn.textContent;btn.textContent='...';
     try{
@@ -968,7 +973,7 @@ function highlightLiveListItem(listId,qr,message=''){
   if(message)toastCardUpdate(qr,message);
 }
 
-async function chariotsPage(){if(!await session())return;await loadChariots();const initialSearch=new URLSearchParams(window.location.search).get('search')||'';const searchEl=$('#search');if(searchEl&&initialSearch){searchEl.value=initialSearch;}const ids=['engineFilter','capacityFilter','mastFilter','heightFilter'];function fill(){const defs=[['engineFilter','engine','Moteur : Tous'],['capacityFilter','capacity','Capacité : Toutes'],['mastFilter','mast_type','Mât : Tous'],['heightFilter','lifting_height','Hauteur : Toutes']];defs.forEach(([id,k,label])=>{const e=$('#'+id),old=e.value;if(!e)return;let vals;if(id==='capacityFilter'){vals=['2.5T','3T','3.8T','3.5T (TT)','5T','7T','10T','12T']}else{vals=[...new Set(CHARIOTS.map(c=>String(c[k]||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}))}e.innerHTML=`<option value="">${label}</option>`+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');if(vals.includes(old))e.value=old})}function render(){fill();let rows=CHARIOTS;const sf=$('#statusFilter')?.value||'';if(sf==='stock')rows=rows.filter(isStock);if(sf==='delivered')rows=rows.filter(isDelivered);if(sf==='stock1')rows=rows.filter(c=>normalizeStatus(c.stock)==='stock1');if(sf==='stock2')rows=rows.filter(c=>normalizeStatus(c.stock)==='stock2');if(sf==='fabrication')rows=rows.filter(c=>{const st=normalizeStatus(c.status);return normalizeStatus(c.stock)==='fabrication'&&!['pret a livrer','livre'].includes(st);});const q=$('#search')?.value.trim().toLowerCase()||'';const fs=[['engineFilter','engine'],['capacityFilter','capacity'],['mastFilter','mast_type'],['heightFilter','lifting_height']];rows=rows.filter(c=>(!q||[c.qr_id,c.chassis,c.engine,c.client,c.capacity].some(v=>String(v||'').toLowerCase().includes(q)))&&fs.every(([id,k])=>!$('#'+id)?.value||norm(c[k])===norm($('#'+id).value)));$('#count').textContent=rows.length+' chariot'+(rows.length!==1?'s':'');$('#list').innerHTML=rows.map(card).join('')||'<div class="empty">Aucun résultat.</div>'}$('#search').addEventListener('input',render);$('#statusFilter').addEventListener('change',render);ids.forEach(id=>$('#'+id).addEventListener('change',render));$('#clearFilters').onclick=()=>{ids.forEach(id=>$('#'+id).value='');$('#statusFilter').value='';$('#search').value='';render()};render()
+async function chariotsPage(){if(!await session())return;await loadChariots();const initialSearch=new URLSearchParams(window.location.search).get('search')||'';const searchEl=$('#search');if(searchEl&&initialSearch){searchEl.value=initialSearch;}const ids=['engineFilter','capacityFilter','mastFilter','heightFilter'];function fill(){const defs=[['engineFilter','engine','Moteur : Tous'],['capacityFilter','capacity','Capacité : Toutes'],['mastFilter','mast_type','Mât : Tous'],['heightFilter','lifting_height','Hauteur : Toutes']];defs.forEach(([id,k,label])=>{const e=$('#'+id),old=e.value;if(!e)return;let vals;if(id==='capacityFilter'){vals=['2.5T','3T','3.8T','3.5T (TT)','5T','7T','10T','12T']}else{vals=[...new Set(CHARIOTS.map(c=>String(c[k]||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}))}e.innerHTML=`<option value="">${label}</option>`+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');if(vals.includes(old))e.value=old})}function render(){fill();let rows=CHARIOTS;const sf=$('#statusFilter')?.value||'';if(sf==='stock')rows=rows.filter(isStock);if(sf==='delivered')rows=rows.filter(isDelivered);if(sf==='stock1')rows=rows.filter(c=>normalizeStatus(c.stock)==='stock1');if(sf==='stock2')rows=rows.filter(c=>normalizeStatus(c.stock)==='stock2');if(sf==='fabrication')rows=rows.filter(c=>{const st=normalizeStatus(c.status);return normalizeStatus(c.stock)==='fabrication'&&!['pret a livrer','livre'].includes(st);});if(sf==='reserved')rows=rows.filter(c=>normalizeStatus(c.status)==='reserve');if(sf==='modification')rows=rows.filter(c=>normalizeStatus(c.status)==='modification production');if(sf==='preparation')rows=rows.filter(c=>normalizeStatus(c.status)==='preparation livraison');if(sf==='ready')rows=rows.filter(c=>normalizeStatus(c.status)==='pret a livrer');const q=$('#search')?.value.trim().toLowerCase()||'';const fs=[['engineFilter','engine'],['capacityFilter','capacity'],['mastFilter','mast_type'],['heightFilter','lifting_height']];rows=rows.filter(c=>(!q||[c.qr_id,c.chassis,c.engine,c.client,c.capacity].some(v=>String(v||'').toLowerCase().includes(q)))&&fs.every(([id,k])=>!$('#'+id)?.value||norm(c[k])===norm($('#'+id).value)));$('#count').textContent=rows.length+' chariot'+(rows.length!==1?'s':'');$('#list').innerHTML=rows.map(card).join('')||'<div class="empty">Aucun résultat.</div>'}$('#search').addEventListener('input',render);$('#statusFilter').addEventListener('change',render);ids.forEach(id=>$('#'+id).addEventListener('change',render));$('#clearFilters').onclick=()=>{ids.forEach(id=>$('#'+id).value='');$('#statusFilter').value='';$('#search').value='';render()};render()
   function highlightCard(qr,message='') {
     const el=document.querySelector(`[data-card-id=\"${CSS.escape(String(qr))}\"]`);
     if(!el)return;
@@ -988,7 +993,7 @@ async function chariotsPage(){if(!await session())return;await loadChariots();co
 }
 function workflowStepState(c,stepIndex,planned){
   const st=normalizeStatus(c?.status);
-  const order={'en fabrication':0,'en stock':1,'reserve':2,'preparation livraison':3,'pret a livrer':4,'livre':5};
+  const order={'en fabrication':0,'en stock':1,'reserve':2,'modification production':3,'preparation livraison':4,'pret a livrer':5,'livre':6};
   const current=order[st] ?? 0;
   if(stepIndex<current)return'complete';
   if(stepIndex===current)return'current';
@@ -998,12 +1003,12 @@ function workflowStepState(c,stepIndex,planned){
 function renderWorkflowSteps(c,planned){
   const box=document.getElementById('workflowSteps');
   if(!box)return;
-  const steps=['En stock','Réservé','Préparation','Prêt à livrer','Livré'];
+  const steps=['Fabrication','En stock','Réservé','Modification production','Préparation','Prêt à livrer','Livré'];
   const current=normalizeStatus(c?.status);
-  const labels={'en fabrication':'En fabrication','en stock':'En stock','reserve':'Réservé','preparation livraison':'Préparation','pret a livrer':'Prêt à livrer','livre':'Livré'};
+  const labels={'en fabrication':'En fabrication','en stock':'En stock','reserve':'Réservé','modification production':'Modification production','preparation livraison':'Préparation','pret a livrer':'Prêt à livrer','livre':'Livré'};
   const currentLabel=labels[current]||String(c?.status||'—');
   const stepsHtml=steps.map((label,i)=>{
-    const state=workflowStepState(c,i+1,planned);
+    const state=workflowStepState(c,i,planned);
     const connector=i<steps.length-1?'<span class="workflow-connector"></span>':'';
     return '<div class="workflow-step '+state+'"><span class="workflow-step-dot">'+(state==='complete'?'✓':i+1)+'</span><span>'+esc(label)+'</span></div>'+connector;
   }).join('');
@@ -1143,10 +1148,20 @@ async function saveDeliveryConfirmationToStock(qrId,plan,details){
 async function performWorkflowAction(qrId,action){
   const c=CHARIOTS.find(x=>String(x.qr_id)===String(qrId));
   if(!c)return false;
-  const planned=!!getDeliveryPlan(qrId);
-  if((action==='prepare'||action==='ready')&&!requireAdmin())return false;
+  if(['start-modification','finish-modification','prepare','ready'].includes(action)&&!requireAdmin())return false;
+  if(action==='start-modification'){
+    if(normalizeStatus(c.status)!=='reserve'){alert('Le chariot doit être « Réservé » avant la modification production.');return false}
+    if(!confirm(`Envoyer ${c.chassis||qrId} en « Modification production » ?`))return false;
+    return await transitionChariotStatus(qrId,'Modification production','Workflow production');
+  }
+  if(action==='finish-modification'){
+    if(normalizeStatus(c.status)!=='modification production'){alert('Le chariot doit être en « Modification production ».');return false}
+    if(!confirm(`Confirmer que la modification de ${c.chassis||qrId} est terminée et transférer le chariot vers « Préparation livraison » ?`))return false;
+    return await transitionChariotStatus(qrId,'Préparation livraison','Modification production terminée');
+  }
   if(action==='prepare'){
-    if(!confirm(`Passer ${c.chassis||qrId} en « Préparation livraison » ?`))return false;
+    if(normalizeStatus(c.status)!=='modification production'){alert('Le chariot doit être en « Modification production ».');return false}
+    if(!confirm(`Transférer ${c.chassis||qrId} vers « Préparation livraison » ?`))return false;
     return await transitionChariotStatus(qrId,'Préparation livraison','Workflow livraison');
   }
   if(action==='ready'){
@@ -1249,8 +1264,8 @@ async function saveChariot(){
   const displayStatus=String(p.status_display||'').trim();
   p.status=(old&&isAdmin()&&displayStatus&&normalizeStatus(displayStatus)!==normalizeStatus(old.status))?displayStatus:automaticStatusForChariot(old,p);
   delete p.status_display;
-  const duplicate=CHARIOTS.find(c=>norm(c.chassis)===norm(p.chassis)&&norm(c.engine)===norm(p.engine)&&norm(c.capacity)===norm(p.capacity)&&String(c.qr_id)!==String(oldId));
-  if(duplicate){alert(`Le numéro de châssis « ${p.chassis} » existe déjà avec le même moteur (${p.engine}) et la même capacité (${p.capacity}) — ${duplicate.qr_id}.`);return}
+  const duplicate=CHARIOTS.find(c=>norm(c.chassis)===norm(p.chassis)&&norm(c.engine)===norm(p.engine)&&String(c.qr_id)!==String(oldId));
+  if(duplicate){alert(`Le numéro de châssis « ${p.chassis} » existe déjà avec le même moteur (${p.engine}) — ${duplicate.qr_id}. La capacité ne participe plus au contrôle des doublons.`);return}
   p.updated_at=new Date().toISOString();p.delivery_date=p.delivery_date||null;p.qr_id=p.qr_id||nextQr();
   const {error}=oldId?await supabaseClient.from('chariots').update(p).eq('qr_id',oldId):await supabaseClient.from('chariots').insert(p);
   if(error){alert('Erreur : '+error.message);return}
@@ -1273,6 +1288,46 @@ async function markDelivered(qrId){
 }
 
 async function deleteChariot(){if(!requireValidLicense()||!requireAdmin())return;const id=new URLSearchParams(location.search).get('id')||$('#qr_id')?.value;if(!id)return;const c=CHARIOTS.find(x=>String(x.qr_id)===String(id));if(!confirm('Supprimer définitivement le chariot '+id+' ?'))return;try{await supabaseClient.from('maintenance').insert({qr_id:id,date:new Date().toISOString().slice(0,10),technicien:getUserDisplayName(),type:'Suppression chariot',travaux:`Chariot supprimé • Châssis : ${c?.chassis||'—'} • Moteur : ${c?.engine||'—'} • Client : ${c?.client||'—'}`,created_by:currentUser.id})}catch(e){console.warn('Historique suppression non enregistré',e)}const {error}=await supabaseClient.from('chariots').delete().eq('qr_id',id);if(error){alert('Erreur : '+friendlySupabaseError(error));return}location.href='chariots.html'}
+function stockLabel(value){const v=normalizeStatus(value);return v==='stock1'?'Stock 1':v==='stock2'?'Stock 2':v==='fabrication'?'Fabrication':String(value||'—')}
+async function affectationPage(){
+  if(!await session())return;
+  await loadChariots();
+  if(!isAdmin()){alert('Accès administrateur requis.');location.href='dashboard.html';return}
+  const els={search:document.getElementById('affSearch'),engine:document.getElementById('affEngine'),capacity:document.getElementById('affCapacity'),mast:document.getElementById('affMast'),height:document.getElementById('affHeight'),reset:document.getElementById('affReset'),count:document.getElementById('affCount'),list:document.getElementById('affList')};
+  function values(key,label){const vals=[...new Set(CHARIOTS.filter(isStock).map(c=>String(c[key]||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));return '<option value="">'+label+'</option>'+vals.map(v=>'<option value="'+esc(v)+'">'+esc(v)+'</option>').join('')}
+  function buildFilters(){els.engine.innerHTML=values('engine','Moteur : Tous');els.capacity.innerHTML=values('capacity','Capacité : Toutes');els.mast.innerHTML=values('mast_type','Mât : Tous');els.height.innerHTML=values('lifting_height','Hauteur : Toutes')}
+  function render(){
+    const q=els.search.value.trim().toLowerCase();
+    let rows=CHARIOTS.filter(isStock).filter(c=>{
+      const text=[c.qr_id,c.chassis,c.engine,c.capacity,c.lifting_height,c.mast_type].map(v=>String(v||'').toLowerCase());
+      return (!q||text.some(v=>v.includes(q)))&&(!els.engine.value||norm(c.engine)===norm(els.engine.value))&&(!els.capacity.value||norm(c.capacity)===norm(els.capacity.value))&&(!els.mast.value||norm(c.mast_type)===norm(els.mast.value))&&(!els.height.value||norm(c.lifting_height)===norm(els.height.value));
+    });
+    els.count.textContent=rows.length+' chariot'+(rows.length!==1?'s':'')+' disponible'+(rows.length!==1?'s':'')+' pour affectation';
+    els.list.innerHTML=rows.map(c=>`<article class="card aff-item" data-aff-row="${esc(c.qr_id)}"><div class="aff-main"><div class="aff-title">${esc(c.chassis||c.qr_id||'—')}</div><div class="aff-meta">${esc(c.engine||'—')} · ${esc(fmtCapacity(c.capacity)||'—')} · ${esc(c.lifting_height||'—')} · ${esc(c.mast_type||'—')}</div><div class="aff-stock">Emplacement : <strong>${esc(stockLabel(c.stock))}</strong></div></div><div class="aff-form"><label>Client</label><div class="aff-inline"><input data-aff-client="${esc(c.qr_id)}" placeholder="Nom du client" autocomplete="organization"><button class="btn" type="button" data-affect="${esc(c.qr_id)}">Affecter</button></div></div><a class="btn light" href="chariot.html?id=${encodeURIComponent(c.qr_id)}&from=stock">Voir la fiche</a></article>`).join('')||'<div class="empty">Aucun chariot disponible en stock.</div>';
+    els.list.querySelectorAll('[data-affect]').forEach(btn=>btn.onclick=()=>assignClient(btn.dataset.affect));
+  }
+  async function assignClient(qrId){
+    const input=els.list.querySelector(`[data-aff-client="${CSS.escape(String(qrId))}"]`);const client=String(input?.value||'').trim();if(!client){alert('Nom du client obligatoire.');input?.focus();return}
+    const c=CHARIOTS.find(x=>String(x.qr_id)===String(qrId));if(!c)return;
+    const now=new Date();const {error}=await supabaseClient.from('chariots').update({client,status:'Réservé',updated_at:now.toISOString()}).eq('qr_id',qrId);if(error){alert('Erreur : '+friendlySupabaseError(error));return}
+    try{await supabaseClient.from('maintenance').insert({qr_id:qrId,date:localISODateGlobal(now),technicien:getUserDisplayName(),type:'Affectation client',travaux:`Client affecté : ${client} • ${c.chassis||qrId} • Stock : ${stockLabel(c.stock)}`,created_by:currentUser.id})}catch(e){console.warn('Historique affectation non enregistré',e)}
+    c.client=client;c.status='Réservé';c.updated_at=now.toISOString();
+    toastCardUpdate(qrId,`Réservé — ${client}`);buildFilters();render();
+  }
+  buildFilters();['search'].forEach(k=>els[k].addEventListener('input',render));['engine','capacity','mast','height'].forEach(k=>els[k].addEventListener('change',render));els.reset.onclick=()=>{els.search.value='';['engine','capacity','mast','height'].forEach(k=>els[k].value='');render()};render();
+  startSbiRealtime(async()=>{if(document.visibilityState==='hidden')return;try{await loadChariots();buildFilters();render()}catch(e){console.warn('Actualisation affectation',e)}},['chariots']);
+}
+async function modificationProductionPage(){
+  if(!await session())return;
+  await loadChariots();
+  if(!isAdmin()){alert('Accès administrateur requis.');location.href='dashboard.html';return}
+  const els={search:document.getElementById('modSearch'),status:document.getElementById('modStatus'),engine:document.getElementById('modEngine'),capacity:document.getElementById('modCapacity'),reset:document.getElementById('modReset'),count:document.getElementById('modCount'),list:document.getElementById('modList')};
+  function buildFilters(){const rows=CHARIOTS.filter(c=>['reserve','modification production'].includes(normalizeStatus(c.status)));const uniq=k=>[...new Set(rows.map(c=>String(c[k]||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));els.status.innerHTML='<option value="">Étape : Toutes</option><option value="reserve">Réservé</option><option value="modification production">Modification production</option>';els.engine.innerHTML='<option value="">Moteur : Tous</option>'+uniq('engine').map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');els.capacity.innerHTML='<option value="">Capacité : Toutes</option>'+uniq('capacity').map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('')}
+  function render(){const q=els.search.value.trim().toLowerCase();const rows=CHARIOTS.filter(c=>['reserve','modification production'].includes(normalizeStatus(c.status))).filter(c=>(!q||[c.qr_id,c.chassis,c.client,c.engine,c.capacity].some(v=>String(v||'').toLowerCase().includes(q)))&&(!els.status.value||normalizeStatus(c.status)===els.status.value)&&(!els.engine.value||norm(c.engine)===norm(els.engine.value))&&(!els.capacity.value||norm(c.capacity)===norm(els.capacity.value))).sort((a,b)=>new Date(b.updated_at||0)-new Date(a.updated_at||0));els.count.textContent=rows.length+' chariot'+(rows.length!==1?'s':'')+' à traiter';els.list.innerHTML=rows.map(c=>{const st=normalizeStatus(c.status),action=st==='reserve'?`<button class="btn" type="button" data-mod-start="${esc(c.qr_id)}">Démarrer modification</button>`:`<button class="btn save-ready" type="button" data-mod-finish="${esc(c.qr_id)}">Modification terminée</button>`;return `<article class="card mod-item"><div class="mod-main"><div class="mod-title">${esc(c.chassis||c.qr_id||'—')}</div><div class="mod-meta"><strong>Client :</strong> ${esc(c.client||'—')}</div><div class="mod-meta">${esc(c.engine||'—')} · ${esc(fmtCapacity(c.capacity)||'—')} · ${esc(c.lifting_height||'—')} · ${esc(c.mast_type||'—')}</div><div class="mod-status">${esc(c.status||'—')}</div></div><div class="mod-actions">${action}<a class="btn light" href="chariot.html?id=${encodeURIComponent(c.qr_id)}&from=modification">Voir la fiche</a></div></article>`}).join('')||'<div class="empty">Aucun chariot en attente de modification production.</div>';els.list.querySelectorAll('[data-mod-start]').forEach(b=>b.onclick=async()=>{if(await performWorkflowAction(b.dataset.modStart,'start-modification')){await loadChariots();buildFilters();render()}});els.list.querySelectorAll('[data-mod-finish]').forEach(b=>b.onclick=async()=>{if(await performWorkflowAction(b.dataset.modFinish,'finish-modification')){await loadChariots();buildFilters();render()}})}
+  buildFilters();els.search.addEventListener('input',render);[els.status,els.engine,els.capacity].forEach(el=>el.addEventListener('change',render));els.reset.onclick=()=>{els.search.value='';[els.status,els.engine,els.capacity].forEach(el=>el.value='');render()};render();
+  startSbiRealtime(async()=>{if(document.visibilityState==='hidden')return;try{await loadChariots();buildFilters();render()}catch(e){console.warn('Actualisation production',e)}},['chariots','maintenance']);
+}
+
 async function stockPage(){if(!await session())return;await loadChariots();const ids=['engineFilter','capacityFilter','mastFilter','heightFilter'];function fill(){const rows=CHARIOTS.filter(isStock);const defs=[['engineFilter','engine','Moteur : Tous'],['capacityFilter','capacity','Capacité : Toutes'],['mastFilter','mast_type','Mât : Tous'],['heightFilter','lifting_height','Hauteur : Toutes']];defs.forEach(([id,k,label])=>{const e=$('#'+id),old=e.value,vals=[...new Set(rows.map(c=>String(c[k]||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));e.innerHTML=`<option value="">${label}</option>`+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');if(vals.includes(old))e.value=old})}function render(){fill();let rows=CHARIOTS.filter(isStock);const q=$('#stockSearch')?.value.trim().toLowerCase()||'';const fs=[['engineFilter','engine'],['capacityFilter','capacity'],['mastFilter','mast_type'],['heightFilter','lifting_height']];rows=rows.filter(c=>(!q||[c.qr_id,c.chassis,c.engine,c.client,c.capacity].some(v=>String(v||'').toLowerCase().includes(q)))&&fs.every(([id,k])=>!$('#'+id).value||norm(c[k])===norm($('#'+id).value)));$('#stockCount').textContent=rows.length+' chariot'+(rows.length!==1?'s':'')+' en stock';$('#stockList').innerHTML=rows.map(c=>card(c,'stock')).join('')||'<div class="empty">Aucun chariot en stock.</div>'}$('#stockSearch').addEventListener('input',render);ids.forEach(id=>$('#'+id).addEventListener('change',render));$('#clearFilters').onclick=()=>{ids.forEach(id=>$('#'+id).value='');$('#stockSearch').value='';render()};render()
   startSbiRealtime(async evt=>{
     if(document.visibilityState==='hidden')return;

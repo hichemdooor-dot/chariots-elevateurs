@@ -36,27 +36,27 @@ async function preparationLivraisonPage(){
         </div>
         <div class="prep-item-actions">
           <a class="btn light prep-view-link" href="chariot.html?id=${encodeURIComponent(c.qr_id||'')}">Voir la fiche</a>
-          ${admin?`<button class="btn" type="button" data-prep="${esc(c.qr_id)}" ${disabled?'disabled':''}>${disabled?'Déjà en préparation':'Passer en préparation'}</button>`:''}
+          ${admin?`<button class="btn save-ready" type="button" data-prep-ready="${esc(c.qr_id)}">Prêt à livrer</button>`:''}
         </div>
       </div>`
     }).join('')||'<div class="empty">Aucun chariot correspondant.</div>';
-    els.list.querySelectorAll('[data-prep]').forEach(b=>b.onclick=e=>{e.stopPropagation();passToPreparation(b.dataset.prep)});els.list.querySelectorAll('[data-chariot-row]').forEach(row=>{const go=()=>{const id=row.dataset.chariotRow;if(id)location.href='chariot.html?id='+encodeURIComponent(id)};row.addEventListener('click',e=>{if(e.target.closest('a,button,input,select,textarea'))return;go()});row.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&!e.target.closest('a,button,input,select,textarea')){e.preventDefault();go()}})});
+    els.list.querySelectorAll('[data-prep-ready]').forEach(b=>b.onclick=e=>{e.stopPropagation();passToPreparation(b.dataset.prepReady)});els.list.querySelectorAll('[data-chariot-row]').forEach(row=>{const go=()=>{const id=row.dataset.chariotRow;if(id)location.href='chariot.html?id='+encodeURIComponent(id)};row.addEventListener('click',e=>{if(e.target.closest('a,button,input,select,textarea'))return;go()});row.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&!e.target.closest('a,button,input,select,textarea')){e.preventDefault();go()}})});
   }
   async function passToPreparation(qrId){
     if(!requireAdmin())return;
     if(!currentUser){alert('Connexion requise.');return}
     const c=CHARIOTS.find(x=>String(x.qr_id)===String(qrId));if(!c)return;
     if(normalizeStatus(c.status)==='préparation livraison')return;
-    const ok=await performWorkflowAction(qrId,'prepare');
+    const ok=await performWorkflowAction(qrId,'ready');
     if(!ok)return;
     await loadChariots();
-    baseRows=CHARIOTS.filter(c=>{const st=normalizeStatus(c.status);return ['en fabrication','reserve','en stock'].includes(st);});
+    baseRows=CHARIOTS.filter(c=>normalizeStatus(c.status)==='preparation livraison');
     buildFilters();
     render();
-    toastCardUpdate(qrId,'Préparation livraison');
+    toastCardUpdate(qrId,'Prêt à livrer');
   }
   // Seuls les chariots avec les statuts autorisés pour la préparation sont affichés.
-  baseRows=CHARIOTS.filter(c=>{const st=normalizeStatus(c.status);return ['en fabrication','reserve','en stock'].includes(st);});
+  baseRows=CHARIOTS.filter(c=>normalizeStatus(c.status)==='preparation livraison');
   buildFilters();
   [els.search,els.status,els.engine,els.capacity,els.mast,els.height].forEach(el=>el.addEventListener(el===els.search?'input':'change',render));
   els.reset.onclick=()=>{[els.search,els.status,els.engine,els.capacity,els.mast,els.height].forEach(el=>el.value='');render()};

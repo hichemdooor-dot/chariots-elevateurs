@@ -1728,3 +1728,7 @@ button.menu-btn, button.notification-bell, button.user-admin-top, .text-link, .v
 .delivery-row-readonly{cursor:default!important}
 .delivery-row-readonly .delivery-drag-hint{opacity:.45}
 .delivery-readonly-label{opacity:.7}
+
+/* SBI WORKFLOW V67 */
+.status-modification{background:#fff0d6!important;color:#8a4b00!important;border:1px solid #f3c57a}
+.aff-filter-card,.mod-filter-card{margin-bottom:14px}.aff-list,.mod-list{display:grid;gap:12px}.aff-item,.mod-item{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,420px) auto;gap:16px;align-items:center}.aff-title,.mod-title{font-size:20px;font-weight:900;color:#203746}.aff-meta,.mod-meta{margin-top:6px;color:#607280;font-size:13px}.aff-stock{margin-top:8px;font-size:12px;color:#657887}.aff-form label{display:block;font-size:12px;font-weight:800;color:#4d6170;margin-bottom:6px}.aff-inline{display:flex;gap:8px}.aff-inline input{flex:1;min-width:0;border:1px solid #d5e0e9;border-radius:10px;padding:11px 12px;font:inherit;background:#fff}.aff-inline input:focus{outline:none;border-color:#2d83c5;box-shadow:0 0 0 3px rgba(45,131,197,.12)}.mod-status{display:inline-flex;margin-top:9px;padding:6px 9px;border-radius:999px;background:#f6f9fc;color:#365064;font-size:12px;font-weight:900}.mod-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}@media(max-width:820px){.aff-item,.mod-item{grid-template-columns:1fr}.mod-actions{justify-content:stretch}.mod-actions .btn{flex:1}.aff-inline{flex-direction:column}.aff-inline .btn{width:100%}}

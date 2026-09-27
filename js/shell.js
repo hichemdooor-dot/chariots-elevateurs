@@ -7,23 +7,62 @@
 
 function menuHTML(){
   const icon=(d)=>`<svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+  const link=(href,label,d,extra='')=>`<a href="${href}"${extra?` class="${extra}"`:''}>${icon(d)}<span>${label}</span></a>`;
+  const group=(id,label,items)=>`<section class="nav-group" data-nav-group="${id}">
+    <button type="button" class="nav-group-toggle" aria-expanded="false" aria-controls="nav-items-${id}">
+      <span class="nav-group-label">${label}</span>
+      <svg class="nav-group-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+    </button>
+    <div class="nav-group-items" id="nav-items-${id}">${items}</div>
+  </section>`;
   return `<div class="nav dash-menu">
-    <a href="dashboard.html">${icon('<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>')}<span>Tableau de bord</span></a>
-    <a href="chariots.html">${icon('<path d="M3 16l2-7h10l5 4v3"/><path d="M5 16h14"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/><path d="M15 9V5h3v5"/>')}<span>Tous les chariots</span></a>
-    <a href="stock.html">${icon('<path d="M4 7h16v13H4z"/><path d="M8 7V4h8v3M8 11h8M8 15h5"/>')}<span>Chariots en stock</span></a>
-    <a href="affectation.html">${icon('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M16 11h6"/>')}<span>Affectation commerciale</span></a>
-    <a href="modification-production.html">${icon('<path d="M4 7h16v10H4z"/><path d="M8 17v3M16 17v3M7 4h10M9 8l2 2 4-4"/>')}<span>Modification production</span></a>
-    <a href="nouveau-chariot.html">${icon('<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>')}<span>Nouveau chariot</span></a>
-    <a href="preparation-livraison.html">${icon('<path d="M3 5h11v11H3z"/><path d="M14 9h4l3 3v4h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/>')}<span>Préparation livraison</span></a>
-    <a href="chariots-prevus-livraison.html">${icon('<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M7 2v4M17 2v4M3 9h18"/><path d="M8 13h3M8 17h5"/>')}<span>Chariots prévus livraison</span></a>
-    <a href="planning-livraisons.html">${icon('<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M7 2v4M17 2v4M3 9h18"/><path d="M8 13h2M12 13h2M16 13h0M8 17h2M12 17h2"/>')}<span>Planning des livraisons</span></a>
-    <a href="livres.html">${icon('<path d="M4 5h12v14H4z"/><path d="M8 8h5M8 12h5M8 16h3"/><path d="M16 8h4v11h-4"/>')}<span>Chariots livrés</span></a>
-    <a href="gestion.html" class="admin-only-nav hidden">${icon('<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-5 6-5s6 1.7 6 5"/><path d="M17 11a3 3 0 1 0 0-6M17 15c2.4 0 4 1.5 4 4"/>')}<span>Gestion utilisateurs</span></a>
-    <a href="licence.html">${icon('<path d="M12 3l2.2 1.5 2.7-.1.8 2.6 2.2 1.6-1 2.5.5 2.7-2.5 1.1-.9 2.5-2.7-.2L12 21l-2.3-1.6-2.7.2-.9-2.5-2.5-1.1.5-2.7-1-2.5L5.3 8.6l.8-2.6 2.7.1L12 3z"/><circle cx="12" cy="12" r="3"/>')}<span>Paramètres</span></a>
-    <a href="#" onclick="logout();return false" class="logout-link">${icon('<path d="M9 5H4v14h5M13 8l4 4-4 4M17 12H8"/>')}<span>Déconnexion</span></a>
-  </div>`
+    ${group('pilotage','Pilotage',link('dashboard.html','Tableau de bord','<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>'))}
+    ${group('parc','Parc & stock',
+      link('chariots.html','Tous les chariots','<path d="M3 16l2-7h10l5 4v3"/><path d="M5 16h14"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/><path d="M15 9V5h3v5"/>')+
+      link('stock.html','Chariots en stock','<path d="M4 7h16v13H4z"/><path d="M8 7V4h8v3M8 11h8M8 15h5"/>')+
+      link('nouveau-chariot.html','Nouveau chariot','<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>'))}
+    ${group('commercial','Commercial & production',
+      link('affectation.html','Affectation commerciale','<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M16 11h6"/>')+
+      link('modification-production.html','Modification production','<path d="M4 7h16v10H4z"/><path d="M8 17v3M16 17v3M7 4h10M9 8l2 2 4-4"/>'))}
+    ${group('livraisons','Livraisons',
+      link('preparation-livraison.html','Préparation livraison','<path d="M3 5h11v11H3z"/><path d="M14 9h4l3 3v4h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/>')+
+      link('chariots-prevus-livraison.html','Chariots prévus livraison','<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M7 2v4M17 2v4M3 9h18"/><path d="M8 13h3M8 17h5"/>')+
+      link('planning-livraisons.html','Planning des livraisons','<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M7 2v4M17 2v4M3 9h18"/><path d="M8 13h2M12 13h2M16 13h0M8 17h2M12 17h2"/>')+
+      link('livres.html','Chariots livrés','<path d="M4 5h12v14H4z"/><path d="M8 8h5M8 12h5M8 16h3"/><path d="M16 8h4v11h-4"/>'))}
+    ${group('administration','Administration',
+      link('gestion.html','Gestion utilisateurs','<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-5 6-5s6 1.7 6 5"/><path d="M17 11a3 3 0 1 0 0-6M17 15c2.4 0 4 1.5 4 4"/>','admin-only-nav hidden')+
+      link('licence.html','Paramètres','<path d="M12 3l2.2 1.5 2.7-.1.8 2.6 2.2 1.6-1 2.5.5 2.7-2.5 1.1-.9 2.5-2.7-.2L12 21l-2.3-1.6-2.7.2-.9-2.5-2.5-1.1.5-2.7-1-2.5L5.3 8.6l.8-2.6 2.7.1L12 3z"/><circle cx="12" cy="12" r="3"/>'))}
+    <div class="nav-separator"></div>
+    ${link('#','Déconnexion','<path d="M9 5H4v14h5M13 8l4 4-4 4M17 12H8"/>','logout-link')}
+  </div>`;
 }
-function nav(){const page=location.pathname.split('/').pop()||'dashboard.html';document.querySelectorAll('.nav a').forEach(a=>a.classList.toggle('active',a.getAttribute('href')===page))}
+function nav(){
+  const page=location.pathname.split('/').pop()||'dashboard.html';
+  document.querySelectorAll('.nav a').forEach(a=>a.classList.toggle('active',a.getAttribute('href')===page));
+  document.querySelectorAll('.nav-group').forEach(group=>{
+    const active=!!group.querySelector('a.active');
+    group.classList.toggle('is-open',active);
+    const toggle=group.querySelector('.nav-group-toggle');
+    if(toggle)toggle.setAttribute('aria-expanded',active?'true':'false');
+  });
+}
+function wireNavGroups(root=document){
+  root.querySelectorAll('.nav-group-toggle').forEach(toggle=>{
+    if(toggle.dataset.groupWired==='1')return;
+    toggle.dataset.groupWired='1';
+    toggle.addEventListener('click',()=>{
+      const group=toggle.closest('.nav-group');
+      const menu=toggle.closest('.dash-menu');
+      if(!group||!menu)return;
+      const shouldOpen=!group.classList.contains('is-open');
+      menu.querySelectorAll('.nav-group.is-open').forEach(other=>{
+        if(other!==group){other.classList.remove('is-open');other.querySelector('.nav-group-toggle')?.setAttribute('aria-expanded','false');}
+      });
+      group.classList.toggle('is-open',shouldOpen);
+      toggle.setAttribute('aria-expanded',shouldOpen?'true':'false');
+    });
+  });
+}
 function toggleMenu(force){
   const overlay=document.querySelector('.overlay');
   if(!overlay)return;
@@ -72,6 +111,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     }
   });
   document.querySelectorAll('[data-nav]').forEach(x=>x.innerHTML=menuHTML());
+  wireNavGroups();
   document.querySelectorAll('.menu-btn').forEach(btn=>{btn.setAttribute('aria-expanded','false');btn.setAttribute('aria-controls','mobileMenu');});
   document.querySelectorAll('.overlay').forEach((ov,i)=>{
     const side=ov.querySelector('.side');

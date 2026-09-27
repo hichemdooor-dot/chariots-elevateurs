@@ -16,7 +16,8 @@ function menuHTML(){
     <div class="nav-group-items" id="nav-items-${id}">${items}</div>
   </section>`;
   return `<div class="nav dash-menu">
-    ${group('pilotage','Pilotage',link('dashboard.html','Tableau de bord','<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>'))}
+    ${group('pilotage','Pilotage',link('dashboard.html','Tableau de bord','<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>')+
+      link('recherche.html','Recherche globale','<circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/>'))}
     ${group('parc','Parc & stock',
       link('chariots.html','Tous les chariots','<path d="M3 16l2-7h10l5 4v3"/><path d="M5 16h14"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/><path d="M15 9V5h3v5"/>')+
       link('stock.html','Chariots en stock','<path d="M4 7h16v13H4z"/><path d="M8 7V4h8v3M8 11h8M8 15h5"/>')+
@@ -96,6 +97,39 @@ function toggleSidebar(force){
   const btn=document.querySelector('.pro-menu-btn');
   if(btn)btn.setAttribute('aria-expanded',collapsed?'false':'true');
 }
+function goToGlobalSearch(query='',from='',to='',focusDate=false){
+  const url=new URL('recherche.html',location.href);
+  if(String(query||'').trim())url.searchParams.set('q',String(query).trim());
+  if(from)url.searchParams.set('from',from);
+  if(to)url.searchParams.set('to',to);
+  if(focusDate)url.searchParams.set('focusDate','1');
+  location.href=url.href;
+}
+function openGlobalDateSearch(){
+  const input=document.getElementById('siteGlobalSearchInput')||document.getElementById('dashboardSearch');
+  goToGlobalSearch(input?.value||'','','',true);
+}
+function initSiteGlobalSearch(){
+  const page=location.pathname.split('/').pop()||'dashboard.html';
+  if(['index.html','maintenance.html'].includes(page))return;
+  const dashboard=document.querySelector('.pro-header');
+  if(dashboard){
+    const shell=dashboard.querySelector('.dashboard-search-shell');
+    if(shell&&!shell.querySelector('.sbi-global-date-btn')){
+      const btn=document.createElement('button');btn.type='button';btn.className='sbi-global-date-btn';btn.title='Recherche par date';btn.setAttribute('aria-label','Recherche globale par date');btn.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M8 14h3M8 17h6"/></svg>';
+      btn.addEventListener('click',openGlobalDateSearch);shell.appendChild(btn);
+    }
+    return;
+  }
+  const header=document.querySelector('header.top');
+  if(!header||header.querySelector('.sbi-global-searchbar'))return;
+  const form=document.createElement('form');form.className='sbi-global-searchbar';form.setAttribute('role','search');form.setAttribute('aria-label','Recherche globale dans le site');
+  form.innerHTML='<input id="siteGlobalSearchInput" type="search" autocomplete="off" placeholder="Recherche globale : châssis, client, moteur..." aria-label="Rechercher dans tout le site"><button class="sbi-global-submit" type="submit" aria-label="Lancer la recherche"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></svg></button><button class="sbi-global-date-btn" type="button" title="Rechercher par date" aria-label="Recherche par date"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M8 14h3M8 17h6"/></svg></button>';
+  form.addEventListener('submit',e=>{e.preventDefault();goToGlobalSearch(form.querySelector('input')?.value||'')});
+  form.querySelector('.sbi-global-date-btn')?.addEventListener('click',()=>openGlobalDateSearch());
+  const avatar=header.querySelector('.avatar');
+  if(avatar)header.insertBefore(form,avatar);else header.appendChild(form);
+}
 document.addEventListener('DOMContentLoaded',()=>{
   // Use the exact dashboard hamburger drawer on every page.
   document.querySelectorAll('.overlay').forEach((ov,i)=>{
@@ -112,6 +146,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   });
   document.querySelectorAll('[data-nav]').forEach(x=>x.innerHTML=menuHTML());
   wireNavGroups();
+  initSiteGlobalSearch();
   document.querySelectorAll('.menu-btn').forEach(btn=>{btn.setAttribute('aria-expanded','false');btn.setAttribute('aria-controls','mobileMenu');});
   document.querySelectorAll('.overlay').forEach((ov,i)=>{
     const side=ov.querySelector('.side');

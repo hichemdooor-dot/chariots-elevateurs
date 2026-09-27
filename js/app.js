@@ -1740,3 +1740,48 @@ async function renderUpcomingDeliveriesFromPlanning(){
 function renderProfessionalDashboard(){
   renderUpcomingDeliveriesFromPlanning().catch(e=>console.warn('Rendu dashboard',e));
 }
+
+
+// SBI V67.5 — Global search across forklift records and maintenance/planning history.
+async function globalSearchPage(){
+  if(!await session())return;
+  const els={form:$('#globalSearchForm'),query:$('#globalQuery'),from:$('#globalFrom'),to:$('#globalTo'),status:$('#globalSearchStatus'),chariots:$('#globalChariotResults'),events:$('#globalEventResults'),chariotCount:$('#globalChariotCount'),eventCount:$('#globalEventCount'),reset:$('#globalSearchReset')};
+  if(!els.form||!els.query)return;
+  await loadChariots();
+  const params=new URLSearchParams(location.search);
+  els.query.value=params.get('q')||'';els.from.value=params.get('from')||'';els.to.value=params.get('to')||'';
+  let historyRows=[];let historyError='';
+  try{
+    const pageSize=1000,maxRows=5000;historyRows=[];
+    for(let offset=0;offset<maxRows;offset+=pageSize){
+      const r=await withTimeout(supabaseClient.from('maintenance').select('id,qr_id,date,technicien,type,travaux,created_at,created_by').order('created_at',{ascending:false}).range(offset,offset+pageSize-1),12000);
+      if(r.error)throw r.error;
+      const rows=Array.isArray(r.data)?r.data:[];historyRows.push(...rows);
+      if(rows.length<pageSize)break;
+    }
+  }catch(e){historyError=friendlySupabaseError(e);console.warn('Recherche globale: historique non chargé',e)}
+  const dateOnly=v=>String(v||'').slice(0,10);
+  const getPayload=row=>{if(row?.travaux&&typeof row.travaux==='object')return row.travaux;if(typeof row?.travaux==='string'){const t=row.travaux.trim();if(t.startsWith('{')){try{return JSON.parse(t)}catch(_){}}}return null};
+  const chariotText=c=>Object.entries(c||{}).map(([k,v])=>typeof v==='string'||typeof v==='number'?String(v):'').join(' ');
+  const eventText=r=>{const c=CHARIOTS.find(x=>String(x.qr_id||'')===String(r.qr_id||''));return [r.qr_id,r.technicien,r.type,r.travaux,c?.chassis,c?.engine,c?.engine_number,c?.client,c?.capacity,c?.status,c?.stock].map(v=>String(v||'')).join(' ')};
+  const hasTerms=(text,q)=>{const terms=norm(q).split(/\s+/).filter(Boolean);if(!terms.length)return true;const t=norm(text);return terms.every(term=>t.includes(term))};
+  const dateInRange=(dates,from,to)=>{const valid=dates.map(dateOnly).filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x));if(!from&&!to)return true;if(!valid.length)return false;return valid.some(d=>(!from||d>=from)&&(!to||d<=to))};
+  const rowDates=c=>Object.entries(c||{}).filter(([k,v])=>/(date|_at|timestamp|time)$/i.test(k)&&v).map(([,v])=>v);
+  const rowDatesEvent=r=>{const p=getPayload(r)||{};return [r.date,r.created_at,p.date,p.delivery_date,p.updated_at]};
+  function render(){
+    const q=els.query.value.trim(),from=els.from.value,to=els.to.value;
+    if(from&&to&&from>to){els.status.textContent='La date de début doit être antérieure ou égale à la date de fin.';els.chariots.innerHTML='';els.events.innerHTML='';els.chariotCount.textContent='0';els.eventCount.textContent='0';return}
+    if(!q&&!from&&!to){els.status.textContent='Saisissez un mot-clé ou choisissez une date pour lancer la recherche.';els.chariots.innerHTML='<div class="global-search-empty">Exemples : numéro de châssis, client, moteur, statut ou période.</div>';els.events.innerHTML='<div class="global-search-empty">Les interventions, changements de statut et planifications apparaîtront ici.</div>';els.chariotCount.textContent='0';els.eventCount.textContent='0';return}
+    const machines=CHARIOTS.filter(c=>hasTerms(chariotText(c),q)&&dateInRange(rowDates(c),from,to)).sort((a,b)=>new Date(b.updated_at||b.created_at||0)-new Date(a.updated_at||a.created_at||0));
+    const events=historyRows.filter(r=>hasTerms(eventText(r),q)&&dateInRange(rowDatesEvent(r),from,to)).sort((a,b)=>new Date(b.created_at||b.date||0)-new Date(a.created_at||a.date||0));
+    els.chariotCount.textContent=String(machines.length);els.eventCount.textContent=String(events.length);
+    els.chariots.innerHTML=machines.map(c=>{const label=c.chassis||c.qr_id||'Chariot';const meta=[c.qr_id?'QR '+c.qr_id:'',c.engine,c.engine_number?'Moteur N° '+c.engine_number:'',fmtCapacity(c.capacity),c.status,c.stock?'Emplacement : '+stockLabel(c.stock):'',c.client?'Client : '+c.client:''].filter(Boolean).join(' · ');const machineDate=rowDates(c).map(dateOnly).filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x)).sort().at(-1);return `<a class="global-search-result-card" href="chariot.html?id=${encodeURIComponent(c.qr_id||'')}"><span class="global-result-icon">▰</span><span class="global-result-content"><strong>${esc(label)}</strong><small>${esc(meta||'Fiche chariot')}${machineDate?' · Date : '+esc(machineDate):''}</small></span><span class="global-result-arrow">›</span></a>`}).join('')||'<div class="global-search-empty">Aucun chariot trouvé pour ces critères.</div>';
+    els.events.innerHTML=events.map(r=>{const c=CHARIOTS.find(x=>String(x.qr_id||'')===String(r.qr_id||''));const p=getPayload(r)||{};const day=dateOnly(p.date||r.date||r.created_at);const title=String(r.type||'Événement');const detail=typeof r.travaux==='string'?r.travaux:JSON.stringify(r.travaux||'');const href=r.qr_id?'chariot.html?id='+encodeURIComponent(r.qr_id):'historique.html';return `<a class="global-search-result-card" href="${href}"><span class="global-result-icon event">◷</span><span class="global-result-content"><strong>${esc(title)} · ${esc(c?.chassis||r.qr_id||'Événement')}</strong><small>${esc(day)}${r.technicien?' · '+esc(r.technicien):''}${c?.client?' · '+esc(c.client):''}${detail?' · '+esc(detail.slice(0,240)):''}</small></span><span class="global-result-arrow">›</span></a>`}).join('')||'<div class="global-search-empty">Aucun historique trouvé pour ces critères.</div>';
+    els.status.textContent=`Recherche terminée : ${machines.length} chariot(s), ${events.length} événement(s).`+(historyError?' L’historique est partiellement indisponible : '+historyError:'');
+  }
+  els.form.addEventListener('submit',e=>{e.preventDefault();render()});
+  [els.query,els.from,els.to].forEach(el=>{el?.addEventListener('input',render);el?.addEventListener('change',render)});
+  els.reset?.addEventListener('click',()=>{els.query.value='';els.from.value='';els.to.value='';render();els.query.focus()});
+  if(params.get('focusDate')==='1')setTimeout(()=>els.from.focus(),80);
+  render();
+}

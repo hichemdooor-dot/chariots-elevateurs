@@ -1762,3 +1762,18 @@ button.menu-btn, button.notification-bell, button.user-admin-top, .text-link, .v
   .overlay.open>.side.dashboard-mobile-drawer .dash-menu .nav-group-items a{min-height:45px!important;margin:2px 0!important;padding:9px 10px!important;gap:11px!important;font-size:14px!important;}
   .overlay.open>.side.dashboard-mobile-drawer .dash-menu .nav-group-items a .nav-svg{width:22px!important;height:22px!important;min-width:22px!important;flex:0 0 22px!important;}
 }
+
+
+/* SBI V67.5 — global search available from every authenticated page */
+.sbi-global-searchbar{display:flex;align-items:center;gap:0;flex:1 1 300px;min-width:0;max-width:560px;height:39px;margin:0 14px 0 22px;border:1px solid rgba(255,255,255,.26);border-radius:10px;background:rgba(255,255,255,.12);overflow:hidden}
+.sbi-global-searchbar input{flex:1;min-width:0;width:100%;height:100%;border:0;outline:0;padding:0 12px;background:transparent;color:#fff;font:inherit;font-size:12px}
+.sbi-global-searchbar input::placeholder{color:rgba(255,255,255,.75)}
+.sbi-global-searchbar button,.sbi-global-date-btn{display:grid;place-items:center;flex:0 0 36px;width:36px;height:100%;padding:0;border:0;border-left:1px solid rgba(255,255,255,.14);background:transparent;color:#fff;cursor:pointer}
+.sbi-global-searchbar button:hover,.sbi-global-date-btn:hover{background:rgba(255,255,255,.12)}
+.sbi-global-searchbar svg,.sbi-global-date-btn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.sbi-global-searchbar:focus-within{border-color:#8ecaff;box-shadow:0 0 0 2px rgba(130,199,255,.2)}
+.pro-header .dashboard-search-shell{padding-right:0!important}
+.pro-header .sbi-global-date-btn{height:100%;border-left:1px solid #e3ebf2;color:#66849e;flex:0 0 38px;width:38px;border-radius:0 10px 10px 0;background:#f8fbfe}
+.pro-header .sbi-global-date-btn:hover{background:#eaf4fc;color:#0d74d0}
+@media(max-width:800px){.sbi-global-searchbar{height:36px;flex-basis:120px;margin:0 7px 0 10px}.sbi-global-searchbar input{font-size:11px;padding:0 8px}.sbi-global-searchbar input::placeholder{color:rgba(255,255,255,.8)}.sbi-global-searchbar button,.sbi-global-date-btn{width:32px;flex-basis:32px}.sbi-global-searchbar svg,.sbi-global-date-btn svg{width:16px;height:16px}}
+@media(max-width:380px){.sbi-global-searchbar{margin-left:6px;margin-right:5px}.sbi-global-searchbar input::placeholder{font-size:0}.sbi-global-searchbar input::placeholder{color:transparent}}

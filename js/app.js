@@ -973,9 +973,65 @@ function highlightLiveListItem(listId,qr,message=''){
   if(message)toastCardUpdate(qr,message);
 }
 
-async function chariotsPage(){if(!await session())return;await loadChariots();const initialSearch=new URLSearchParams(window.location.search).get('search')||'';const searchEl=$('#search');if(searchEl&&initialSearch){searchEl.value=initialSearch;}const ids=['engineFilter','capacityFilter','mastFilter','heightFilter'];function fill(){const defs=[['engineFilter','engine','Moteur : Tous'],['capacityFilter','capacity','Capacité : Toutes'],['mastFilter','mast_type','Mât : Tous'],['heightFilter','lifting_height','Hauteur : Toutes']];defs.forEach(([id,k,label])=>{const e=$('#'+id),old=e.value;if(!e)return;let vals;if(id==='capacityFilter'){vals=['2.5T','3T','3.8T','3.5T (TT)','5T','7T','10T','12T']}else{vals=[...new Set(CHARIOTS.map(c=>String(c[k]||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}))}e.innerHTML=`<option value="">${label}</option>`+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');if(vals.includes(old))e.value=old})}function render(){fill();let rows=CHARIOTS;const sf=$('#statusFilter')?.value||'';if(sf==='stock')rows=rows.filter(isStock);if(sf==='delivered')rows=rows.filter(isDelivered);if(sf==='stock1')rows=rows.filter(c=>normalizeStatus(c.stock)==='stock1');if(sf==='stock2')rows=rows.filter(c=>normalizeStatus(c.stock)==='stock2');if(sf==='fabrication')rows=rows.filter(c=>{const st=normalizeStatus(c.status);return normalizeStatus(c.stock)==='fabrication'&&!['pret a livrer','livre'].includes(st);});if(sf==='reserved')rows=rows.filter(c=>normalizeStatus(c.status)==='reserve');if(sf==='modification')rows=rows.filter(c=>normalizeStatus(c.status)==='modification production');if(sf==='preparation')rows=rows.filter(c=>normalizeStatus(c.status)==='preparation livraison');if(sf==='ready')rows=rows.filter(c=>normalizeStatus(c.status)==='pret a livrer');const q=$('#search')?.value.trim().toLowerCase()||'';const fs=[['engineFilter','engine'],['capacityFilter','capacity'],['mastFilter','mast_type'],['heightFilter','lifting_height']];rows=rows.filter(c=>(!q||[c.qr_id,c.chassis,c.engine,c.client,c.capacity].some(v=>String(v||'').toLowerCase().includes(q)))&&fs.every(([id,k])=>!$('#'+id)?.value||norm(c[k])===norm($('#'+id).value)));$('#count').textContent=rows.length+' chariot'+(rows.length!==1?'s':'');$('#list').innerHTML=rows.map(card).join('')||'<div class="empty">Aucun résultat.</div>'}$('#search').addEventListener('input',render);$('#statusFilter').addEventListener('change',render);ids.forEach(id=>$('#'+id).addEventListener('change',render));$('#clearFilters').onclick=()=>{ids.forEach(id=>$('#'+id).value='');$('#statusFilter').value='';$('#search').value='';render()};render()
-  function highlightCard(qr,message='') {
-    const el=document.querySelector(`[data-card-id=\"${CSS.escape(String(qr))}\"]`);
+async function chariotsPage(){
+  if(!await session())return;
+  await loadChariots();
+  const initialSearch=new URLSearchParams(window.location.search).get('search')||'';
+  const searchEl=$('#search');
+  if(searchEl&&initialSearch)searchEl.value=initialSearch;
+  const ids=['engineFilter','capacityFilter','mastFilter','heightFilter'];
+  const stockFilter=$('#stockFilter');
+  function fill(){
+    const defs=[
+      ['engineFilter','engine','Moteur : Tous'],
+      ['capacityFilter','capacity','Capacité : Toutes'],
+      ['mastFilter','mast_type','Mât : Tous'],
+      ['heightFilter','lifting_height','Hauteur : Toutes']
+    ];
+    defs.forEach(([id,k,label])=>{
+      const e=$('#'+id);
+      if(!e)return;
+      const old=e.value;
+      let vals;
+      if(id==='capacityFilter')vals=['2.5T','3T','3.8T','3.5T (TT)','5T','7T','10T','12T'];
+      else vals=[...new Set(CHARIOTS.map(c=>String(c[k]||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+      e.innerHTML=`<option value="">${label}</option>`+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
+      if(vals.includes(old))e.value=old;
+    });
+  }
+  function stockKey(value){return normalizeStatus(value).replace(/[\s_-]/g,'')}
+  function render(){
+    fill();
+    let rows=CHARIOTS;
+    const sf=$('#statusFilter')?.value||'';
+    const location=stockFilter?.value||'';
+    if(sf==='stock')rows=rows.filter(isStock);
+    if(sf==='delivered')rows=rows.filter(isDelivered);
+    if(sf==='reserved')rows=rows.filter(c=>normalizeStatus(c.status)==='reserve');
+    if(sf==='modification')rows=rows.filter(c=>normalizeStatus(c.status)==='modification production');
+    if(sf==='preparation')rows=rows.filter(c=>normalizeStatus(c.status)==='preparation livraison');
+    if(sf==='ready')rows=rows.filter(c=>normalizeStatus(c.status)==='pret a livrer');
+    if(location)rows=rows.filter(c=>stockKey(c.stock)===stockKey(location));
+    const q=$('#search')?.value.trim().toLowerCase()||'';
+    const fs=[['engineFilter','engine'],['capacityFilter','capacity'],['mastFilter','mast_type'],['heightFilter','lifting_height']];
+    rows=rows.filter(c=>(!q||[c.qr_id,c.chassis,c.engine,c.client,c.capacity].some(v=>String(v||'').toLowerCase().includes(q)))&&fs.every(([id,k])=>!$('#'+id)?.value||norm(c[k])===norm($('#'+id).value)));
+    $('#count').textContent=rows.length+' chariot'+(rows.length!==1?'s':'');
+    $('#list').innerHTML=rows.map(card).join('')||'<div class="empty">Aucun résultat.</div>';
+  }
+  $('#search').addEventListener('input',render);
+  $('#statusFilter').addEventListener('change',render);
+  stockFilter?.addEventListener('change',render);
+  ids.forEach(id=>$('#'+id).addEventListener('change',render));
+  $('#clearFilters').onclick=()=>{
+    ids.forEach(id=>$('#'+id).value='');
+    $('#statusFilter').value='';
+    if(stockFilter)stockFilter.value='';
+    $('#search').value='';
+    render();
+  };
+  render();
+  function highlightCard(qr,message=''){
+    const el=document.querySelector(`[data-card-id="${CSS.escape(String(qr))}"]`);
     if(!el)return;
     el.classList.add('sbi-live-highlight');
     setTimeout(()=>el.classList.remove('sbi-live-highlight'),3000);
@@ -984,7 +1040,13 @@ async function chariotsPage(){if(!await session())return;await loadChariots();co
   startSbiRealtime(async evt=>{
     if(document.visibilityState==='hidden')return;
     const before=new Map(CHARIOTS.map(c=>[String(c.qr_id),String(c.updated_at||'')]));
-    try{await loadChariots();render();const qr=evt?.payload?.new?.qr_id||evt?.payload?.old?.qr_id||'';const changed=qr?String(before.get(String(qr))||'')!==String(CHARIOTS.find(c=>String(c.qr_id)===String(qr))?.updated_at||''):true;highlightCard(qr,changed?'Mise à jour':'');}catch(e){console.warn('Actualisation temps réel chariots',e)}
+    try{
+      await loadChariots();
+      render();
+      const qr=evt?.payload?.new?.qr_id||evt?.payload?.old?.qr_id||'';
+      const changed=qr?String(before.get(String(qr))||'')!==String(CHARIOTS.find(c=>String(c.qr_id)===String(qr))?.updated_at||''):true;
+      highlightCard(qr,changed?'Mise à jour':'');
+    }catch(e){console.warn('Actualisation temps réel chariots',e)}
   },['chariots']);
   window.__SBI_CHARIOTS_LIVE_TIMER=window.__SBI_CHARIOTS_LIVE_TIMER||setInterval(async()=>{
     if(document.visibilityState==='hidden')return;
@@ -1293,29 +1355,35 @@ async function affectationPage(){
   if(!await session())return;
   await loadChariots();
   if(!isAdmin()){alert('Accès administrateur requis.');location.href='dashboard.html';return}
-  const els={search:document.getElementById('affSearch'),engine:document.getElementById('affEngine'),capacity:document.getElementById('affCapacity'),mast:document.getElementById('affMast'),height:document.getElementById('affHeight'),reset:document.getElementById('affReset'),count:document.getElementById('affCount'),list:document.getElementById('affList')};
-  function values(key,label){const vals=[...new Set(CHARIOTS.filter(isStock).map(c=>String(c[key]||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));return '<option value="">'+label+'</option>'+vals.map(v=>'<option value="'+esc(v)+'">'+esc(v)+'</option>').join('')}
-  function buildFilters(){els.engine.innerHTML=values('engine','Moteur : Tous');els.capacity.innerHTML=values('capacity','Capacité : Toutes');els.mast.innerHTML=values('mast_type','Mât : Tous');els.height.innerHTML=values('lifting_height','Hauteur : Toutes')}
+  const els={client:document.getElementById('affClient'),reqCapacity:document.getElementById('affReqCapacity'),reqEngine:document.getElementById('affReqEngine'),reqMast:document.getElementById('affReqMast'),reqHeight:document.getElementById('affReqHeight'),reqFork:document.getElementById('affReqFork'),reqColor:document.getElementById('affReqColor'),ref:document.getElementById('affRef'),notes:document.getElementById('affNotes'),search:document.getElementById('affSearch'),engine:document.getElementById('affEngine'),capacity:document.getElementById('affCapacity'),mast:document.getElementById('affMast'),height:document.getElementById('affHeight'),reset:document.getElementById('affReset'),count:document.getElementById('affCount'),list:document.getElementById('affList')};
+  const stockRows=()=>CHARIOTS.filter(isStock);
+  function values(key,label,rows=stockRows()){const vals=[...new Set(rows.map(c=>String(c[key]||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));return '<option value="">'+label+'</option>'+vals.map(v=>'<option value="'+esc(v)+'">'+esc(v)+'</option>').join('')}
+  function buildFilters(){els.engine.innerHTML=values('engine','Moteur : Tous');els.capacity.innerHTML=values('capacity','Capacité : Toutes');els.mast.innerHTML=values('mast_type','Mât : Tous');els.height.innerHTML=values('lifting_height','Hauteur : Toutes');els.reqEngine.innerHTML=values('engine','Tous');els.reqCapacity.innerHTML=values('capacity','Toutes');els.reqMast.innerHTML=values('mast_type','Tous');els.reqHeight.innerHTML=values('lifting_height','Toutes');els.reqFork.innerHTML=values('fork_dimension','Toutes');els.reqColor.innerHTML=values('color','Toutes')}
+  function requestMatches(c){return (!els.reqEngine.value||norm(c.engine)===norm(els.reqEngine.value))&&(!els.reqCapacity.value||norm(c.capacity)===norm(els.reqCapacity.value))&&(!els.reqMast.value||norm(c.mast_type)===norm(els.reqMast.value))&&(!els.reqHeight.value||norm(c.lifting_height)===norm(els.reqHeight.value))&&(!els.reqFork.value||norm(c.fork_dimension)===norm(els.reqFork.value))&&(!els.reqColor.value||norm(c.color)===norm(els.reqColor.value))}
   function render(){
     const q=els.search.value.trim().toLowerCase();
-    let rows=CHARIOTS.filter(isStock).filter(c=>{
-      const text=[c.qr_id,c.chassis,c.engine,c.capacity,c.lifting_height,c.mast_type].map(v=>String(v||'').toLowerCase());
-      return (!q||text.some(v=>v.includes(q)))&&(!els.engine.value||norm(c.engine)===norm(els.engine.value))&&(!els.capacity.value||norm(c.capacity)===norm(els.capacity.value))&&(!els.mast.value||norm(c.mast_type)===norm(els.mast.value))&&(!els.height.value||norm(c.lifting_height)===norm(els.height.value));
-    });
-    els.count.textContent=rows.length+' chariot'+(rows.length!==1?'s':'')+' disponible'+(rows.length!==1?'s':'')+' pour affectation';
-    els.list.innerHTML=rows.map(c=>`<article class="card aff-item" data-aff-row="${esc(c.qr_id)}"><div class="aff-main"><div class="aff-title">${esc(c.chassis||c.qr_id||'—')}</div><div class="aff-meta">${esc(c.engine||'—')} · ${esc(fmtCapacity(c.capacity)||'—')} · ${esc(c.lifting_height||'—')} · ${esc(c.mast_type||'—')}</div><div class="aff-stock">Emplacement : <strong>${esc(stockLabel(c.stock))}</strong></div></div><div class="aff-form"><label>Client</label><div class="aff-inline"><input data-aff-client="${esc(c.qr_id)}" placeholder="Nom du client" autocomplete="organization"><button class="btn" type="button" data-affect="${esc(c.qr_id)}">Affecter</button></div></div><a class="btn light" href="chariot.html?id=${encodeURIComponent(c.qr_id)}&from=stock">Voir la fiche</a></article>`).join('')||'<div class="empty">Aucun chariot disponible en stock.</div>';
+    let rows=stockRows().filter(c=>requestMatches(c)).filter(c=>{const text=[c.qr_id,c.chassis,c.engine,c.capacity,c.lifting_height,c.mast_type,c.color,c.fork_dimension].map(v=>String(v||'').toLowerCase());return (!q||text.some(v=>v.includes(q)))&&(!els.engine.value||norm(c.engine)===norm(els.engine.value))&&(!els.capacity.value||norm(c.capacity)===norm(els.capacity.value))&&(!els.mast.value||norm(c.mast_type)===norm(els.mast.value))&&(!els.height.value||norm(c.lifting_height)===norm(els.height.value));});
+    els.count.textContent=rows.length+' chariot'+(rows.length!==1?'s':'')+' correspondant'+(rows.length!==1?'s':'')+' à la demande';
+    const client=String(els.client.value||'').trim();
+    els.list.innerHTML=rows.map(c=>`<article class="card aff-item" data-aff-row="${esc(c.qr_id)}"><div class="aff-main"><div class="aff-title">${esc(c.chassis||c.qr_id||'—')}</div><div class="aff-meta">${esc(c.engine||'—')} · ${esc(fmtCapacity(c.capacity)||'—')} · ${esc(c.lifting_height||'—')} · ${esc(c.mast_type||'—')}</div><div class="aff-meta">Couleur : ${esc(c.color||'—')} · Fourche : ${esc(c.fork_dimension||'—')}</div><div class="aff-stock">Emplacement : <strong>${esc(stockLabel(c.stock))}</strong></div></div><div class="aff-form"><div class="aff-match-note">${client?'Client : <strong>'+esc(client)+'</strong>':'Saisissez d’abord le nom du client ci-dessus.'}</div><button class="btn" type="button" data-affect="${esc(c.qr_id)}" ${client?'':'disabled'}>Affecter ce chariot</button></div><a class="btn light" href="chariot.html?id=${encodeURIComponent(c.qr_id)}&from=affectation">Voir la fiche</a></article>`).join('')||'<div class="empty">Aucun chariot en stock ne correspond à cette demande.</div>';
     els.list.querySelectorAll('[data-affect]').forEach(btn=>btn.onclick=()=>assignClient(btn.dataset.affect));
   }
   async function assignClient(qrId){
-    const input=els.list.querySelector(`[data-aff-client="${CSS.escape(String(qrId))}"]`);const client=String(input?.value||'').trim();if(!client){alert('Nom du client obligatoire.');input?.focus();return}
+    const client=String(els.client.value||'').trim();
+    if(!client){alert('Nom du client obligatoire.');els.client.focus();return}
     const c=CHARIOTS.find(x=>String(x.qr_id)===String(qrId));if(!c)return;
+    if(!isStock(c)){alert('Ce chariot n’est plus disponible en stock.');await loadChariots();buildFilters();render();return}
+    const request=[['Client',client],['Capacité',els.reqCapacity.value],['Moteur',els.reqEngine.value],['Mât',els.reqMast.value],['Hauteur',els.reqHeight.value],['Fourche',els.reqFork.value],['Couleur',els.reqColor.value],['Référence fiche',els.ref.value],['Observations',els.notes.value]].filter(x=>String(x[1]||'').trim()).map(x=>x[0]+' : '+String(x[1]).trim()).join('\n');
+    if(!confirm(`Affecter ${c.chassis||qrId} au client « ${client} » ?`))return;
     const now=new Date();const {error}=await supabaseClient.from('chariots').update({client,status:'Réservé',updated_at:now.toISOString()}).eq('qr_id',qrId);if(error){alert('Erreur : '+friendlySupabaseError(error));return}
-    try{await supabaseClient.from('maintenance').insert({qr_id:qrId,date:localISODateGlobal(now),technicien:getUserDisplayName(),type:'Affectation client',travaux:`Client affecté : ${client} • ${c.chassis||qrId} • Stock : ${stockLabel(c.stock)}`,created_by:currentUser.id})}catch(e){console.warn('Historique affectation non enregistré',e)}
-    c.client=client;c.status='Réservé';c.updated_at=now.toISOString();
-    toastCardUpdate(qrId,`Réservé — ${client}`);buildFilters();render();
+    try{await supabaseClient.from('maintenance').insert({qr_id:qrId,date:localISODateGlobal(now),technicien:getUserDisplayName(),type:'Fiche commerciale / Affectation',travaux:`${request}\nChariot affecté : ${c.chassis||qrId}\nStock au moment de l’affectation : ${stockLabel(c.stock)}`,created_by:currentUser.id})}catch(e){console.warn('Fiche commerciale non enregistrée dans l’historique',e)}
+    c.client=client;c.status='Réservé';c.updated_at=now.toISOString();toastCardUpdate(qrId,`Réservé — ${client}`);
+    els.client.value='';els.ref.value='';els.notes.value='';[els.reqEngine,els.reqCapacity,els.reqMast,els.reqHeight,els.reqFork,els.reqColor].forEach(x=>x.value='');buildFilters();render();
   }
-  buildFilters();['search'].forEach(k=>els[k].addEventListener('input',render));['engine','capacity','mast','height'].forEach(k=>els[k].addEventListener('change',render));els.reset.onclick=()=>{els.search.value='';['engine','capacity','mast','height'].forEach(k=>els[k].value='');render()};render();
-  startSbiRealtime(async()=>{if(document.visibilityState==='hidden')return;try{await loadChariots();buildFilters();render()}catch(e){console.warn('Actualisation affectation',e)}},['chariots']);
+  buildFilters();
+  ['search','client','reqEngine','reqCapacity','reqMast','reqHeight','reqFork','reqColor','engine','capacity','mast','height'].forEach(k=>{const el=els[k];if(el)el.addEventListener(el.tagName==='SELECT'?'change':'input',render)});
+  els.reset.onclick=()=>{['search','client','ref','notes'].forEach(k=>{if(els[k])els[k].value=''});['reqEngine','reqCapacity','reqMast','reqHeight','reqFork','reqColor','engine','capacity','mast','height'].forEach(k=>{if(els[k])els[k].value=''});render()};
+  render();startSbiRealtime(async()=>{if(document.visibilityState==='hidden')return;try{await loadChariots();buildFilters();render()}catch(e){console.warn('Actualisation affectation',e)}},['chariots']);
 }
 async function modificationProductionPage(){
   if(!await session())return;

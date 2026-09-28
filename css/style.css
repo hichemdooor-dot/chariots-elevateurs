@@ -1905,8 +1905,8 @@ button.menu-btn, button.notification-bell, button.user-admin-top, .text-link, .v
 .detail-layout-compact .detail-panel-head{min-height:42px;padding:7px 11px}
 .detail-layout-compact .detail-panel-values{padding:3px 11px 5px}
 .detail-layout-compact .detail-kv{min-height:30px;padding:5px 1px;gap:7px}
-.detail-layout-compact .detail-kv-label{font-size:11px}
-.detail-layout-compact .detail-kv strong{font-size:12px}
+.detail-layout-compact .detail-kv-label{font-size:13px}
+.detail-layout-compact .detail-kv strong{font-size:14px}
 .detail-layout-compact .detail-observation-text{min-height:0;padding:8px 11px}
 .detail-layout-compact .detail-panel--observations{margin-top:0}
 .workflow-card-compact{padding:8px 11px;border-radius:11px}
@@ -1950,10 +1950,36 @@ button.menu-btn, button.notification-bell, button.user-admin-top, .text-link, .v
   .detail-layout-compact .detail-panel-icon{width:27px;height:27px}
   .detail-layout-compact .detail-panel-values{padding:2px 9px 4px}
   .detail-layout-compact .detail-kv{grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);min-height:28px;padding:4px 0;gap:6px}
-  .detail-layout-compact .detail-kv-label{font-size:10px}
-  .detail-layout-compact .detail-kv strong{font-size:11px}
+  .detail-layout-compact .detail-kv-label{font-size:12px}
+  .detail-layout-compact .detail-kv strong{font-size:13px}
   .detail-layout-compact .detail-observation-text{padding:7px 9px;font-size:12px}
   .detail-history-toggle{min-height:41px;padding:6px 10px}
   .detail-history-title h2{font-size:14px}
   .detail-history-card #history{padding:3px 9px 9px}
+}
+
+/* SBI V67.15 — improve detail text readability */
+.detail-layout-compact .detail-kv{min-height:34px;padding:6px 1px;gap:8px}
+.detail-layout-compact .detail-kv-label{line-height:1.35}
+.detail-layout-compact .detail-kv strong{line-height:1.35}
+@media(max-width:640px){.detail-layout-compact .detail-kv{min-height:34px;padding:6px 0;gap:8px}.detail-layout-compact .detail-kv-label{font-size:12px}.detail-layout-compact .detail-kv strong{font-size:13px}}
+
+/* SBI V67.16 — improve readability across the entire detail page */
+.detail-content .detail-panel-head h2{font-size:17px!important;line-height:1.35}
+.detail-content .detail-kv-label{font-size:14px!important;line-height:1.45}
+.detail-content .detail-kv strong{font-size:15px!important;line-height:1.45}
+.detail-content .detail-observation-text{font-size:14px!important;line-height:1.5}
+.detail-content .detail-history-title h2{font-size:17px!important}
+.detail-content .detail-history-toggle{font-size:15px}
+.detail-content .workflow-head{font-size:14px}
+.detail-content .workflow-step{font-size:12px!important}
+.detail-content .workflow-step-dot{font-size:11px}
+.detail-content .detail-page-head .actions .btn{font-size:14px}
+@media(max-width:640px){
+  .detail-content .detail-panel-head h2{font-size:16px!important}
+  .detail-content .detail-kv-label{font-size:14px!important}
+  .detail-content .detail-kv strong{font-size:15px!important}
+  .detail-content .detail-observation-text{font-size:14px!important}
+  .detail-content .workflow-step{font-size:11px!important}
+  .detail-content .detail-history-title h2{font-size:16px!important}
 }

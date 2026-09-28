@@ -1280,7 +1280,6 @@ async function detailPage(){
   const normalizedColor=String(current.color||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
   const colorMap={jaune:{bg:'#FFD83D',border:'#D7B400',text:'#3b3000'},yellow:{bg:'#FFD83D',border:'#D7B400',text:'#3b3000'},orange:{bg:'#FF9D3F',border:'#D87513',text:'#3a1d00'},rouge:{bg:'#F04A4A',border:'#C92E2E',text:'#fff'},red:{bg:'#F04A4A',border:'#C92E2E',text:'#fff'},vert:{bg:'#58C978',border:'#2E9C4A',text:'#083b15'},green:{bg:'#58C978',border:'#2E9C4A',text:'#083b15'},gris:{bg:'#AEB7C1',border:'#7C8792',text:'#17202A'},gray:{bg:'#AEB7C1',border:'#7C8792',text:'#17202A'},bleu:{bg:'#3988E8',border:'#1D60B2',text:'#fff'},blue:{bg:'#3988E8',border:'#1D60B2',text:'#fff'},blanc:{bg:'#F5F7FA',border:'#C8D2DC',text:'#24364A'},white:{bg:'#F5F7FA',border:'#C8D2DC',text:'#24364A'},noir:{bg:'#263342',border:'#101923',text:'#fff'},black:{bg:'#263342',border:'#101923',text:'#fff'}};
   const chosenColor=colorMap[normalizedColor]||{bg:'#F4B424',border:'#D49A16',text:'#1e293b'};
-  const machineFill=chosenColor.bg;
   const icon=(name)=>({
     overview:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17h18M5 17V9h8l3 4h3v4M7 9V6h5v3M6 17a2 2 0 1 0 4 0m6 0a2 2 0 1 0 4 0"/></svg>',
     identification:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2.5"/><path d="M5.5 17c.8-2 2-3 3.5-3s2.7 1 3.5 3M15 9h3M15 13h3M15 17h3"/></svg>',
@@ -1310,9 +1309,27 @@ async function detailPage(){
       ['Date prévue',plannedDate],['Heure prévue',plannedTime],['Chauffeur',plannedDriver],['Destination',plannedDestination],['Date de livraison effective',current.delivery_date]
     ])
   ];
-  const illustration=`<svg class="detail-forklift-svg" viewBox="0 0 520 330" role="img" aria-label="Illustration générique d’un chariot élévateur"><defs><linearGradient id="detailFloor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f8fbfe"/><stop offset="1" stop-color="#e7f0f7"/></linearGradient><linearGradient id="detailBody" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${machineFill}"/><stop offset="1" stop-color="${chosenColor.border}"/></linearGradient></defs><rect width="520" height="330" rx="16" fill="url(#detailFloor)"/><circle cx="420" cy="62" r="39" fill="#fff" opacity=".65"/><path d="M25 270H495" stroke="#cad9e5" stroke-width="3" stroke-linecap="round"/><ellipse cx="265" cy="273" rx="188" ry="19" fill="#cbd8e3" opacity=".5"/><g stroke="#183b5b" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><path d="M362 54v204M382 54v204M358 60h28M358 248h32" fill="none"/><path d="M379 193h76M379 211h108" fill="none" stroke-width="7"/><path d="M104 169 140 120h139l44 49v80H104Z" fill="url(#detailBody)"/><path d="M145 122V82h128v42M143 84h138M158 84v-21h100v21" fill="none" stroke-width="8"/><path d="M181 132h66v44h-66Z" fill="#d8e6f0" stroke-width="5"/><path d="M250 132h18l25 40h-43Z" fill="#d8e6f0" stroke-width="5"/><path d="M105 174h-35v-16h39M298 170h55v17h-55" fill="none" stroke-width="7"/><path d="M122 226h225" fill="none" stroke-width="6"/><circle cx="158" cy="244" r="35" fill="#203247" stroke="#0e263c" stroke-width="7"/><circle cx="158" cy="244" r="14" fill="#aab9c6" stroke="#e1e9ef" stroke-width="5"/><circle cx="301" cy="244" r="29" fill="#203247" stroke="#0e263c" stroke-width="7"/><circle cx="301" cy="244" r="11" fill="#aab9c6" stroke="#e1e9ef" stroke-width="5"/><path d="M109 185h-24v31h24M275 185h24" fill="none" stroke-width="6"/><path d="M362 258h22M382 258h22" fill="none" stroke-width="6"/></g><path d="M77 264h420" stroke="#aec1d0" stroke-width="2" stroke-dasharray="6 7"/></svg>`;
-  const quick=[['Capacité',fmtCapacity(current.capacity)],['Moteur',current.engine],['Mât',current.mast_type],['Emplacement',current.stock]];
-  $('#detail').innerHTML=`<div class="detail-dashboard-layout"><section class="detail-visual-card"><div class="detail-visual-head"><span class="detail-visual-icon">${icon('overview')}</span><div><h2>Aperçu du chariot</h2><p>${esc(current.engine||'Chariot élévateur')} · ${esc(fmtCapacity(current.capacity))}</p></div></div><div class="detail-illustration">${illustration}<span class="detail-illustration-note">Illustration indicative</span></div><div class="detail-quickfacts">${quick.map(([k,v])=>`<div class="detail-quickfact"><small>${esc(k)}</small><b>${esc(v||'—')}</b></div>`).join('')}</div><div class="detail-visual-foot"><span class="detail-qr-badge">QR ID : <b>${esc(current.qr_id||'—')}</b></span><span class="detail-location-badge">${esc(current.stock||'Emplacement non défini')}</span></div></section><div class="detail-information-grid">${groups.join('')}</div><section class="detail-panel detail-panel--observations"><header class="detail-panel-head"><span class="detail-panel-icon">${icon('observations')}</span><h2>Observations</h2></header><div class="detail-observation-text">${esc(current.observations||'Aucune observation enregistrée.')}</div></section></div>`;
+
+
+  $('#detail').innerHTML=`<div class="detail-dashboard-layout detail-layout-compact"><div class="detail-information-grid">${groups.join('')}</div><section class="detail-panel detail-panel--observations"><header class="detail-panel-head"><span class="detail-panel-icon">${icon('observations')}</span><h2>Observations</h2></header><div class="detail-observation-text">${esc(current.observations||'Aucune observation enregistrée.')}</div></section></div>`;
+
+  const historyToggle=document.getElementById('historyToggle');
+  const historyBox=$('#history');
+  if(historyBox){historyBox.hidden=true;historyBox.innerHTML=''}
+  if(historyToggle){
+    historyToggle.setAttribute('aria-expanded','false');
+    historyToggle.onclick=async()=>{
+      const opening=historyToggle.getAttribute('aria-expanded')!=='true';
+      historyToggle.setAttribute('aria-expanded',String(opening));
+      if(historyBox){
+        historyBox.hidden=!opening;
+        if(opening){historyBox.innerHTML='<div class="muted">Chargement de l’historique...</div>';await renderMaintenanceHistory()}
+      }
+      const chevron=document.getElementById('historyToggleIcon');
+      if(chevron)chevron.textContent=opening?'⌃':'⌄';
+    };
+  }
+
 
   const editBtn=$('#edit');
   const modificationCard=document.getElementById('maintenanceModificationCard');
@@ -1324,9 +1341,8 @@ async function detailPage(){
     if(modificationCard)modificationCard.style.display='none';
   }
   renderWorkflowAction(current,!!planned);
-  await renderMaintenanceHistory()
 }
-async function renderMaintenanceHistory(){const box=$('#history');if(!box||!current)return;const {data,error}=await supabaseClient.from('maintenance').select('id,date,technicien,type,travaux,created_at').eq('qr_id',current.qr_id).order('date',{ascending:false}).order('created_at',{ascending:false});if(error){box.innerHTML='<div class="notice red">Erreur historique : '+esc(error.message)+'</div>';return}box.innerHTML=(data||[]).filter(x=>!DELIVERY_PLAN_TYPES.includes(String(x.type||''))).map(x=>`<div class="log"><b>${esc(x.date)} — ${esc(x.type||'Intervention')}</b><small>${esc(x.technicien||'—')}</small><div style="margin-top:7px">${esc(x.travaux||'—')}</div>${isAdmin()&&x.id?`<div class="actions"><button class="btn light" onclick="deleteMaintenance('${esc(x.id)}')">Supprimer</button></div>`:''}</div>`).join('')||'<div class="muted">Aucune intervention enregistrée.</div>'}
+async function renderMaintenanceHistory(){const box=$('#history');if(!box||!current)return;const toggle=document.getElementById('historyToggle');if(toggle&&toggle.getAttribute('aria-expanded')!=='true'){box.innerHTML='';box.hidden=true;return}const {data,error}=await supabaseClient.from('maintenance').select('id,date,technicien,type,travaux,created_at').eq('qr_id',current.qr_id).order('date',{ascending:false}).order('created_at',{ascending:false});if(error){box.innerHTML='<div class="notice red">Erreur historique : '+esc(error.message)+'</div>';return}box.innerHTML=(data||[]).filter(x=>!DELIVERY_PLAN_TYPES.includes(String(x.type||''))).map(x=>`<div class="log"><b>${esc(x.date)} — ${esc(x.type||'Intervention')}</b><small>${esc(x.technicien||'—')}</small><div style="margin-top:7px">${esc(x.travaux||'—')}</div>${isAdmin()&&x.id?`<div class="actions"><button class="btn light" onclick="deleteMaintenance('${esc(x.id)}')">Supprimer</button></div>`:''}</div>`).join('')||'<div class="muted">Aucune intervention enregistrée.</div>'}
 async function addMaintenance(){if(!requireValidLicense()||!requireAdmin())return;if(!current){alert('Sélectionnez un chariot.');return}if(!currentUser){alert('Connectez-vous.');return}const types=[...document.querySelectorAll('#typeMultiOptions input:checked')].map(x=>x.value).join(', '),travaux=$('#travaux')?.value.trim()||'';if(!types&&!travaux){alert('Sélectionnez un type de modification ou indiquez les détails.');return}const {error}=await supabaseClient.from('maintenance').insert({qr_id:current.qr_id,date:$('#date')?.value||new Date().toISOString().slice(0,10),technicien:$('#technicien')?.value.trim()||currentUser.email,type:types,travaux,created_by:currentUser.id});if(error){alert('Erreur : '+error.message);return}document.querySelectorAll('#typeMultiOptions input').forEach(x=>x.checked=false);if($('#travaux'))$('#travaux').value='';await renderMaintenanceHistory()}
 async function deleteMaintenance(id){if(!requireAdmin())return;if(!confirm('Supprimer définitivement cette intervention ?'))return;const {error}=await supabaseClient.from('maintenance').delete().eq('id',id);if(error)alert('Erreur : '+error.message);else await renderMaintenanceHistory()}
 function nextQr(){let n=Math.max(0,...CHARIOTS.map(c=>Number(String(c.qr_id||'').match(/^CH-(\d+)$/i)?.[1]||0)))+1;return'CH-'+String(n).padStart(4,'0')}

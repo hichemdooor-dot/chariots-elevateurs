@@ -1859,3 +1859,36 @@ button.menu-btn, button.notification-bell, button.user-admin-top, .text-link, .v
 @media(max-width:1050px){.detail-content{padding:18px 16px}.detail-dashboard-layout{grid-template-columns:minmax(240px,.75fr) minmax(0,1.5fr);gap:12px}.detail-information-grid{gap:11px}.detail-kv{grid-template-columns:minmax(90px,.85fr) minmax(0,1.15fr);gap:8px}}
 @media(max-width:800px){.detail-content{max-width:none;padding:14px 12px 28px}.detail-page-head{display:block}.detail-page-head .actions{padding-top:12px;max-width:none;justify-content:stretch}.detail-page-head .actions .btn{flex:1 1 130px;min-height:46px}.detail-page-head .page-title{font-size:25px}.detail-dashboard-layout{grid-template-columns:1fr;gap:12px;margin-top:13px}.detail-visual-card{padding:12px}.detail-illustration{min-height:190px}.detail-forklift-svg{max-height:250px}.detail-information-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.detail-panel-head{padding:11px 12px;min-height:52px}.detail-panel-head h2{font-size:14px}.detail-panel-values{padding:6px 12px 8px}.detail-kv{grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);gap:8px;padding:9px 1px}.detail-kv-label{font-size:11px}.detail-kv strong{font-size:12px}.detail-extra-card{padding:13px;margin-top:12px}}
 @media(max-width:520px){.detail-information-grid{grid-template-columns:1fr}.detail-page-head .actions{display:grid;grid-template-columns:1fr 1fr}.detail-page-head .actions .btn{width:100%;font-size:12px;min-width:0;padding:0 9px}.detail-page-head .actions #workflowAction{grid-column:1/-1}.detail-page-head .workflow-steps-container{max-width:100%;overflow:hidden}.detail-visual-head h2{font-size:16px}.detail-illustration{min-height:170px}.detail-forklift-svg{max-height:215px}.detail-quickfacts{gap:7px}.detail-quickfact{padding:9px}.detail-quickfact b{font-size:12px}.detail-visual-foot{align-items:flex-start;flex-direction:column}.detail-panel--observations{grid-column:auto}.detail-extra-card .formgrid{grid-template-columns:1fr!important}}
+
+
+/* SBI V67.12 — compact detail page, single-line workflow and click-to-expand history */
+.detail-content{padding-top:14px;padding-bottom:22px}
+.detail-page-head{padding-bottom:10px;gap:12px}
+.detail-page-head .page-title{margin-top:6px!important;margin-bottom:4px!important}
+.detail-page-head .workflow-steps-container{margin-top:8px;max-width:100%;width:min(100%,1120px)}
+.detail-page-head .workflow-card{padding:9px 12px}
+.detail-page-head .workflow-head{gap:8px}
+.detail-page-head .workflow-steps{display:flex!important;flex-wrap:nowrap!important;grid-template-columns:none!important;align-items:center;gap:5px;margin-top:8px;overflow-x:auto;overflow-y:hidden;padding:0 0 4px;white-space:nowrap;scrollbar-width:thin}
+.detail-page-head .workflow-step{display:flex!important;flex:0 0 auto;align-items:center;gap:5px;min-width:max-content;white-space:nowrap;font-size:11px}
+.detail-page-head .workflow-step>span:last-child{white-space:nowrap}
+.detail-page-head .workflow-step-dot{width:21px;height:21px;flex:0 0 21px;font-size:10px}
+.detail-page-head .workflow-connector{flex:0 0 13px;min-width:13px;height:2px}
+.detail-dashboard-layout.detail-layout-compact{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;align-items:start;margin-top:10px}
+.detail-layout-compact .detail-information-grid{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:start}
+.detail-layout-compact .detail-panel{align-self:start}
+.detail-layout-compact .detail-panel-head{min-height:46px;padding:9px 12px}
+.detail-layout-compact .detail-panel-values{padding:5px 12px 7px}
+.detail-layout-compact .detail-kv{min-height:34px;padding:7px 1px;gap:8px}
+.detail-layout-compact .detail-observation-text{min-height:0;padding:10px 13px}
+.detail-history-card{padding:0;overflow:hidden}
+.detail-history-toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:49px;padding:9px 16px;border:0;border-radius:13px;background:linear-gradient(105deg,#f0f6fb,#f7fbfe);color:#153b5e;text-align:left;cursor:pointer;font:inherit}
+.detail-history-toggle:hover{background:#eaf4fd}
+.detail-history-toggle:focus-visible{outline:3px solid rgba(13,113,205,.3);outline-offset:-3px}
+.detail-history-title{display:flex;align-items:center;gap:10px;min-width:0}
+.detail-history-title h2{margin:0;font-size:16px;color:#153b5e;font-weight:900}
+.detail-history-symbol{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:#e5f1fc;color:#0c70c4;font-size:17px}
+.detail-history-chevron{display:grid;place-items:center;width:26px;height:26px;border:1px solid #d4e2ed;border-radius:8px;background:#fff;color:#176fae;font-size:18px;font-weight:800;flex:0 0 auto}
+.detail-history-card #history{padding:5px 16px 14px}
+.detail-history-card #history[hidden]{display:none!important}
+@media(max-width:800px){.detail-page-head .workflow-steps-container{width:100%;overflow:hidden}.detail-layout-compact .detail-information-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.detail-layout-compact .detail-panel-head{padding:8px 10px}.detail-layout-compact .detail-panel-values{padding:4px 10px 6px}}
+@media(max-width:560px){.detail-layout-compact .detail-information-grid{grid-template-columns:1fr}.detail-page-head .workflow-card{padding:8px 9px}.detail-page-head .workflow-step{font-size:10px}.detail-page-head .workflow-step-dot{width:19px;height:19px;flex-basis:19px}.detail-page-head .workflow-connector{flex-basis:9px;min-width:9px}.detail-history-toggle{min-height:45px;padding:8px 12px}.detail-history-title h2{font-size:15px}.detail-history-card #history{padding:4px 11px 11px}}

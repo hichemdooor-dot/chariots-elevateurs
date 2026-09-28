@@ -846,4 +846,36 @@ button.btn:disabled,
   }
   .chip{min-height:40px!important}
 }
+/* SBI v67.17 — inline SVG button icons, shared across static and dynamic actions. */
+.sbi-iconized{display:inline-flex!important;align-items:center;justify-content:center;gap:8px;}
+.sbi-button-icon{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;flex:0 0 16px;line-height:0;color:currentColor;pointer-events:none;}
+.sbi-button-icon svg{display:block;width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+.sbi-icon-only{display:inline-flex!important;align-items:center;justify-content:center;gap:0!important;min-width:40px;min-height:40px;padding:0 9px!important;}
+.sbi-icon-only .sbi-button-icon{width:18px;height:18px;flex-basis:18px;}
+.sbi-icon-only .sbi-button-icon svg{width:18px;height:18px;}
+.menu-btn.sbi-icon-only{font-size:0!important;}
+.menu-btn.sbi-icon-only .sbi-button-icon{width:25px;height:25px;flex-basis:25px;}
+.menu-btn.sbi-icon-only .sbi-button-icon svg{width:25px;height:25px;}
+.sbi-iconized:disabled .sbi-button-icon{opacity:.65;}
+@media(max-width:430px){.sbi-iconized{gap:7px;}}
+/* Keep icon-only utility controls compact; modal/menu hit areas remain touch-friendly. */
+.detail-history-symbol svg{display:block;width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+.input-clear.sbi-icon-only{min-width:32px;min-height:32px;width:32px;height:32px;padding:0!important;}
+.delivery-close.sbi-icon-only{min-width:40px;min-height:40px;width:40px;height:40px;padding:0!important;font-size:0!important;}
+.delivery-move-close.sbi-icon-only,.sbi-readiness-close.sbi-icon-only,.sbi-delivery-modal-close.sbi-icon-only{min-width:34px;min-height:34px;width:34px;height:34px;padding:0!important;font-size:0!important;}
 
+
+/* SBI v67.18 — live type-ahead suggestions */
+.sbi-typeahead-panel{position:fixed;z-index:2500;overflow:auto;padding:6px;background:#fff;border:1px solid #d7e2ec;border-radius:13px;box-shadow:0 16px 38px rgba(16,50,79,.18);overscroll-behavior:contain}
+.sbi-typeahead-panel[hidden]{display:none!important}
+.sbi-typeahead-item{display:flex;align-items:center;gap:10px;width:100%;padding:10px 11px;border:0;border-radius:9px;background:transparent;text-align:left;color:#17344d;cursor:pointer}
+.sbi-typeahead-item:hover,.sbi-typeahead-item.is-active{background:#f1f7fc}
+.sbi-typeahead-item:focus-visible{outline:2px solid #1677e8;outline-offset:-2px}
+.sbi-typeahead-mark{display:grid;place-items:center;flex:0 0 34px;width:34px;height:34px;border-radius:9px;background:#edf5fb;color:#1677e8}
+.sbi-typeahead-mark svg{width:18px;height:18px}
+.sbi-typeahead-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:3px}
+.sbi-typeahead-copy strong{overflow:hidden;color:#17344d;font-size:13px;font-weight:800;text-overflow:ellipsis;white-space:nowrap}
+.sbi-typeahead-copy small{overflow:hidden;color:#718397;font-size:11px;text-overflow:ellipsis;white-space:nowrap}
+.sbi-typeahead-arrow{color:#8a9bac;font-size:22px;line-height:1}
+.sbi-typeahead-empty{padding:18px 10px;text-align:center;color:#718397;font-size:12px}
+@media(max-width:600px){.sbi-typeahead-panel{max-height:min(300px,55vh)}.sbi-typeahead-item{padding:11px 10px}.sbi-typeahead-copy small{font-size:10px}}

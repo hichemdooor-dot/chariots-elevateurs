@@ -1273,12 +1273,47 @@ async function detailPage(){
   }
   current=CHARIOTS.find(c=>String(c.qr_id)===String(id));
   if(!current){$('#detail').innerHTML='<div class="empty">Chariot introuvable.</div>';return}
-  $('#title').textContent=current.qr_id;$('#status').textContent=current.status||'—';
-  const planned=getDeliveryPlan(current.qr_id),plannedDate=planned?.date?formatPlannedDate(planned.date):'—',plannedTime=planned?.time||'—',plannedDriver=planned?.driver||'—',plannedDestination=planned?.destination||'—'; renderWorkflowSteps(current,!!planned);
-  const groups=[['Identification',[['N° châssis',current.chassis],['N° de série',current.serial_number],['N° moteur',current.engine_number],['Moteur',current.engine]]],['Caractéristiques',[['Capacité',fmtCapacity(current.capacity)],['Hauteur de levage',current.lifting_height],['Dimensions des fourches',current.fork_dimension],['Type de mât',String(current.mast_type||'').toUpperCase()],['Type de pneu',current.tire_type],['Couleur',current.color]]],['Informations stock',[['Stock',current.stock],['Statut',current.status],['Client',current.client],['Date planifiée',plannedDate],['Heure planifiée',plannedTime],['Chauffeur planifié',plannedDriver],['Destination planifiée',plannedDestination],['Date de livraison',current.delivery_date]]],['Observations',[['Observations',current.observations]]]];
-  const colorMap={jaune:{bg:'#FFD83D',border:'#D7B400',text:'#3b3000'},orange:{bg:'#FF9D3F',border:'#D87513',text:'#3a1d00'},rouge:{bg:'#F04A4A',border:'#C92E2E',text:'#fff'},vert:{bg:'#58C978',border:'#2E9C4A',text:'#083b15'},gris:{bg:'#AEB7C1',border:'#7C8792',text:'#17202A'}};
-  const colorCell=(value)=>{const key=String(value||'').trim().toLowerCase();const c=colorMap[key];return c?`<div class="kv kv-color" style="--color-bg:${c.bg};--color-border:${c.border};--color-text:${c.text}"><small>Couleur</small><b>${esc(value)}</b></div>`:`<div class="kv kv-color kv-color-empty"><small>Couleur</small><b>${esc(value||'—')}</b></div>`};
-  $('#detail').innerHTML=groups.map(g=>`<div class="section"><h3>${esc(g[0])}</h3><div class="details">${g[1].map(([k,v])=>k==='Couleur'?colorCell(v):`<div class="kv"><small>${esc(k)}</small><b>${esc(v||'—')}</b></div>`).join('')}</div></div>`).join('');
+  $('#title').textContent=current.chassis||current.qr_id;$('#status').textContent=current.status||'—';
+  const planned=getDeliveryPlan(current.qr_id),plannedDate=planned?.date?formatPlannedDate(planned.date):'—',plannedTime=planned?.time||'—',plannedDriver=planned?.driver||'—',plannedDestination=planned?.destination||'—';
+  renderWorkflowSteps(current,!!planned);
+
+  const normalizedColor=String(current.color||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
+  const colorMap={jaune:{bg:'#FFD83D',border:'#D7B400',text:'#3b3000'},yellow:{bg:'#FFD83D',border:'#D7B400',text:'#3b3000'},orange:{bg:'#FF9D3F',border:'#D87513',text:'#3a1d00'},rouge:{bg:'#F04A4A',border:'#C92E2E',text:'#fff'},red:{bg:'#F04A4A',border:'#C92E2E',text:'#fff'},vert:{bg:'#58C978',border:'#2E9C4A',text:'#083b15'},green:{bg:'#58C978',border:'#2E9C4A',text:'#083b15'},gris:{bg:'#AEB7C1',border:'#7C8792',text:'#17202A'},gray:{bg:'#AEB7C1',border:'#7C8792',text:'#17202A'},bleu:{bg:'#3988E8',border:'#1D60B2',text:'#fff'},blue:{bg:'#3988E8',border:'#1D60B2',text:'#fff'},blanc:{bg:'#F5F7FA',border:'#C8D2DC',text:'#24364A'},white:{bg:'#F5F7FA',border:'#C8D2DC',text:'#24364A'},noir:{bg:'#263342',border:'#101923',text:'#fff'},black:{bg:'#263342',border:'#101923',text:'#fff'}};
+  const chosenColor=colorMap[normalizedColor]||{bg:'#F4B424',border:'#D49A16',text:'#1e293b'};
+  const machineFill=chosenColor.bg;
+  const icon=(name)=>({
+    overview:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17h18M5 17V9h8l3 4h3v4M7 9V6h5v3M6 17a2 2 0 1 0 4 0m6 0a2 2 0 1 0 4 0"/></svg>',
+    identification:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2.5"/><path d="M5.5 17c.8-2 2-3 3.5-3s2.7 1 3.5 3M15 9h3M15 13h3M15 17h3"/></svg>',
+    characteristics:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 14.5 8.5 20.5 9 16 13l1.2 6L12 16.2 6.8 19 8 13l-4.5-4 6-.5L12 3Z"/><path d="M12 7v7M9 11h6"/></svg>',
+    stock:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 7 9-4 9 4-9 4-9-4Z"/><path d="M3 7v10l9 4 9-4V7M12 11v10"/></svg>',
+    delivery:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18M7 14h4M7 17h7"/></svg>',
+    observations:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h10l4 4v14H5zM15 3v5h4M8 12h8M8 16h8"/></svg>'
+  }[name]||'');
+  const field=(label,value,kind='')=>{
+    const safeValue=String(value??'').trim()||'—';
+    if(label==='Couleur')return `<div class="detail-kv detail-kv-color"><span class="detail-kv-label">Couleur</span><strong><i class="detail-color-dot" style="--detail-color:${chosenColor.bg};--detail-border:${chosenColor.border}"></i>${esc(safeValue)}</strong></div>`;
+    if(label==='Statut')return `<div class="detail-kv"><span class="detail-kv-label">${esc(label)}</span><strong><span class="detail-status-pill ${kind}">${esc(safeValue)}</span></strong></div>`;
+    return `<div class="detail-kv"><span class="detail-kv-label">${esc(label)}</span><strong>${esc(safeValue)}</strong></div>`;
+  };
+  const group=(key,title,rows)=>`<section class="detail-panel detail-panel--${key}"><header class="detail-panel-head"><span class="detail-panel-icon">${icon(key)}</span><h2>${esc(title)}</h2></header><div class="detail-panel-values">${rows.map(([label,value,kind])=>field(label,value,kind||'')).join('')}</div></section>`;
+  const groups=[
+    group('identification','Identification',[
+      ['N° châssis',current.chassis],['N° de série',current.serial_number],['N° moteur',current.engine_number],['Moteur',current.engine],['Client',current.client]
+    ]),
+    group('characteristics','Caractéristiques du chariot',[
+      ['Capacité',fmtCapacity(current.capacity)],['Hauteur de levage',current.lifting_height],['Type de mât',String(current.mast_type||'').toUpperCase()],['Dimensions des fourches',current.fork_dimension],['Type de pneu',current.tire_type],['Couleur',current.color],['Statut',current.status,normalizeStatus(current.status).replace(/\s+/g,'-')]
+    ]),
+    group('stock','Informations stock',[
+      ['Emplacement',current.stock],['QR ID',current.qr_id],['Date d’ajout',current.created_at?String(current.created_at).slice(0,10):'—']
+    ]),
+    group('delivery','Planning de livraison',[
+      ['Date prévue',plannedDate],['Heure prévue',plannedTime],['Chauffeur',plannedDriver],['Destination',plannedDestination],['Date de livraison effective',current.delivery_date]
+    ])
+  ];
+  const illustration=`<svg class="detail-forklift-svg" viewBox="0 0 520 330" role="img" aria-label="Illustration générique d’un chariot élévateur"><defs><linearGradient id="detailFloor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f8fbfe"/><stop offset="1" stop-color="#e7f0f7"/></linearGradient><linearGradient id="detailBody" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${machineFill}"/><stop offset="1" stop-color="${chosenColor.border}"/></linearGradient></defs><rect width="520" height="330" rx="16" fill="url(#detailFloor)"/><circle cx="420" cy="62" r="39" fill="#fff" opacity=".65"/><path d="M25 270H495" stroke="#cad9e5" stroke-width="3" stroke-linecap="round"/><ellipse cx="265" cy="273" rx="188" ry="19" fill="#cbd8e3" opacity=".5"/><g stroke="#183b5b" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><path d="M362 54v204M382 54v204M358 60h28M358 248h32" fill="none"/><path d="M379 193h76M379 211h108" fill="none" stroke-width="7"/><path d="M104 169 140 120h139l44 49v80H104Z" fill="url(#detailBody)"/><path d="M145 122V82h128v42M143 84h138M158 84v-21h100v21" fill="none" stroke-width="8"/><path d="M181 132h66v44h-66Z" fill="#d8e6f0" stroke-width="5"/><path d="M250 132h18l25 40h-43Z" fill="#d8e6f0" stroke-width="5"/><path d="M105 174h-35v-16h39M298 170h55v17h-55" fill="none" stroke-width="7"/><path d="M122 226h225" fill="none" stroke-width="6"/><circle cx="158" cy="244" r="35" fill="#203247" stroke="#0e263c" stroke-width="7"/><circle cx="158" cy="244" r="14" fill="#aab9c6" stroke="#e1e9ef" stroke-width="5"/><circle cx="301" cy="244" r="29" fill="#203247" stroke="#0e263c" stroke-width="7"/><circle cx="301" cy="244" r="11" fill="#aab9c6" stroke="#e1e9ef" stroke-width="5"/><path d="M109 185h-24v31h24M275 185h24" fill="none" stroke-width="6"/><path d="M362 258h22M382 258h22" fill="none" stroke-width="6"/></g><path d="M77 264h420" stroke="#aec1d0" stroke-width="2" stroke-dasharray="6 7"/></svg>`;
+  const quick=[['Capacité',fmtCapacity(current.capacity)],['Moteur',current.engine],['Mât',current.mast_type],['Emplacement',current.stock]];
+  $('#detail').innerHTML=`<div class="detail-dashboard-layout"><section class="detail-visual-card"><div class="detail-visual-head"><span class="detail-visual-icon">${icon('overview')}</span><div><h2>Aperçu du chariot</h2><p>${esc(current.engine||'Chariot élévateur')} · ${esc(fmtCapacity(current.capacity))}</p></div></div><div class="detail-illustration">${illustration}<span class="detail-illustration-note">Illustration indicative</span></div><div class="detail-quickfacts">${quick.map(([k,v])=>`<div class="detail-quickfact"><small>${esc(k)}</small><b>${esc(v||'—')}</b></div>`).join('')}</div><div class="detail-visual-foot"><span class="detail-qr-badge">QR ID : <b>${esc(current.qr_id||'—')}</b></span><span class="detail-location-badge">${esc(current.stock||'Emplacement non défini')}</span></div></section><div class="detail-information-grid">${groups.join('')}</div><section class="detail-panel detail-panel--observations"><header class="detail-panel-head"><span class="detail-panel-icon">${icon('observations')}</span><h2>Observations</h2></header><div class="detail-observation-text">${esc(current.observations||'Aucune observation enregistrée.')}</div></section></div>`;
+
   const editBtn=$('#edit');
   const modificationCard=document.getElementById('maintenanceModificationCard');
   if(isAdmin()){

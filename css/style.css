@@ -1791,3 +1791,71 @@ button.menu-btn, button.notification-bell, button.user-admin-top, .text-link, .v
 .delivery-search-invalid strong{color:#9b2424}
 @media(max-width:800px){.delivery-list-search{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.delivery-search-keyword{grid-column:1/-1}.delivery-search-clear{width:100%}}
 @media(max-width:420px){.delivery-list-search{padding:9px;gap:7px}.delivery-search-field label{font-size:11px}.delivery-search-field input{font-size:13px;min-height:38px}.delivery-search-clear{min-height:38px;font-size:13px}}
+
+
+/* SBI V67.11 — redesigned forklift detail page, preserving existing actions */
+.detail-content{max-width:1240px;padding:22px 24px 34px}
+.detail-page-head{align-items:flex-start;padding:4px 0 16px;border-bottom:1px solid #dce7f0}
+.detail-page-head>div:first-child{min-width:0;flex:1}
+.detail-page-head .back-list-btn{display:inline-flex;align-items:center;min-height:36px;padding:0 13px;border-radius:9px;font-size:12px;font-weight:800}
+.detail-page-head .page-title{font-size:30px;letter-spacing:-.035em;color:#102f4d;margin:10px 0 7px!important}
+.detail-page-head #status{font-size:11px;padding:6px 10px;border-radius:999px}
+.detail-page-head .actions{flex:0 0 auto;max-width:560px;justify-content:flex-end;padding-top:29px}
+.detail-page-head .actions .btn{min-height:43px;border-radius:10px;font-size:12px;font-weight:800;box-shadow:0 3px 10px rgba(18,70,110,.07)}
+.detail-page-head .actions #workflowAction{background:#087bf0}
+.detail-page-head .actions #edit{background:#eef5fb;color:#18466c;border:1px solid #d4e2ed}
+.detail-page-head .actions .btn.light{background:#fff;color:#234c70;border:1px solid #d4e2ed}
+.detail-page-head .workflow-steps-container{margin-top:15px;max-width:980px}
+.detail-shell{min-width:0}
+.detail-dashboard-layout{display:grid;grid-template-columns:minmax(270px,.82fr) minmax(0,1.7fr);gap:16px;align-items:start;margin-top:18px}
+.detail-visual-card,.detail-panel{background:#fff;border:1px solid #d9e5ef;border-radius:15px;box-shadow:0 4px 16px rgba(20,57,88,.055);overflow:hidden;min-width:0}
+.detail-visual-card{padding:15px;position:relative}
+.detail-visual-head{display:flex;align-items:center;gap:11px;padding:2px 2px 13px}
+.detail-visual-icon,.detail-panel-icon{width:39px;height:39px;display:grid;place-items:center;flex:0 0 auto;border-radius:11px;background:#eaf4fd;color:#0c70c4}
+.detail-visual-icon svg,.detail-panel-icon svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.detail-visual-head h2{margin:0;color:#143a5d;font-size:17px;font-weight:900;letter-spacing:-.02em}
+.detail-visual-head p{margin:4px 0 0;color:#71869a;font-size:12px}
+.detail-illustration{position:relative;overflow:hidden;border:1px solid #e0eaf2;border-radius:13px;background:#eef5fa;min-height:225px;display:grid;place-items:center}
+.detail-forklift-svg{display:block;width:100%;height:auto;max-height:285px}
+.detail-illustration-note{position:absolute;right:9px;bottom:8px;border-radius:999px;padding:5px 8px;background:rgba(255,255,255,.88);border:1px solid rgba(210,224,236,.9);font-size:9px;font-weight:800;color:#5e7488}
+.detail-quickfacts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px}
+.detail-quickfact{padding:10px 11px;border:1px solid #e0eaf2;border-radius:10px;background:#f7fafd;min-width:0}
+.detail-quickfact small{display:block;color:#71869a;font-size:10px;font-weight:700;margin-bottom:4px}
+.detail-quickfact b{display:block;color:#163c5d;font-size:13px;overflow-wrap:anywhere}
+.detail-visual-foot{display:flex;justify-content:space-between;align-items:center;gap:7px;flex-wrap:wrap;margin-top:11px}
+.detail-qr-badge,.detail-location-badge{display:inline-flex;align-items:center;gap:4px;max-width:100%;padding:6px 9px;border-radius:999px;font-size:10px;font-weight:700;background:#eef5fb;color:#45647f;overflow-wrap:anywhere}
+.detail-qr-badge b{color:#17486f}
+.detail-location-badge{background:#eaf8ef;color:#237347}
+.detail-information-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;min-width:0}
+.detail-panel{border-radius:14px}
+.detail-panel-head{display:flex;align-items:center;gap:10px;padding:13px 15px;background:linear-gradient(105deg,#f0f6fb,#f7fbfe);border-bottom:1px solid #e2ebf3;min-height:58px}
+.detail-panel-head h2{margin:0;color:#153b5e;font-size:16px;font-weight:900;letter-spacing:-.02em}
+.detail-panel-icon{width:32px;height:32px;border-radius:9px;background:#e5f1fc}
+.detail-panel-icon svg{width:18px;height:18px}
+.detail-panel-values{padding:8px 15px 11px}
+.detail-kv{display:grid;grid-template-columns:minmax(105px,.9fr) minmax(0,1.1fr);align-items:center;gap:12px;padding:10px 2px;border-bottom:1px solid #edf2f6;min-height:40px}
+.detail-kv:last-child{border-bottom:0}
+.detail-kv-label{color:#60778d;font-size:12px;line-height:1.3;overflow-wrap:anywhere}
+.detail-kv strong{display:flex;align-items:center;gap:7px;min-width:0;color:#172f47;font-size:13px;font-weight:800;line-height:1.35;overflow-wrap:anywhere}
+.detail-kv-color strong{color:#153d60}
+.detail-color-dot{display:inline-block;flex:0 0 13px;width:13px;height:13px;border-radius:50%;background:var(--detail-color);border:1px solid var(--detail-border);box-shadow:0 0 0 2px #fff,0 0 0 3px #dce6ee}
+.detail-status-pill{display:inline-flex;align-items:center;width:max-content;max-width:100%;padding:5px 9px;border-radius:8px;background:#eaf4fd;color:#1769b0;font-size:11px;font-weight:900;white-space:normal}
+.detail-status-pill.en-stock,.detail-status-pill.livre{background:#e7f7ed;color:#1b8048}
+.detail-status-pill.reserve{background:#fff2da;color:#a36a07}
+.detail-status-pill.modification-production,.detail-status-pill.preparation-livraison{background:#fff6d9;color:#8a690b}
+.detail-status-pill.pret-a-livrer{background:#eee8ff;color:#6544b5}
+.detail-status-pill.en-fabrication{background:#edf1f5;color:#5b6d7e}
+.detail-panel--observations{grid-column:1/-1}
+.detail-observation-text{padding:15px 17px;min-height:58px;color:#405b73;font-size:13px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+.detail-extra-card{border-radius:14px;padding:16px 18px;margin-top:16px;box-shadow:0 4px 16px rgba(20,57,88,.055)}
+.detail-extra-card h2{font-size:16px;color:#153b5e;font-weight:900}
+.detail-extra-card .field label{font-size:12px}
+.detail-extra-card .field input,.detail-extra-card .field select,.detail-extra-card .field textarea{min-height:42px;border-radius:9px;font-size:13px}
+.detail-extra-card .field textarea{min-height:92px}
+.detail-extra-card .form-actions .btn{min-height:43px;border-radius:9px}
+.detail-history-card .log{padding:13px 14px;border:1px solid #e0eaf2;border-radius:10px;background:#fbfdff;margin:8px 0}
+.detail-history-card .log b{color:#173e60;font-size:13px}
+.detail-history-card .log small{color:#73889c}
+@media(max-width:1050px){.detail-content{padding:18px 16px}.detail-dashboard-layout{grid-template-columns:minmax(240px,.75fr) minmax(0,1.5fr);gap:12px}.detail-information-grid{gap:11px}.detail-kv{grid-template-columns:minmax(90px,.85fr) minmax(0,1.15fr);gap:8px}}
+@media(max-width:800px){.detail-content{max-width:none;padding:14px 12px 28px}.detail-page-head{display:block}.detail-page-head .actions{padding-top:12px;max-width:none;justify-content:stretch}.detail-page-head .actions .btn{flex:1 1 130px;min-height:46px}.detail-page-head .page-title{font-size:25px}.detail-dashboard-layout{grid-template-columns:1fr;gap:12px;margin-top:13px}.detail-visual-card{padding:12px}.detail-illustration{min-height:190px}.detail-forklift-svg{max-height:250px}.detail-information-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.detail-panel-head{padding:11px 12px;min-height:52px}.detail-panel-head h2{font-size:14px}.detail-panel-values{padding:6px 12px 8px}.detail-kv{grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);gap:8px;padding:9px 1px}.detail-kv-label{font-size:11px}.detail-kv strong{font-size:12px}.detail-extra-card{padding:13px;margin-top:12px}}
+@media(max-width:520px){.detail-information-grid{grid-template-columns:1fr}.detail-page-head .actions{display:grid;grid-template-columns:1fr 1fr}.detail-page-head .actions .btn{width:100%;font-size:12px;min-width:0;padding:0 9px}.detail-page-head .actions #workflowAction{grid-column:1/-1}.detail-page-head .workflow-steps-container{max-width:100%;overflow:hidden}.detail-visual-head h2{font-size:16px}.detail-illustration{min-height:170px}.detail-forklift-svg{max-height:215px}.detail-quickfacts{gap:7px}.detail-quickfact{padding:9px}.detail-quickfact b{font-size:12px}.detail-visual-foot{align-items:flex-start;flex-direction:column}.detail-panel--observations{grid-column:auto}.detail-extra-card .formgrid{grid-template-columns:1fr!important}}

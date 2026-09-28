@@ -65,26 +65,140 @@ async function enforceMaintenance(){
 let CHARIOTS=[],currentUser=null,current=null,editingQrId=null,licenseValid=false,DELIVERY_PLANS=[];
 const DELIVERY_PLAN_KEY='sbi_delivery_plans_v1',DELIVERY_PLAN_TYPES=['Planification livraison','Annulation planification livraison'];
 
-// Real-time synchronization layer. Pages can subscribe to database changes while
-// keeping their existing polling fallback. If Realtime is not enabled in Supabase,
-// the subscription fails gracefully and the normal refresh logic continues.
+// Shared live synchronization. Realtime handles immediate changes; a small
+// snapshot poll is the fallback when the Supabase publication is not configured.
 let SBI_REALTIME_CHANNELS=[];
+let SBI_GLOBAL_REALTIME_STARTED=false;
+let SBI_GLOBAL_POLL_TIMER=null;
+let SBI_GLOBAL_POLL_BUSY=false;
+let SBI_GLOBAL_FINGERPRINT=null;
+let SBI_GLOBAL_RELOAD_TIMER=null;
+let SBI_GLOBAL_RELOAD_PENDING=false;
+let SBI_GLOBAL_FORM_SUBMIT_UNTIL=0;
+let SBI_GLOBAL_LAST_REFRESH_REQUEST=0;
+let SBI_GLOBAL_POLL_WARNING_SHOWN=false;
+
+function sbiHasFocusedEditor(){
+  const active=document.activeElement;
+  if(active&&(['INPUT','TEXTAREA','SELECT'].includes(active.tagName)||active.isContentEditable))return true;
+  return !!document.querySelector('form:focus-within input,form:focus-within textarea,form:focus-within select,form:focus-within [contenteditable="true"]');
+}
+function sbiRealtimeNotice(message){
+  let box=document.getElementById('sbiRealtimeToast');
+  if(!box){box=document.createElement('div');box.id='sbiRealtimeToast';box.className='card-action-toast';box.setAttribute('role','status');document.body.appendChild(box)}
+  box.textContent=message;box.classList.add('show');
+  clearTimeout(window.__sbiRealtimeToastTimer);
+  window.__sbiRealtimeToastTimer=setTimeout(()=>box.classList.remove('show'),6000);
+}
+function sbiRunPendingRefresh(){
+  if(!SBI_GLOBAL_RELOAD_PENDING||document.visibilityState==='hidden'||sbiHasFocusedEditor())return;
+  const wait=Math.max(0,SBI_GLOBAL_FORM_SUBMIT_UNTIL-Date.now());
+  if(wait){clearTimeout(SBI_GLOBAL_RELOAD_TIMER);SBI_GLOBAL_RELOAD_TIMER=setTimeout(sbiRunPendingRefresh,Math.min(wait+250,2500));return;}
+  SBI_GLOBAL_RELOAD_PENDING=false;
+  clearTimeout(SBI_GLOBAL_RELOAD_TIMER);
+  SBI_GLOBAL_RELOAD_TIMER=setTimeout(()=>{if(document.visibilityState==='visible'&&!sbiHasFocusedEditor())location.reload()},900);
+}
+function sbiRequestAutoRefresh(source='realtime'){
+  if(document.visibilityState==='hidden'){SBI_GLOBAL_RELOAD_PENDING=true;return;}
+  const now=Date.now();
+  if(now-SBI_GLOBAL_LAST_REFRESH_REQUEST<1800)return;
+  SBI_GLOBAL_LAST_REFRESH_REQUEST=now;
+  if(sbiHasFocusedEditor()){
+    SBI_GLOBAL_RELOAD_PENDING=true;
+    sbiRealtimeNotice('Des données ont changé sur le serveur. La page sera actualisée après votre saisie.');
+    return;
+  }
+  clearTimeout(SBI_GLOBAL_RELOAD_TIMER);
+  SBI_GLOBAL_RELOAD_TIMER=setTimeout(()=>{if(document.visibilityState==='visible'&&!sbiHasFocusedEditor())location.reload()},source==='poll'?350:900);
+}
+document.addEventListener('focusout',()=>setTimeout(sbiRunPendingRefresh,350),true);
+document.addEventListener('submit',()=>{SBI_GLOBAL_FORM_SUBMIT_UNTIL=Date.now()+6000},true);
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'){
+    sbiRunPendingRefresh();
+    if(SBI_GLOBAL_REALTIME_STARTED)pollSbiGlobalSnapshot();
+  }
+});
+
 function startSbiRealtime(onChange, tables=['chariots','maintenance']){
   if(!supabaseClient?.channel||typeof onChange!=='function')return null;
   const channelName='sbi-live-'+Date.now()+'-'+Math.random().toString(36).slice(2,7);
   let channel=supabaseClient.channel(channelName);
   tables.forEach(table=>{
     channel=channel.on('postgres_changes',{event:'*',schema:'public',table},payload=>{
-      try{onChange({table,event:payload?.eventType||'*',payload})}catch(e){console.warn('SBI realtime callback',e)}
+      const event={table,event:payload?.eventType||'*',payload};
+      try{
+        const result=onChange(event);
+        Promise.resolve(result).then(()=>{
+          window.__SBI_LAST_REALTIME_HANDLED_AT=Date.now();
+          window.__SBI_LAST_REALTIME_EVENT={table,event:event.event};
+          // Keep the polling fallback baseline aligned after a page-specific
+          // refresh, so it does not cause a second, unnecessary page reload.
+          if(SBI_GLOBAL_REALTIME_STARTED)readSbiGlobalFingerprint().then(fp=>{SBI_GLOBAL_FINGERPRINT=fp}).catch(()=>{});
+        }).catch(e=>console.warn('SBI realtime callback',e));
+      }catch(e){console.warn('SBI realtime callback',e)}
     });
   });
   channel.subscribe(status=>{
     if(status==='SUBSCRIBED')console.info('SBI Realtime connecté');
-    if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')console.warn('SBI Realtime indisponible, actualisation de secours conservée.');
+    if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')console.warn('SBI Realtime indisponible; actualisation périodique de secours active. Vérifiez la publication supabase_realtime et les droits SELECT/RLS.');
   });
   SBI_REALTIME_CHANNELS.push(channel);
   return channel;
 }
+
+async function readSbiGlobalFingerprint(){
+  const [fleetResult,historyResult]=await Promise.all([
+    supabaseClient.from('chariots').select('*').order('id',{ascending:false}),
+    supabaseClient.from('maintenance').select('id,qr_id,date,technicien,type,travaux,created_at,created_by').order('created_at',{ascending:false}).limit(1000)
+  ]);
+  if(fleetResult?.error)throw fleetResult.error;
+  if(historyResult?.error)throw historyResult.error;
+  const stableRows=rows=>(Array.isArray(rows)?rows:[]).map(row=>JSON.stringify(row)).sort();
+  return JSON.stringify({chariots:stableRows(fleetResult?.data),maintenance:stableRows(historyResult?.data)});
+}
+async function pollSbiGlobalSnapshot(){
+  if(SBI_GLOBAL_POLL_BUSY||document.visibilityState==='hidden'||!currentUser)return;
+  SBI_GLOBAL_POLL_BUSY=true;
+  try{
+    const fingerprint=await readSbiGlobalFingerprint();
+    if(SBI_GLOBAL_FINGERPRINT===null){SBI_GLOBAL_FINGERPRINT=fingerprint;}
+    else if(fingerprint!==SBI_GLOBAL_FINGERPRINT){
+      SBI_GLOBAL_FINGERPRINT=fingerprint;
+      sbiRequestAutoRefresh('poll');
+    }
+    SBI_GLOBAL_POLL_WARNING_SHOWN=false;
+  }catch(e){
+    if(!SBI_GLOBAL_POLL_WARNING_SHOWN){console.warn('SBI actualisation de secours indisponible. Vérifiez les droits de lecture Supabase.',e);SBI_GLOBAL_POLL_WARNING_SHOWN=true;}
+  }finally{SBI_GLOBAL_POLL_BUSY=false;}
+}
+function startSbiGlobalRealtime(){
+  if(SBI_GLOBAL_REALTIME_STARTED||!supabaseClient?.channel)return;
+  SBI_GLOBAL_REALTIME_STARTED=true;
+  let channel=supabaseClient.channel('sbi-global-live-'+Math.random().toString(36).slice(2,10));
+  ['chariots','maintenance'].forEach(table=>{
+    channel=channel.on('postgres_changes',{event:'*',schema:'public',table},payload=>{
+      if(document.visibilityState==='hidden'){SBI_GLOBAL_RELOAD_PENDING=true;return;}
+      const eventAt=Date.now();
+      setTimeout(()=>{
+        if(document.visibilityState==='hidden'){SBI_GLOBAL_RELOAD_PENDING=true;return;}
+        // A page-local listener may have refreshed its own content already.
+        if(Number(window.__SBI_LAST_REALTIME_HANDLED_AT||0)>=eventAt-100)return;
+        sbiRequestAutoRefresh('realtime');
+      },1400);
+    });
+  });
+  channel.subscribe(status=>{
+    if(status==='SUBSCRIBED')console.info('SBI Realtime global connecté');
+    if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')console.warn('SBI Realtime global indisponible; contrôle périodique de secours actif.');
+  });
+  window.__SBI_GLOBAL_REALTIME_CHANNEL=channel;
+  // Establish a baseline, then check every 20 seconds if Realtime is unavailable.
+  pollSbiGlobalSnapshot();
+  if(!SBI_GLOBAL_POLL_TIMER)SBI_GLOBAL_POLL_TIMER=setInterval(pollSbiGlobalSnapshot,20000);
+}
+function startSbiGlobalSync(){startSbiGlobalRealtime();}
+
 function stopSbiRealtime(channel){
   if(!channel||!supabaseClient?.removeChannel)return;
   try{supabaseClient.removeChannel(channel)}catch(e){}
@@ -224,7 +338,7 @@ async function getSession(){
     return false;
   }
 }
-async function session(){if(!(await enforceMaintenance()))return false;if(!(await getSession())){location.href='index.html';return false}verifyLicense();return true}
+async function session(){if(!(await enforceMaintenance()))return false;if(!(await getSession())){location.href='index.html';return false}verifyLicense();startSbiGlobalSync();return true}
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&$('#email')&&$('#password')&&document.activeElement!==document.body){e.preventDefault();login()}});
 async function logUserConnection(action){
   try{
@@ -1595,7 +1709,7 @@ async function startSbiPresence(){
   return channel;
 }
 
-async function initPage(fn){if(!(await enforceMaintenance()))return;if(!(await getSession())){location.href=maintenanceEnabled()?'maintenance.html':'index.html';return}applyLicenseCache();await fn();if(currentUser&&typeof renderConnectedUser==='function')renderConnectedUser();try{await startSbiPresence()}catch(e){console.warn('Présence SBI indisponible',e)}verifyLicense()}
+async function initPage(fn){if(!(await enforceMaintenance()))return;if(!(await getSession())){location.href=maintenanceEnabled()?'maintenance.html':'index.html';return}startSbiGlobalSync();applyLicenseCache();await fn();if(currentUser&&typeof renderConnectedUser==='function')renderConnectedUser();try{await startSbiPresence()}catch(e){console.warn('Présence SBI indisponible',e)}verifyLicense()}
 
 
 async function deliveryPlanningPage(){

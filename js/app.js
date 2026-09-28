@@ -75,7 +75,11 @@ function startSbiRealtime(onChange, tables=['chariots','maintenance']){
   let channel=supabaseClient.channel(channelName);
   tables.forEach(table=>{
     channel=channel.on('postgres_changes',{event:'*',schema:'public',table},payload=>{
-      try{onChange({table,event:payload?.eventType||'*',payload})}catch(e){console.warn('SBI realtime callback',e)}
+      try{
+        window.__SBI_LAST_REALTIME_HANDLED_AT=Date.now();
+        window.__SBI_LAST_REALTIME_EVENT={table,event:payload?.eventType||'*'};
+        onChange({table,event:payload?.eventType||'*',payload});
+      }catch(e){console.warn('SBI realtime callback',e)}
     });
   });
   channel.subscribe(status=>{
@@ -85,6 +89,47 @@ function startSbiRealtime(onChange, tables=['chariots','maintenance']){
   SBI_REALTIME_CHANNELS.push(channel);
   return channel;
 }
+// Global live-refresh safety net. Pages that already handle the Realtime
+// event locally are left alone; pages without a page-specific handler reload
+// automatically so users never need to press F5 after another user's change.
+let SBI_GLOBAL_REALTIME_STARTED=false;
+function startSbiGlobalRealtime(){
+  if(SBI_GLOBAL_REALTIME_STARTED||!supabaseClient?.channel)return;
+  SBI_GLOBAL_REALTIME_STARTED=true;
+  const channel=supabaseClient.channel('sbi-global-live-'+Math.random().toString(36).slice(2,10));
+  ['chariots','maintenance'].forEach(table=>{
+    channel.on('postgres_changes',{event:'*',schema:'public',table},payload=>{
+      if(document.visibilityState==='hidden')return;
+      const eventAt=Date.now();
+      const remoteUserId=String(payload?.new?.created_by||payload?.old?.created_by||'');
+      if(remoteUserId&&currentUser?.id&&remoteUserId===String(currentUser.id))return;
+      setTimeout(()=>{
+        if(document.visibilityState==='hidden')return;
+        // A page-specific Realtime handler already refreshed the page data.
+        if(Number(window.__SBI_LAST_REALTIME_HANDLED_AT||0)>=eventAt-100)return;
+        const active=document.activeElement;
+        const editing=!!active&&(['INPUT','TEXTAREA','SELECT'].includes(active.tagName)||active.isContentEditable||!!document.querySelector('form:not([hidden]) input:focus,form:not([hidden]) textarea:focus,form:not([hidden]) select:focus'));
+        if(editing){
+          let box=document.getElementById('sbiRealtimeToast');
+          if(!box){box=document.createElement('div');box.id='sbiRealtimeToast';box.className='card-action-toast';document.body.appendChild(box)}
+          box.textContent='Données mises à jour par un autre utilisateur. Enregistrez votre saisie pour actualiser.';box.classList.add('show');
+          clearTimeout(window.__sbiRealtimeToastTimer);
+          window.__sbiRealtimeToastTimer=setTimeout(()=>box.classList.remove('show'),5000);
+          const once=()=>{document.removeEventListener('focusin',once,true);if(document.visibilityState==='visible')location.reload()};
+          document.addEventListener('focusin',once,true);
+          return;
+        }
+        location.reload();
+      },700);
+    });
+  });
+  channel.subscribe(status=>{
+    if(status==='SUBSCRIBED')console.info('SBI Global Realtime connecté');
+    if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')console.warn('SBI Global Realtime indisponible; les actualisations locales restent actives.');
+  });
+  window.__SBI_GLOBAL_REALTIME_CHANNEL=channel;
+}
+
 function stopSbiRealtime(channel){
   if(!channel||!supabaseClient?.removeChannel)return;
   try{supabaseClient.removeChannel(channel)}catch(e){}
@@ -224,7 +269,7 @@ async function getSession(){
     return false;
   }
 }
-async function session(){if(!(await enforceMaintenance()))return false;if(!(await getSession())){location.href='index.html';return false}verifyLicense();return true}
+async function session(){if(!(await enforceMaintenance()))return false;if(!(await getSession())){location.href='index.html';return false}verifyLicense();startSbiGlobalRealtime();return true}
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&$('#email')&&$('#password')&&document.activeElement!==document.body){e.preventDefault();login()}});
 async function logUserConnection(action){
   try{

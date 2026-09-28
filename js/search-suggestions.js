@@ -1,4 +1,4 @@
-/* SBI v67.20 — shared live chariot suggestions with N° de série search. */
+/* SBI v67.21 — shared live chariot suggestions with N° de série search. */
 (function () {
   'use strict';
 
@@ -143,7 +143,6 @@
     box.innerHTML = rows.length ? rows.map(({ chariot }, index) => {
       const title = chariot.chassis || chariot.qr_id || 'Chariot';
       const meta = [
-        chariot.qr_id ? `QR ${chariot.qr_id}` : '',
         chariot.engine ? `Moteur ${chariot.engine}` : '',
         chariot.engine_number ? `N° moteur ${chariot.engine_number}` : '',
         (chariot.serial_number ?? chariot.numero_serie ?? chariot.numeroSerie) ? `N° série ${chariot.serial_number ?? chariot.numero_serie ?? chariot.numeroSerie}` : '',

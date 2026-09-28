@@ -1,4 +1,4 @@
-/* SBI v67.21 — shared live chariot suggestions with N° de série search. */
+/* SBI v67.22 — live search results: capacity + client first, serial when space remains. */
 (function () {
   'use strict';
 
@@ -142,13 +142,11 @@
     const box = createPanel();
     box.innerHTML = rows.length ? rows.map(({ chariot }, index) => {
       const title = chariot.chassis || chariot.qr_id || 'Chariot';
+      const serial = chariot.serial_number ?? chariot.numero_serie ?? chariot.numeroSerie;
       const meta = [
-        chariot.engine ? `Moteur ${chariot.engine}` : '',
-        chariot.engine_number ? `N° moteur ${chariot.engine_number}` : '',
-        (chariot.serial_number ?? chariot.numero_serie ?? chariot.numeroSerie) ? `N° série ${chariot.serial_number ?? chariot.numero_serie ?? chariot.numeroSerie}` : '',
         chariot.capacity ? `${chariot.capacity}` : '',
         chariot.client ? `Client : ${chariot.client}` : '',
-        chariot.status ? `${chariot.status}` : ''
+        serial ? `N° série ${serial}` : ''
       ].filter(Boolean).join(' · ');
       return `<button type="button" class="sbi-typeahead-item${index === 0 ? ' is-active' : ''}" id="sbiTypeaheadItem${index}" role="option" aria-selected="${index === 0 ? 'true' : 'false'}" data-qr="${escapeHtml(chariot.qr_id || '')}"><span class="sbi-typeahead-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M7 8h10M7 12h6M7 16h4"></path></svg></span><span class="sbi-typeahead-copy"><strong>${escapeHtml(title)}</strong><small>${escapeHtml(meta || 'Ouvrir la fiche du chariot')}</small></span><span class="sbi-typeahead-arrow" aria-hidden="true">›</span></button>`;
     }).join('') : '<div class="sbi-typeahead-empty">Aucun chariot correspondant.</div>';

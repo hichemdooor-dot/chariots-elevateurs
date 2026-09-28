@@ -623,3 +623,227 @@ body.notifications-page .notification-arrow{font-size:24px;line-height:.8;margin
     font-size: 15.5px;
   }
 }
+/* SBI v67.16 — unified button design across the application */
+:root{
+  --sbi-button-primary:#1677e8;
+  --sbi-button-primary-hover:#0f68ce;
+  --sbi-button-secondary-bg:#fff;
+  --sbi-button-secondary-border:#d5e1eb;
+  --sbi-button-secondary-text:#294b68;
+  --sbi-button-radius:10px;
+}
+
+/* Main action buttons share one height, shape, type scale and interaction. */
+.btn,
+button.btn,
+a.btn,
+.view-chariot,
+.mark-all-read,
+.back-link{
+  box-sizing:border-box!important;
+  min-height:42px!important;
+  padding:0 15px!important;
+  border-radius:var(--sbi-button-radius)!important;
+  font-family:inherit!important;
+  font-size:13px!important;
+  font-weight:700!important;
+  line-height:1.2!important;
+  text-align:center!important;
+  text-decoration:none!important;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+  transition:background-color .16s ease,border-color .16s ease,color .16s ease,box-shadow .16s ease,transform .16s ease;
+}
+
+/* Primary, secondary and intent-based colors remain distinct. */
+.btn:not(.light):not(.danger):not(.save-ready):not(.pl-plan-disabled),
+button.btn:not(.light):not(.danger):not(.save-ready):not(.pl-plan-disabled),
+a.btn:not(.light):not(.danger):not(.save-ready):not(.pl-plan-disabled),
+.view-chariot{
+  background:var(--sbi-button-primary)!important;
+  color:#fff!important;
+  border:1px solid var(--sbi-button-primary)!important;
+  box-shadow:0 2px 6px rgba(22,119,232,.12)!important;
+}
+.btn.light,
+button.btn.light,
+a.btn.light,
+.mark-all-read,
+.back-link{
+  background:var(--sbi-button-secondary-bg)!important;
+  color:var(--sbi-button-secondary-text)!important;
+  border:1px solid var(--sbi-button-secondary-border)!important;
+  box-shadow:0 1px 3px rgba(24,65,101,.04)!important;
+}
+.btn.danger,
+button.btn.danger,
+a.btn.danger{
+  background:#dc3545!important;
+  color:#fff!important;
+  border:1px solid #dc3545!important;
+  box-shadow:0 2px 6px rgba(220,53,69,.10)!important;
+}
+.btn.save-ready,
+button.btn.save-ready,
+a.btn.save-ready,
+.save-ready{
+  background:#249957!important;
+  color:#fff!important;
+  border:1px solid #249957!important;
+  box-shadow:0 2px 6px rgba(36,153,87,.10)!important;
+}
+.btn.active,
+button.btn.active,
+a.btn.active,
+.delivery-view-filters .btn.active,
+.chip.active{
+  background:var(--sbi-button-primary)!important;
+  color:#fff!important;
+  border-color:var(--sbi-button-primary)!important;
+}
+
+.btn:not(:disabled):not(.pl-plan-disabled):hover,
+button.btn:not(:disabled):not(.pl-plan-disabled):hover,
+a.btn:not(.pl-plan-disabled):hover,
+.view-chariot:hover{
+  filter:brightness(.97);
+  transform:translateY(-1px);
+}
+.btn.light:not(:disabled):hover,
+button.btn.light:not(:disabled):hover,
+a.btn.light:hover,
+.mark-all-read:not(:disabled):not(.disabled):hover,
+.back-link:hover{
+  background:#f3f8fd!important;
+  border-color:#a9cce9!important;
+  color:#1769b0!important;
+  filter:none;
+}
+.btn.danger:not(:disabled):hover,
+button.btn.danger:not(:disabled):hover,
+a.btn.danger:hover{background:#c92f3e!important;border-color:#c92f3e!important;filter:none}
+.btn.save-ready:not(:disabled):hover,
+button.btn.save-ready:not(:disabled):hover,
+a.btn.save-ready:hover{background:#1d854a!important;border-color:#1d854a!important;filter:none}
+.btn:active:not(:disabled),
+button.btn:active:not(:disabled),
+a.btn:active,
+.view-chariot:active{transform:translateY(0)}
+.btn:focus-visible,
+button.btn:focus-visible,
+a.btn:focus-visible,
+.view-chariot:focus-visible,
+.mark-all-read:focus-visible,
+.back-link:focus-visible,
+.chip:focus-visible{
+  outline:3px solid rgba(22,119,232,.23)!important;
+  outline-offset:2px!important;
+}
+.btn:disabled,
+button.btn:disabled,
+.btn.disabled,
+.mark-all-read:disabled,
+.mark-all-read.disabled{
+  opacity:.55!important;
+  cursor:not-allowed!important;
+  transform:none!important;
+  box-shadow:none!important;
+}
+
+/* Remove the oversized first-action treatment so adjacent actions align. */
+.page-head .actions .btn:first-child,
+.page-head .actions a[href="nouveau-chariot.html"]{
+  min-height:42px!important;
+  padding:0 15px!important;
+  font-size:13px!important;
+  font-weight:700!important;
+  border-radius:var(--sbi-button-radius)!important;
+  box-shadow:0 2px 6px rgba(22,119,232,.12)!important;
+}
+
+/* Filter chips use the same visual language without competing with actions. */
+.chip{
+  min-height:36px!important;
+  padding:0 12px!important;
+  border:1px solid #dce6ee!important;
+  border-radius:999px!important;
+  background:#f4f7fa!important;
+  color:#31516d!important;
+  font-family:inherit!important;
+  font-size:12px!important;
+  font-weight:700!important;
+  line-height:1.2!important;
+  cursor:pointer;
+  transition:background-color .16s ease,border-color .16s ease,color .16s ease,box-shadow .16s ease;
+}
+.chip:not(.active):hover{background:#edf5fc!important;border-color:#b8d4eb!important;color:#1769b0!important}
+.chip.active{box-shadow:0 2px 6px rgba(22,119,232,.12)!important}
+
+/* Icon, account, navigation and disclosure controls keep their own layouts,
+   but receive consistent focus and motion feedback. */
+.menu-btn,
+.notification-bell,
+.user-admin-top,
+.user-menu-button,
+.search-action,
+.detail-history-toggle,
+.delivery-close,
+.input-clear,
+.nav-group-toggle,
+.text-link,
+.dashboard-search-footer button,
+.delivery-day,
+.delivery-search-result{
+  -webkit-tap-highlight-color:transparent;
+  transition:background-color .16s ease,border-color .16s ease,color .16s ease,box-shadow .16s ease,transform .16s ease;
+}
+.menu-btn:focus-visible,
+.notification-bell:focus-visible,
+.user-admin-top:focus-visible,
+.user-menu-button:focus-visible,
+.search-action:focus-visible,
+.detail-history-toggle:focus-visible,
+.delivery-close:focus-visible,
+.input-clear:focus-visible,
+.nav-group-toggle:focus-visible,
+.text-link:focus-visible,
+.dashboard-search-footer button:focus-visible,
+.delivery-day:focus-visible,
+.delivery-search-result:focus-visible{
+  outline:3px solid rgba(22,119,232,.23);
+  outline-offset:2px;
+}
+.notification-bell,
+.user-admin-top,
+.user-menu-button,
+.search-action{
+  border-radius:10px;
+}
+.user-menu a,
+.user-menu button{
+  min-height:40px;
+  border-radius:8px;
+  transition:background-color .16s ease,color .16s ease;
+}
+
+@media(max-width:800px),(hover:none) and (pointer:coarse){
+  .btn,
+  button.btn,
+  a.btn,
+  .view-chariot,
+  .mark-all-read,
+  .back-link{
+    min-height:44px!important;
+  }
+  .page-head .actions .btn:first-child,
+  .page-head .actions a[href="nouveau-chariot.html"]{
+    min-height:44px!important;
+    font-size:13px!important;
+  }
+  .chip{min-height:40px!important}
+}
+

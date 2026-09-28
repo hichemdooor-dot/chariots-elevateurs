@@ -1065,16 +1065,31 @@ function workflowStepState(c,stepIndex,planned){
 function renderWorkflowSteps(c,planned){
   const box=document.getElementById('workflowSteps');
   if(!box)return;
-  const steps=['Fabrication','En stock','Réservé','Modification production','Préparation','Prêt à livrer','Livré'];
+  const steps=[
+    {key:'en fabrication',label:'Fabrication'},
+    {key:'en stock',label:'En stock'},
+    {key:'reserve',label:'Réservé'},
+    {key:'modification production',label:'Modification production'},
+    {key:'preparation livraison',label:'Préparation livraison'},
+    {key:'pret a livrer',label:'Prêt à livrer'},
+    {key:'livre',label:'Livré'}
+  ];
   const current=normalizeStatus(c?.status);
-  const labels={'en fabrication':'En fabrication','en stock':'En stock','reserve':'Réservé','modification production':'Modification production','preparation livraison':'Préparation','pret a livrer':'Prêt à livrer','livre':'Livré'};
-  const currentLabel=labels[current]||String(c?.status||'—');
-  const stepsHtml=steps.map((label,i)=>{
-    const state=workflowStepState(c,i,planned);
-    const connector=i<steps.length-1?'<span class="workflow-connector"></span>':'';
-    return '<div class="workflow-step '+state+'"><span class="workflow-step-dot">'+(state==='complete'?'✓':i+1)+'</span><span>'+esc(label)+'</span></div>'+connector;
+  const currentIndex=Math.max(0,steps.findIndex(s=>s.key===current));
+  const currentLabel=steps[currentIndex]?.label||String(c?.status||'—');
+  const segments=steps.map((step,index)=>{
+    const state=index<currentIndex?'complete':index===currentIndex?'current':'pending';
+    return `<span class="workflow-progress-segment ${state}" aria-hidden="true"></span>`;
   }).join('');
-  box.innerHTML='<div class="workflow-card"><div class="workflow-head"><div><strong>Workflow livraison</strong><div class="workflow-current">Étape actuelle : '+esc(currentLabel)+'</div></div>'+(planned?'<span class="workflow-planned">✓ Livraison planifiée</span>':'')+'</div><div class="workflow-steps">'+stepsHtml+'</div></div>';
+  const plannedBadge=planned?'<span class="workflow-planned">✓ Livraison planifiée</span>':'';
+  box.innerHTML=`<section class="workflow-card workflow-card-compact" role="group" aria-label="Progression du workflow livraison">
+    <div class="workflow-head">
+      <div class="workflow-main-label"><strong>Workflow livraison</strong><div class="workflow-current">Étape actuelle : <b>${esc(currentLabel)}</b></div></div>
+      <div class="workflow-summary"><span class="workflow-step-count">Étape ${currentIndex+1} / ${steps.length}</span>${plannedBadge}</div>
+    </div>
+    <div class="workflow-progress" role="progressbar" aria-label="Avancement de la livraison" aria-valuemin="1" aria-valuemax="${steps.length}" aria-valuenow="${currentIndex+1}" aria-valuetext="Étape ${currentIndex+1} sur ${steps.length} : ${esc(currentLabel)}">${segments}</div>
+    <div class="workflow-progress-labels"><span>Fabrication</span><span>Livré</span></div>
+  </section>`;
 }
 function ensureReadinessModalStyles(){
   if(document.getElementById('sbi-readiness-modal-styles'))return;
@@ -1311,7 +1326,8 @@ async function detailPage(){
   ];
 
 
-  $('#detail').innerHTML=`<div class="detail-dashboard-layout detail-layout-compact"><div class="detail-information-grid">${groups.join('')}</div><section class="detail-panel detail-panel--observations"><header class="detail-panel-head"><span class="detail-panel-icon">${icon('observations')}</span><h2>Observations</h2></header><div class="detail-observation-text">${esc(current.observations||'Aucune observation enregistrée.')}</div></section></div>`;
+  const [identificationGroup,characteristicsGroup,stockGroup,deliveryGroup]=groups;
+  $('#detail').innerHTML=`<div class="detail-dashboard-layout detail-layout-compact"><div class="detail-information-grid"><div class="detail-info-column detail-info-column--left">${identificationGroup}${stockGroup}</div><div class="detail-info-column detail-info-column--right">${characteristicsGroup}${deliveryGroup}</div></div><section class="detail-panel detail-panel--observations"><header class="detail-panel-head"><span class="detail-panel-icon">${icon('observations')}</span><h2>Observations</h2></header><div class="detail-observation-text">${esc(current.observations||'Aucune observation enregistrée.')}</div></section></div>`;
 
   const historyToggle=document.getElementById('historyToggle');
   const historyBox=$('#history');

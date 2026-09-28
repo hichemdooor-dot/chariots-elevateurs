@@ -1892,3 +1892,68 @@ button.menu-btn, button.notification-bell, button.user-admin-top, .text-link, .v
 .detail-history-card #history[hidden]{display:none!important}
 @media(max-width:800px){.detail-page-head .workflow-steps-container{width:100%;overflow:hidden}.detail-layout-compact .detail-information-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.detail-layout-compact .detail-panel-head{padding:8px 10px}.detail-layout-compact .detail-panel-values{padding:4px 10px 6px}}
 @media(max-width:560px){.detail-layout-compact .detail-information-grid{grid-template-columns:1fr}.detail-page-head .workflow-card{padding:8px 9px}.detail-page-head .workflow-step{font-size:10px}.detail-page-head .workflow-step-dot{width:19px;height:19px;flex-basis:19px}.detail-page-head .workflow-connector{flex-basis:9px;min-width:9px}.detail-history-toggle{min-height:45px;padding:8px 12px}.detail-history-title h2{font-size:15px}.detail-history-card #history{padding:4px 11px 11px}}
+
+
+/* SBI V67.14 — compact step progress and independent detail columns */
+.detail-content{max-width:1500px;width:100%;box-sizing:border-box;padding:12px 20px 20px}
+.detail-page-head{padding:2px 0 8px;gap:10px}
+.detail-page-head .workflow-steps-container{width:min(100%,820px);max-width:100%;margin-top:7px}
+.detail-dashboard-layout.detail-layout-compact{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;align-items:start;margin-top:8px}
+.detail-layout-compact .detail-information-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start;min-width:0}
+.detail-info-column{display:flex;flex-direction:column;gap:12px;min-width:0;align-self:start}
+.detail-info-column>.detail-panel{width:100%;align-self:flex-start}
+.detail-layout-compact .detail-panel-head{min-height:42px;padding:7px 11px}
+.detail-layout-compact .detail-panel-values{padding:3px 11px 5px}
+.detail-layout-compact .detail-kv{min-height:30px;padding:5px 1px;gap:7px}
+.detail-layout-compact .detail-kv-label{font-size:11px}
+.detail-layout-compact .detail-kv strong{font-size:12px}
+.detail-layout-compact .detail-observation-text{min-height:0;padding:8px 11px}
+.detail-layout-compact .detail-panel--observations{margin-top:0}
+.workflow-card-compact{padding:8px 11px;border-radius:11px}
+.workflow-card-compact .workflow-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.workflow-card-compact .workflow-main-label{min-width:0}
+.workflow-card-compact .workflow-main-label>strong{font-size:13px;color:#153b5e}
+.workflow-card-compact .workflow-current{font-size:11px;margin-top:2px}
+.workflow-card-compact .workflow-current b{color:#176fae}
+.workflow-card-compact .workflow-summary{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap}
+.workflow-card-compact .workflow-step-count{display:inline-flex;align-items:center;min-height:25px;padding:3px 8px;border-radius:999px;background:#edf5fb;color:#176fae;font-size:10px;font-weight:900;white-space:nowrap}
+.workflow-card-compact .workflow-planned{font-size:10px;padding:4px 8px;white-space:nowrap}
+.workflow-card-compact .workflow-progress{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;width:100%;margin-top:8px}
+.workflow-card-compact .workflow-progress-segment{display:block;height:6px;min-width:0;border-radius:999px;background:#dfe7ee}
+.workflow-card-compact .workflow-progress-segment.complete{background:#3b9f68}
+.workflow-card-compact .workflow-progress-segment.current{background:#1677e8;box-shadow:0 0 0 2px rgba(22,119,232,.12)}
+.workflow-card-compact .workflow-progress-labels{display:flex;justify-content:space-between;gap:8px;margin-top:4px;color:#8191a1;font-size:9px;font-weight:700;line-height:1.2}
+@media(max-width:900px){.detail-content{max-width:none;padding:11px 14px 18px}.detail-layout-compact .detail-information-grid{gap:9px}.detail-info-column{gap:9px}}
+@media(max-width:640px){
+  .detail-content{padding:9px 10px 16px}
+  .detail-page-head{padding-bottom:7px}
+  .detail-page-head .workflow-steps-container{width:100%;margin-top:6px}
+  .workflow-card-compact{padding:8px 9px}
+  .workflow-card-compact .workflow-head{align-items:flex-start;flex-wrap:nowrap}
+  .workflow-card-compact .workflow-main-label>strong{font-size:12px}
+  .workflow-card-compact .workflow-current{font-size:10px;line-height:1.3}
+  .workflow-card-compact .workflow-summary{flex:0 0 auto;max-width:45%;gap:4px}
+  .workflow-card-compact .workflow-step-count{min-height:23px;padding:2px 6px;font-size:9px}
+  .workflow-card-compact .workflow-planned{font-size:9px;padding:3px 6px;white-space:normal;text-align:center}
+  .workflow-card-compact .workflow-progress{gap:3px;margin-top:7px}
+  .workflow-card-compact .workflow-progress-segment{height:5px}
+  .workflow-card-compact .workflow-progress-labels{font-size:8px;margin-top:3px}
+  .detail-layout-compact .detail-information-grid{display:block}
+  .detail-info-column{display:contents}
+  .detail-layout-compact .detail-panel{margin:0 0 8px!important}
+  .detail-panel--identification{order:1}
+  .detail-panel--characteristics{order:2}
+  .detail-panel--stock{order:3}
+  .detail-panel--delivery{order:4}
+  .detail-layout-compact .detail-panel-head{min-height:39px;padding:6px 9px}
+  .detail-layout-compact .detail-panel-head h2{font-size:13px}
+  .detail-layout-compact .detail-panel-icon{width:27px;height:27px}
+  .detail-layout-compact .detail-panel-values{padding:2px 9px 4px}
+  .detail-layout-compact .detail-kv{grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);min-height:28px;padding:4px 0;gap:6px}
+  .detail-layout-compact .detail-kv-label{font-size:10px}
+  .detail-layout-compact .detail-kv strong{font-size:11px}
+  .detail-layout-compact .detail-observation-text{padding:7px 9px;font-size:12px}
+  .detail-history-toggle{min-height:41px;padding:6px 10px}
+  .detail-history-title h2{font-size:14px}
+  .detail-history-card #history{padding:3px 9px 9px}
+}

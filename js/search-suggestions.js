@@ -1,11 +1,11 @@
-/* SBI v67.18 — shared live chariot suggestions for search fields. */
+/* SBI v67.20 — shared live chariot suggestions with N° de série search. */
 (function () {
   'use strict';
 
   const SEARCH_FIELDS = [
     '#search', '#stockSearch', '#plSearch', '#deliveredSearch',
     '#modSearch', '#affSearch', '#prepSearch', '#deliveryPlanSearch',
-    '#historySearch'
+    '#historySearch', '#siteGlobalSearchInput'
   ];
   const MAX_RESULTS = 8;
   let activeInput = null;
@@ -23,7 +23,7 @@
 
   const getChariots = () => (typeof CHARIOTS !== 'undefined' && Array.isArray(CHARIOTS)) ? CHARIOTS : [];
   const getFields = (chariot) => [
-    chariot?.qr_id, chariot?.chassis, chariot?.serial_number,
+    chariot?.qr_id, chariot?.chassis, chariot?.serial_number, chariot?.numero_serie, chariot?.numeroSerie,
     chariot?.engine, chariot?.engine_number, chariot?.client,
     chariot?.capacity, chariot?.lifting_height, chariot?.mast_type,
     chariot?.fork_dimension, chariot?.status, chariot?.stock, chariot?.color
@@ -38,14 +38,15 @@
       const fields = getFields(chariot).map(normalize);
       const qr = normalize(chariot?.qr_id);
       const chassis = normalize(chariot?.chassis);
+      const serial = normalize(chariot?.serial_number ?? chariot?.numero_serie ?? chariot?.numeroSerie);
       const client = normalize(chariot?.client);
       const combined = fields.join(' ');
       const matches = terms.every((term) => combined.includes(term));
       if (!matches) return null;
 
       let score = 5;
-      if (qr === normalizedQuery || chassis === normalizedQuery) score = 0;
-      else if (qr.startsWith(normalizedQuery) || chassis.startsWith(normalizedQuery)) score = 1;
+      if (qr === normalizedQuery || chassis === normalizedQuery || serial === normalizedQuery) score = 0;
+      else if (qr.startsWith(normalizedQuery) || chassis.startsWith(normalizedQuery) || serial.startsWith(normalizedQuery)) score = 1;
       else if (client.startsWith(normalizedQuery)) score = 2;
       else if (fields.some((field) => field.startsWith(normalizedQuery))) score = 3;
       return { chariot, index, score };
@@ -125,6 +126,19 @@
     activeInput = input;
     const rows = matchingChariots(query);
     activeIndex = rows.length ? 0 : -1;
+    // CHARIOTS is loaded asynchronously on some pages. If the user starts typing
+    // before that load finishes, refresh the suggestions shortly afterward.
+    if (!rows.length && getChariots().length === 0 && !input.dataset.sbiRetrying) {
+      input.dataset.sbiRetrying = '1';
+      let attempts = 0;
+      const retry = () => {
+        attempts += 1;
+        input.dataset.sbiRetrying = attempts < 12 ? '1' : '';
+        if (input.value.trim() && getChariots().length) renderFor(input);
+        else if (attempts < 12 && input.value.trim()) setTimeout(retry, 150);
+      };
+      setTimeout(retry, 150);
+    }
     const box = createPanel();
     box.innerHTML = rows.length ? rows.map(({ chariot }, index) => {
       const title = chariot.chassis || chariot.qr_id || 'Chariot';
@@ -132,6 +146,7 @@
         chariot.qr_id ? `QR ${chariot.qr_id}` : '',
         chariot.engine ? `Moteur ${chariot.engine}` : '',
         chariot.engine_number ? `N° moteur ${chariot.engine_number}` : '',
+        (chariot.serial_number ?? chariot.numero_serie ?? chariot.numeroSerie) ? `N° série ${chariot.serial_number ?? chariot.numero_serie ?? chariot.numeroSerie}` : '',
         chariot.capacity ? `${chariot.capacity}` : '',
         chariot.client ? `Client : ${chariot.client}` : '',
         chariot.status ? `${chariot.status}` : ''

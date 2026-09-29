@@ -1489,6 +1489,21 @@ async function newPage(){
   else{$('[name="qr_id"]').value=nextQr();editingQrId=null;}
   setupAutomaticStatusField(old);
   const clientField=document.querySelector('[name="client"]');
+  // Client : toujours en MAJUSCULES, à la saisie et avant enregistrement.
+  if(clientField){
+    const forceClientUpper=()=>{
+      const start=clientField.selectionStart,end=clientField.selectionEnd;
+      const value=String(clientField.value||'');
+      const upper=value.toUpperCase();
+      if(value!==upper){
+        clientField.value=upper;
+        try{if(start!==null&&end!==null)clientField.setSelectionRange(start,end)}catch(e){}
+      }
+    };
+    forceClientUpper();
+    clientField.addEventListener('input',forceClientUpper);
+    clientField.addEventListener('change',forceClientUpper);
+  }
   const deleteBtn=document.querySelector('#chariotForm .btn.danger');
   if(!isAdmin()){
     if(clientField){clientField.value='';clientField.disabled=true;clientField.title='L’affectation d’un client est réservée à l’administrateur.'}
@@ -1506,6 +1521,8 @@ async function saveChariot(){
   const oldId=new URLSearchParams(location.search).get('id')||'',old=CHARIOTS.find(c=>String(c.qr_id)===String(oldId));
   if(oldId&&!isAdmin()){alert('La modification d’un chariot est réservée à l’administrateur.');return}
   if(!isAdmin()&&!oldId){p.client='';}
+  // Normalisation définitive : le nom du client est toujours stocké en MAJUSCULES.
+  p.client=String(p.client||'').trim().toUpperCase();
   const requestedStatus=String(p.status||'').trim();
   const displayStatus=String(p.status_display||'').trim();
   p.status=(old&&isAdmin()&&displayStatus&&normalizeStatus(displayStatus)!==normalizeStatus(old.status))?displayStatus:automaticStatusForChariot(old,p);

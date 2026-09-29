@@ -12,7 +12,7 @@
   </div>
   <div id="prepCount" class="sub" style="margin-top:10px"></div>
 </div>
-<div id="prepList" class="prep-list"></div></main></div><div class="overlay"><aside class="side" data-nav></aside></div><footer>QR ID permanent • Données techniques et modifications stockées dans Supabase<br>© 2026 · Developed by <strong>BaCkDoooR</strong></footer><script src="js/shell.js?v=67.18"></script><script src="maintenance-config.js?v=7"></script><script src="js/app.js?v=67.18"></script><script>
+<div id="prepList" class="prep-list"></div></main></div><div class="overlay"><aside class="side" data-nav></aside></div><footer>QR ID permanent • Données techniques et modifications stockées dans Supabase<br>© 2026 · Developed by <strong>BaCkDoooR</strong></footer><script src="js/shell.js?v=67.18"></script><script src="maintenance-config.js?v=7"></script><script src="js/app.js?v=67.26"></script><script>
 async function preparationLivraisonPage(){
   if(!await session())return;
   await loadChariots();
@@ -74,4 +74,4 @@ async function preparationLivraisonPage(){
   window.addEventListener('pageshow',async()=>{try{await loadChariots();baseRows=CHARIOTS.filter(c=>normalizeStatus(c.status)==='preparation livraison');buildFilters();render()}catch(e){}});
 }
 initPage(preparationLivraisonPage())
-</script><script src="js/button-icons.js?v=67.18"></script><script src="js/search-suggestions.js?v=67.24"></script></body></html>
+</script><script src="js/button-icons.js?v=67.18"></script><script src="js/search-suggestions.js?v=67.26"></script></body></html>

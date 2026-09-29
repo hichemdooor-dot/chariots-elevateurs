@@ -528,6 +528,9 @@ async function transitionChariotStatus(qrId,nextStatus,reason='',options={}){
   if(!isAdmin()&&['reserve','preparation livraison','pret a livrer'].includes(to)){alert('Cette action est réservée à l’administrateur.');return false}
   if(AUTO_WORKFLOW_FORWARD[from]!==nextStatus&&!(isAdmin()&&['livre','bloque / non conforme'].includes(to))){alert(`Transition non autorisée : ${c.status||'—'} → ${nextStatus}.`);return false}
   const now=new Date(),updatedAt=now.toISOString(),payload={status:nextStatus,updated_at:updatedAt};
+  // Workflow: dès qu'un chariot atteint Préparation livraison ou Prêt à livrer,
+  // son emplacement de stock devient automatiquement STOCK1.
+  if(to==='preparation livraison'||to==='pret a livrer')payload.stock='STOCK1';
   if(to==='livre')payload.delivery_date=String(options?.deliveryDate||'').trim()||localISODateGlobal(now);
   const {error}=await supabaseClient.from('chariots').update(payload).eq('qr_id',qrId);
   if(error){alert('Erreur : '+friendlySupabaseError(error));return false}
@@ -1506,6 +1509,8 @@ async function saveChariot(){
   const requestedStatus=String(p.status||'').trim();
   const displayStatus=String(p.status_display||'').trim();
   p.status=(old&&isAdmin()&&displayStatus&&normalizeStatus(displayStatus)!==normalizeStatus(old.status))?displayStatus:automaticStatusForChariot(old,p);
+  // Même lors d'une modification directe de la fiche, ces étapes imposent STOCK1.
+  if(['preparation livraison','pret a livrer'].includes(normalizeStatus(p.status)))p.stock='STOCK1';
   delete p.status_display;
   const duplicate=CHARIOTS.find(c=>norm(c.chassis)===norm(p.chassis)&&norm(c.engine)===norm(p.engine)&&String(c.qr_id)!==String(oldId));
   if(duplicate){alert(`Le numéro de châssis « ${p.chassis} » existe déjà avec le même moteur (${p.engine}) — ${duplicate.qr_id}. La capacité ne participe plus au contrôle des doublons.`);return}
@@ -1709,7 +1714,24 @@ async function startSbiPresence(){
   return channel;
 }
 
-async function initPage(fn){if(!(await enforceMaintenance()))return;if(!(await getSession())){location.href=maintenanceEnabled()?'maintenance.html':'index.html';return}startSbiGlobalSync();applyLicenseCache();await fn();if(currentUser&&typeof renderConnectedUser==='function')renderConnectedUser();try{await startSbiPresence()}catch(e){console.warn('Présence SBI indisponible',e)}verifyLicense()}
+function setupUppercaseTextInputs(){
+  if(window.__SBI_UPPERCASE_TEXT_INPUTS)return;
+  window.__SBI_UPPERCASE_TEXT_INPUTS=true;
+  const excluded=new Set(['email','password','url','tel','number','date','time','datetime-local','month','week','color','file','hidden']);
+  const apply=el=>{
+    if(!el||!(el.matches('input,textarea'))||el.disabled||el.readOnly)return;
+    const type=String(el.type||'text').toLowerCase();
+    if(excluded.has(type))return;
+    const start=el.selectionStart,end=el.selectionEnd;
+    const value=String(el.value||'');
+    const upper=value.toUpperCase();
+    if(value!==upper){el.value=upper;try{if(start!==null&&end!==null)el.setSelectionRange(start,end)}catch(e){}}
+  };
+  document.addEventListener('input',e=>apply(e.target),true);
+  document.addEventListener('change',e=>apply(e.target),true);
+  document.querySelectorAll('input,textarea').forEach(apply);
+}
+async function initPage(fn){if(!(await enforceMaintenance()))return;if(!(await getSession())){location.href=maintenanceEnabled()?'maintenance.html':'index.html';return}startSbiGlobalSync();applyLicenseCache();await fn();setupUppercaseTextInputs();if(currentUser&&typeof renderConnectedUser==='function')renderConnectedUser();try{await startSbiPresence()}catch(e){console.warn('Présence SBI indisponible',e)}verifyLicense()}
 
 
 async function deliveryPlanningPage(){

@@ -1504,6 +1504,11 @@ async function newPage(){
     clientField.addEventListener('input',forceClientUpper);
     clientField.addEventListener('change',forceClientUpper);
   }
+
+  // N° moteur : préfixe automatique selon le type de moteur.
+  // XINCHAI = 2606 / MITSUBISHI = S4S- / ISUZU = C240- / GPL = CK25-.
+  // YANMAR n'a pas de préfixe imposé tant qu'il n'est pas spécifié.
+  setupEngineNumberPrefix();
   const deleteBtn=document.querySelector('#chariotForm .btn.danger');
   if(!isAdmin()){
     if(clientField){clientField.value='';clientField.disabled=true;clientField.title='L’affectation d’un client est réservée à l’administrateur.'}
@@ -1512,6 +1517,89 @@ async function newPage(){
   document.querySelectorAll('#chariotForm input,#chariotForm select,#chariotForm textarea').forEach(el=>el.addEventListener('input',updateSaveButtonState));
   document.querySelectorAll('#chariotForm select').forEach(el=>el.addEventListener('change',updateSaveButtonState));
   updateSaveButtonState()
+}
+function setupEngineNumberPrefix(){
+  const engineField=document.querySelector('[name="engine"]');
+  const numberField=document.querySelector('[name="engine_number"]');
+  if(!engineField||!numberField)return;
+  if(numberField.dataset.enginePrefixReady==='1'){
+    applyEngineNumberPrefix();
+    return;
+  }
+  const prefixes={
+    XINCHAI:'2606',
+    MITSUBISHI:'S4S-',
+    ISUZU:'C240-',
+    GPL:'CK25-',
+    YANMAR:''
+  };
+  numberField.dataset.enginePrefixReady='1';
+  numberField.dataset.enginePrefixes=JSON.stringify(prefixes);
+
+  const knownPrefixes=Object.values(prefixes).filter(Boolean).sort((a,b)=>b.length-a.length);
+  const getPrefix=()=>prefixes[String(engineField.value||'').trim().toUpperCase()]||'';
+  const stripKnownPrefix=(value)=>{
+    let v=String(value||'').toUpperCase().trim();
+    for(const prefix of knownPrefixes){
+      if(v.startsWith(prefix)){
+        v=v.slice(prefix.length);
+        break;
+      }
+    }
+    return v;
+  };
+  const apply=()=>{
+    const prefix=getPrefix();
+    const old=String(numberField.value||'').toUpperCase();
+    const suffix=stripKnownPrefix(old);
+    const next=prefix+suffix;
+    const changed=old!==next;
+    if(changed){
+      const hadFocus=document.activeElement===numberField;
+      numberField.value=next;
+      if(hadFocus){
+        try{
+          const pos=Math.max(prefix.length, numberField.value.length);
+          numberField.setSelectionRange(pos,pos);
+        }catch(e){}
+      }
+      numberField.dispatchEvent(new Event('input',{bubbles:true}));
+    }
+    numberField.placeholder=prefix||'Numéro du moteur';
+  };
+  window.applyEngineNumberPrefix=apply;
+  engineField.addEventListener('change',apply);
+  numberField.addEventListener('focus',apply);
+  numberField.addEventListener('input',()=>{
+    const hadFocus=true;
+    const prefix=getPrefix();
+    const old=String(numberField.value||'').toUpperCase();
+    const suffix=stripKnownPrefix(old);
+    const next=prefix+suffix;
+    if(old!==next){
+      numberField.value=next;
+      if(hadFocus){
+        try{
+          const pos=Math.max(prefix.length, numberField.value.length);
+          numberField.setSelectionRange(pos,pos);
+        }catch(e){}
+      }
+    }
+    numberField.dispatchEvent(new Event('change',{bubbles:true}));
+  });
+  apply();
+}
+function applyEngineNumberPrefix(){
+  const engineField=document.querySelector('[name="engine"]');
+  const numberField=document.querySelector('[name="engine_number"]');
+  if(!engineField||!numberField)return;
+  const prefixes={XINCHAI:'2606',MITSUBISHI:'S4S-',ISUZU:'C240-',GPL:'CK25-',YANMAR:''};
+  const knownPrefixes=Object.values(prefixes).filter(Boolean).sort((a,b)=>b.length-a.length);
+  const prefix=prefixes[String(engineField.value||'').trim().toUpperCase()]||'';
+  let value=String(numberField.value||'').toUpperCase().trim();
+  for(const known of knownPrefixes){if(value.startsWith(known)){value=value.slice(known.length);break}}
+  numberField.value=prefix+value;
+  numberField.placeholder=prefix||'Numéro du moteur';
 }
 function updateSaveButtonState(){const ok=['chassis','color','engine','capacity','fork_dimension','tire_type'].every(k=>String(document.querySelector(`[name="${k}"]`)?.value||'').trim());$('#saveBtn')?.classList.toggle('save-ready',ok)}
 async function saveChariot(){

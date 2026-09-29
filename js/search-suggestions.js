@@ -1,4 +1,4 @@
-/* SBI v67.23 — live chariot suggestions. Delivery planning search uses its own inline filter. */
+/* SBI v67.33 — live chariot suggestions + client autocomplete. Delivery planning search uses its own inline filter. */
 (function () {
   'use strict';
 
@@ -7,6 +7,7 @@
     '#modSearch', '#affSearch', '#prepSearch',
     '#historySearch', '#siteGlobalSearchInput'
   ];
+  const CLIENT_SELECTOR = 'input[name="client"]';
   const MAX_RESULTS = 8;
   let activeInput = null;
   let activeIndex = -1;
@@ -28,6 +29,26 @@
     chariot?.capacity, chariot?.lifting_height, chariot?.mast_type,
     chariot?.fork_dimension, chariot?.status, chariot?.stock, chariot?.color
   ].map((value) => String(value ?? '').trim()).filter(Boolean);
+
+  function matchingClients(query) {
+    const normalizedQuery = normalize(query);
+    if (!normalizedQuery) return [];
+    const unique = new Map();
+    getChariots().forEach((chariot, index) => {
+      const raw = String(chariot?.client ?? '').trim();
+      const key = normalize(raw);
+      if (!key || !key.includes(normalizedQuery)) return;
+      if (!unique.has(key)) unique.set(key, { value: raw, firstIndex: index });
+    });
+    return [...unique.values()]
+      .sort((a, b) => {
+        const aa = normalize(a.value), bb = normalize(b.value);
+        const as = aa.startsWith(normalizedQuery) ? 0 : 1;
+        const bs = bb.startsWith(normalizedQuery) ? 0 : 1;
+        return as - bs || aa.localeCompare(bb, 'fr');
+      })
+      .slice(0, MAX_RESULTS);
+  }
 
   function matchingChariots(query) {
     const normalizedQuery = normalize(query);
@@ -119,37 +140,56 @@
     selected.scrollIntoView?.({ block: 'nearest' });
   }
 
-  function renderFor(input) {
+  function renderFor(input, mode = 'chariot') {
     const query = input.value.trim();
     if (!query) { closePanel(); return; }
 
     activeInput = input;
-    const rows = matchingChariots(query);
-    activeIndex = rows.length ? 0 : -1;
-    // CHARIOTS is loaded asynchronously on some pages. If the user starts typing
-    // before that load finishes, refresh the suggestions shortly afterward.
-    if (!rows.length && getChariots().length === 0 && !input.dataset.sbiRetrying) {
-      input.dataset.sbiRetrying = '1';
-      let attempts = 0;
-      const retry = () => {
-        attempts += 1;
-        input.dataset.sbiRetrying = attempts < 12 ? '1' : '';
-        if (input.value.trim() && getChariots().length) renderFor(input);
-        else if (attempts < 12 && input.value.trim()) setTimeout(retry, 150);
-      };
-      setTimeout(retry, 150);
-    }
     const box = createPanel();
-    box.innerHTML = rows.length ? rows.map(({ chariot }, index) => {
-      const title = chariot.chassis || chariot.qr_id || 'Chariot';
-      const serial = chariot.serial_number ?? chariot.numero_serie ?? chariot.numeroSerie;
-      const meta = [
-        chariot.capacity ? `${chariot.capacity}` : '',
-        chariot.client ? `Client : ${chariot.client}` : '',
-        serial ? `N° série ${serial}` : ''
-      ].filter(Boolean).join(' · ');
-      return `<button type="button" class="sbi-typeahead-item${index === 0 ? ' is-active' : ''}" id="sbiTypeaheadItem${index}" role="option" aria-selected="${index === 0 ? 'true' : 'false'}" data-qr="${escapeHtml(chariot.qr_id || '')}"><span class="sbi-typeahead-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M7 8h10M7 12h6M7 16h4"></path></svg></span><span class="sbi-typeahead-copy"><strong>${escapeHtml(title)}</strong><small>${escapeHtml(meta || 'Ouvrir la fiche du chariot')}</small></span><span class="sbi-typeahead-arrow" aria-hidden="true">›</span></button>`;
-    }).join('') : '<div class="sbi-typeahead-empty">Aucun chariot correspondant.</div>';
+    box.dataset.mode = mode;
+
+    if (mode === 'client') {
+      const clients = matchingClients(query);
+      activeIndex = clients.length ? 0 : -1;
+      if (!clients.length && getChariots().length === 0 && !input.dataset.sbiRetrying) {
+        input.dataset.sbiRetrying = '1';
+        let attempts = 0;
+        const retry = () => {
+          attempts += 1;
+          input.dataset.sbiRetrying = attempts < 12 ? '1' : '';
+          if (input.value.trim() && getChariots().length) renderFor(input, 'client');
+          else if (attempts < 12 && input.value.trim()) setTimeout(retry, 150);
+        };
+        setTimeout(retry, 150);
+      }
+      box.innerHTML = clients.length ? clients.map(({ value }, index) => {
+        return `<button type="button" class="sbi-typeahead-item${index === 0 ? ' is-active' : ''}" id="sbiTypeaheadItem${index}" role="option" aria-selected="${index === 0 ? 'true' : 'false'}" data-client="${escapeHtml(value)}"><span class="sbi-typeahead-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21a8 8 0 0 0-16 0"></path><circle cx="12" cy="7" r="4"></circle></svg></span><span class="sbi-typeahead-copy"><strong>${escapeHtml(value)}</strong><small>Client existant</small></span><span class="sbi-typeahead-arrow" aria-hidden="true">›</span></button>`;
+      }).join('') : '<div class="sbi-typeahead-empty">Aucun client correspondant.</div>';
+    } else {
+      const rows = matchingChariots(query);
+      activeIndex = rows.length ? 0 : -1;
+      if (!rows.length && getChariots().length === 0 && !input.dataset.sbiRetrying) {
+        input.dataset.sbiRetrying = '1';
+        let attempts = 0;
+        const retry = () => {
+          attempts += 1;
+          input.dataset.sbiRetrying = attempts < 12 ? '1' : '';
+          if (input.value.trim() && getChariots().length) renderFor(input, 'chariot');
+          else if (attempts < 12 && input.value.trim()) setTimeout(retry, 150);
+        };
+        setTimeout(retry, 150);
+      }
+      box.innerHTML = rows.length ? rows.map(({ chariot }, index) => {
+        const title = chariot.chassis || chariot.qr_id || 'Chariot';
+        const serial = chariot.serial_number ?? chariot.numero_serie ?? chariot.numeroSerie;
+        const meta = [
+          chariot.capacity ? `${chariot.capacity}` : '',
+          chariot.client ? `Client : ${chariot.client}` : '',
+          serial ? `N° série ${serial}` : ''
+        ].filter(Boolean).join(' · ');
+        return `<button type="button" class="sbi-typeahead-item${index === 0 ? ' is-active' : ''}" id="sbiTypeaheadItem${index}" role="option" aria-selected="${index === 0 ? 'true' : 'false'}" data-qr="${escapeHtml(chariot.qr_id || '')}"><span class="sbi-typeahead-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M7 8h10M7 12h6M7 16h4"></path></svg></span><span class="sbi-typeahead-copy"><strong>${escapeHtml(title)}</strong><small>${escapeHtml(meta || 'Ouvrir la fiche du chariot')}</small></span><span class="sbi-typeahead-arrow" aria-hidden="true">›</span></button>`;
+      }).join('') : '<div class="sbi-typeahead-empty">Aucun chariot correspondant.</div>';
+    }
 
     box.hidden = false;
     input.setAttribute('aria-controls', box.id);
@@ -158,13 +198,14 @@
     positionPanel();
   }
 
-  function bindInput(input) {
+  function bindInput(input, mode = 'chariot') {
     if (input.dataset.sbiTypeaheadReady === '1') return;
     input.dataset.sbiTypeaheadReady = '1';
     input.setAttribute('aria-autocomplete', 'list');
     input.setAttribute('aria-haspopup', 'listbox');
-    input.addEventListener('input', () => renderFor(input));
-    input.addEventListener('focus', () => { if (input.value.trim()) renderFor(input); });
+    input.dataset.sbiTypeaheadMode = mode;
+    input.addEventListener('input', () => renderFor(input, mode));
+    input.addEventListener('focus', () => { if (input.value.trim()) renderFor(input, mode); });
     input.addEventListener('keydown', (event) => {
       if (activeInput !== input || !panel || panel.hidden) return;
       const items = panel.querySelectorAll('.sbi-typeahead-item');
@@ -190,6 +231,12 @@
     document.addEventListener('click', (event) => {
       const item = event.target.closest?.('.sbi-typeahead-item');
       if (!item) return;
+      if (item.dataset.client !== undefined && activeInput) {
+        activeInput.value = String(item.dataset.client || '').toUpperCase();
+        activeInput.dispatchEvent(new Event('input', { bubbles: true }));
+        closePanel();
+        return;
+      }
       const qr = item.dataset.qr;
       if (qr) location.href = `chariot.html?id=${encodeURIComponent(qr)}${pageOrigin()}`;
     });
@@ -199,8 +246,10 @@
 
   function init() {
     const inputs = SEARCH_FIELDS.flatMap((selector) => [...document.querySelectorAll(selector)]);
-    inputs.forEach(bindInput);
-    if (inputs.length) { createPanel(); bindGlobalEvents(); }
+    const clientInputs = [...document.querySelectorAll(CLIENT_SELECTOR)];
+    inputs.forEach(input => bindInput(input, 'chariot'));
+    clientInputs.forEach(input => bindInput(input, 'client'));
+    if (inputs.length || clientInputs.length) { createPanel(); bindGlobalEvents(); }
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });

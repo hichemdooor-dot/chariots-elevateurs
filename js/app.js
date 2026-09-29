@@ -1505,6 +1505,9 @@ async function newPage(){
     clientField.addEventListener('change',forceClientUpper);
   }
 
+  // N° châssis : préfixe automatique G6, supprimable par l'utilisateur.
+  setupChassisPrefix(old);
+
   // N° moteur : préfixe automatique selon le type de moteur.
   // XINCHAI = 2606 / MITSUBISHI = S4S- / ISUZU = C240- / GPL = CK25-.
   // YANMAR n'a pas de préfixe imposé tant qu'il n'est pas spécifié.
@@ -1522,6 +1525,36 @@ async function newPage(){
   document.querySelectorAll('#chariotForm input,#chariotForm select,#chariotForm textarea').forEach(el=>el.addEventListener('input',updateSaveButtonState));
   document.querySelectorAll('#chariotForm select').forEach(el=>el.addEventListener('change',updateSaveButtonState));
   updateSaveButtonState()
+}
+function setupChassisPrefix(old){
+  const field=document.querySelector('[name="chassis"]');
+  if(!field)return;
+  if(field.dataset.chassisPrefixReady==='1')return;
+  const prefix='G6';
+  field.dataset.chassisPrefixReady='1';
+  field.dataset.chassisPrefix=prefix;
+  const normalize=()=>{
+    const start=field.selectionStart,end=field.selectionEnd;
+    const value=String(field.value||'').toUpperCase();
+    if(value!==field.value){
+      field.value=value;
+      try{if(start!=null&&end!=null)field.setSelectionRange(start,end)}catch(e){}
+    }
+  };
+  const apply=()=>{
+    const value=String(field.value||'').toUpperCase().trim();
+    if(value.startsWith(prefix))return;
+    if(!value){
+      field.value=prefix;
+      try{field.setSelectionRange(prefix.length,prefix.length)}catch(e){}
+    }
+  };
+  field.placeholder=prefix;
+  field.addEventListener('focus',()=>{ if(!String(field.value||'').trim()) apply(); else normalize(); });
+  field.addEventListener('input',normalize);
+  field.addEventListener('change',normalize);
+  // For a new chariot, propose G6 immediately. Existing chassis values stay untouched.
+  if(!old)apply();
 }
 function setupEngineNumberPrefix(){
   const engineField=document.querySelector('[name="engine"]');
@@ -1616,19 +1649,54 @@ function setupSmartClientSuggestions(old){
   list.innerHTML=clients.map(v=>`<option value="${esc(v)}"></option>`).join('');
   clientField.title='Clients existants proposés automatiquement. La saisie reste libre.';
 }
+function showDuplicatePopup(duplicate, fields){
+  const existing=document.getElementById('sbiDuplicateModal');
+  if(existing) existing.remove();
+  const chassis=String(fields?.chassis?.value||duplicate?.chassis||'').trim();
+  const engine=String(fields?.engine?.value||duplicate?.engine||'').trim();
+  const capacity=String(fields?.capacity?.value||duplicate?.capacity||'').trim();
+  const qr=String(duplicate?.qr_id||'chariot').trim();
+  const backdrop=document.createElement('div');
+  backdrop.id='sbiDuplicateModal';
+  backdrop.className='sbi-duplicate-modal-backdrop';
+  backdrop.innerHTML=`<div class="sbi-duplicate-modal" role="dialog" aria-modal="true" aria-labelledby="sbiDuplicateTitle">
+    <div class="sbi-duplicate-modal-head">
+      <div class="sbi-duplicate-modal-icon" aria-hidden="true">⚠</div>
+      <div><h3 id="sbiDuplicateTitle">Doublon détecté</h3><p>Cette combinaison existe déjà dans le stock.</p></div>
+      <button type="button" class="sbi-duplicate-modal-close" aria-label="Fermer">×</button>
+    </div>
+    <div class="sbi-duplicate-modal-body">
+      <p>Le chariot avec le châssis <strong>${esc(chassis)}</strong>, le moteur <strong>${esc(engine)}</strong> et la capacité <strong>${esc(capacity)}</strong> existe déjà.</p>
+      <div class="sbi-duplicate-modal-ref">Référence existante : <strong>${esc(qr)}</strong></div>
+    </div>
+    <div class="sbi-duplicate-modal-actions"><button type="button" class="btn" data-duplicate-ok>OK</button></div>
+  </div>`;
+  document.body.appendChild(backdrop);
+  const close=()=>backdrop.remove();
+  backdrop.querySelector('.sbi-duplicate-modal-close')?.addEventListener('click',close);
+  backdrop.querySelector('[data-duplicate-ok]')?.addEventListener('click',close);
+  backdrop.addEventListener('click',e=>{if(e.target===backdrop)close()});
+}
 function setupLiveDuplicateGuard(old){
   const form=document.getElementById('chariotForm'),box=document.getElementById('duplicateSmartWarning');
-  if(!form||!box)return;
+  if(!form)return;
+  if(box){box.hidden=true;box.textContent='';}
   const fields={chassis:form.querySelector('[name="chassis"]'),engine:form.querySelector('[name="engine"]'),capacity:form.querySelector('[name="capacity"]')};
+  let lastPopupKey='';
+  let lastDuplicate=false;
   const check=()=>{
     const chassis=norm(fields.chassis?.value),engine=norm(fields.engine?.value),capacity=norm(fields.capacity?.value);
     const duplicate=!!chassis&&!!engine&&!!capacity&&(CHARIOTS||[]).find(c=>norm(c?.chassis)===chassis&&norm(c?.engine)===engine&&norm(c?.capacity)===capacity&&String(c?.qr_id)!==String(old?.qr_id||''));
     if(duplicate){
-      box.hidden=false;
-      box.innerHTML=`⚠️ <strong>Doublon potentiel détecté</strong><br>Châssis <strong>${esc(fields.chassis.value)}</strong> + moteur <strong>${esc(fields.engine.value)}</strong> + capacité <strong>${esc(fields.capacity.value)}</strong> existe déjà (${esc(duplicate.qr_id||'chariot')}).`;
+      const key=[chassis,engine,capacity,String(duplicate.qr_id||'')].join('|');
+      if(!lastDuplicate||key!==lastPopupKey){
+        showDuplicatePopup(duplicate,fields);
+        lastPopupKey=key;
+      }
+      lastDuplicate=true;
     }else{
-      box.hidden=true;
-      box.textContent='';
+      lastDuplicate=false;
+      lastPopupKey='';
     }
     $('#saveBtn')?.classList.toggle('save-ready',!duplicate && ['chassis','color','engine','capacity','fork_dimension','tire_type'].every(k=>String(form.querySelector(`[name="${k}"]`)?.value||'').trim()));
   };
@@ -1670,7 +1738,7 @@ async function saveChariot(){
   if(['preparation livraison','pret a livrer'].includes(normalizeStatus(p.status)))p.stock='STOCK1';
   delete p.status_display;
   const duplicate=CHARIOTS.find(c=>norm(c.chassis)===norm(p.chassis)&&norm(c.engine)===norm(p.engine)&&norm(c.capacity)===norm(p.capacity)&&String(c.qr_id)!==String(oldId));
-  if(duplicate){alert(`Le numéro de châssis « ${p.chassis} » existe déjà avec le même moteur (${p.engine}) et la même capacité (${p.capacity||'—'}) — ${duplicate.qr_id}.`);return}
+  if(duplicate){showDuplicatePopup(duplicate,{chassis:{value:p.chassis},engine:{value:p.engine},capacity:{value:p.capacity}});return}
   p.updated_at=new Date().toISOString();p.delivery_date=p.delivery_date||null;p.qr_id=p.qr_id||nextQr();
   const {error}=oldId?await supabaseClient.from('chariots').update(p).eq('qr_id',oldId):await supabaseClient.from('chariots').insert(p);
   if(error){alert('Erreur : '+error.message);return}

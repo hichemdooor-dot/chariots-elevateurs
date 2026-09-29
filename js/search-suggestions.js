@@ -1,10 +1,10 @@
-/* SBI v67.22 — live search results: capacity + client first, serial when space remains. */
+/* SBI v67.23 — live chariot suggestions. Delivery planning search uses its own inline filter. */
 (function () {
   'use strict';
 
   const SEARCH_FIELDS = [
     '#search', '#stockSearch', '#plSearch', '#deliveredSearch',
-    '#modSearch', '#affSearch', '#prepSearch', '#deliveryPlanSearch',
+    '#modSearch', '#affSearch', '#prepSearch',
     '#historySearch', '#siteGlobalSearchInput'
   ];
   const MAX_RESULTS = 8;

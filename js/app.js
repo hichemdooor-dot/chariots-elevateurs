@@ -1509,11 +1509,16 @@ async function newPage(){
   // XINCHAI = 2606 / MITSUBISHI = S4S- / ISUZU = C240- / GPL = CK25-.
   // YANMAR n'a pas de préfixe imposé tant qu'il n'est pas spécifié.
   setupEngineNumberPrefix();
+  setupSmartClientSuggestions(old);
+  setupLiveDuplicateGuard(old);
+  setupLastUsedConfiguration(old);
   const deleteBtn=document.querySelector('#chariotForm .btn.danger');
   if(!isAdmin()){
     if(clientField){clientField.value='';clientField.disabled=true;clientField.title='L’affectation d’un client est réservée à l’administrateur.'}
     if(deleteBtn)deleteBtn.style.display='none';
   }else if(deleteBtn){deleteBtn.style.display=old?'inline-flex':'none'}
+  const uppercaseFields=['chassis','serial_number','engine_number','client','observations'];
+  uppercaseFields.forEach(name=>{const el=document.querySelector(`[name="${name}"]`);if(!el)return;const upper=()=>{const start=el.selectionStart,end=el.selectionEnd,v=String(el.value||''),u=v.toUpperCase();if(v!==u){el.value=u;try{if(start!=null&&end!=null)el.setSelectionRange(start,end)}catch(e){}}};el.addEventListener('input',upper);el.addEventListener('change',upper);upper()});
   document.querySelectorAll('#chariotForm input,#chariotForm select,#chariotForm textarea').forEach(el=>el.addEventListener('input',updateSaveButtonState));
   document.querySelectorAll('#chariotForm select').forEach(el=>el.addEventListener('change',updateSaveButtonState));
   updateSaveButtonState()
@@ -1603,6 +1608,51 @@ function applyEngineNumberPrefix(){
   numberField.value=prefix+value;
   numberField.placeholder=prefix||'Numéro du moteur';
 }
+function setupSmartClientSuggestions(old){
+  const clientField=document.querySelector('[name="client"]');
+  const list=document.getElementById('clientSuggestions');
+  if(!clientField||!list)return;
+  const clients=[...new Set((CHARIOTS||[]).map(c=>String(c?.client||'').trim().toUpperCase()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fr'));
+  list.innerHTML=clients.map(v=>`<option value="${esc(v)}"></option>`).join('');
+  clientField.title='Clients existants proposés automatiquement. La saisie reste libre.';
+}
+function setupLiveDuplicateGuard(old){
+  const form=document.getElementById('chariotForm'),box=document.getElementById('duplicateSmartWarning');
+  if(!form||!box)return;
+  const fields={chassis:form.querySelector('[name="chassis"]'),engine:form.querySelector('[name="engine"]'),capacity:form.querySelector('[name="capacity"]')};
+  const check=()=>{
+    const chassis=norm(fields.chassis?.value),engine=norm(fields.engine?.value),capacity=norm(fields.capacity?.value);
+    const duplicate=!!chassis&&!!engine&&!!capacity&&(CHARIOTS||[]).find(c=>norm(c?.chassis)===chassis&&norm(c?.engine)===engine&&norm(c?.capacity)===capacity&&String(c?.qr_id)!==String(old?.qr_id||''));
+    if(duplicate){
+      box.hidden=false;
+      box.innerHTML=`⚠️ <strong>Doublon potentiel détecté</strong><br>Châssis <strong>${esc(fields.chassis.value)}</strong> + moteur <strong>${esc(fields.engine.value)}</strong> + capacité <strong>${esc(fields.capacity.value)}</strong> existe déjà (${esc(duplicate.qr_id||'chariot')}).`;
+    }else{
+      box.hidden=true;
+      box.textContent='';
+    }
+    $('#saveBtn')?.classList.toggle('save-ready',!duplicate && ['chassis','color','engine','capacity','fork_dimension','tire_type'].every(k=>String(form.querySelector(`[name="${k}"]`)?.value||'').trim()));
+  };
+  [fields.chassis,fields.engine,fields.capacity].forEach(el=>{if(!el)return;el.addEventListener(el.tagName==='SELECT'?'change':'input',check)});
+  check();
+}
+function setupLastUsedConfiguration(old){
+  const form=document.getElementById('chariotForm');
+  if(!form||old)return;
+  const keys=['engine','capacity','lifting_height','fork_dimension','mast_type','tire_type','color'];
+  let saved={};
+  try{saved=JSON.parse(localStorage.getItem('sbi:lastChariotConfig')||'{}')||{}}catch(e){saved={}};
+  keys.forEach(k=>{
+    const el=form.querySelector(`[name="${k}"]`);
+    if(el&&!String(el.value||'').trim()&&String(saved[k]||'').trim()&&[...el.options].some(o=>String(o.value)===String(saved[k])))el.value=saved[k];
+  });
+  const remember=()=>{
+    const next={};keys.forEach(k=>{const el=form.querySelector(`[name="${k}"]`);if(el&&String(el.value||'').trim())next[k]=el.value});
+    try{localStorage.setItem('sbi:lastChariotConfig',JSON.stringify(next))}catch(e){}
+  };
+  keys.forEach(k=>form.querySelector(`[name="${k}"]`)?.addEventListener('change',remember));
+  remember();
+}
+
 function updateSaveButtonState(){const ok=['chassis','color','engine','capacity','fork_dimension','tire_type'].every(k=>String(document.querySelector(`[name="${k}"]`)?.value||'').trim());$('#saveBtn')?.classList.toggle('save-ready',ok)}
 async function saveChariot(){
   if(!requireValidLicense())return;if(!currentUser){alert('Connectez-vous pour gérer les chariots.');return}
@@ -1631,6 +1681,10 @@ async function saveChariot(){
   }else{
     try{await supabaseClient.from('maintenance').insert({qr_id:p.qr_id,date:new Date().toISOString().slice(0,10),technicien:getUserDisplayName(),type:'Création chariot',travaux:`Chariot créé • Châssis : ${p.chassis||'—'} • Moteur : ${p.engine||'—'} • Statut initial : ${p.status||'—'}`,created_by:currentUser.id})}catch(e){console.warn('Historique création non enregistré',e)}
   }
+  try{
+    const cfg={};['engine','capacity','lifting_height','fork_dimension','mast_type','tire_type','color'].forEach(k=>{if(String(p[k]||'').trim())cfg[k]=p[k]});
+    localStorage.setItem('sbi:lastChariotConfig',JSON.stringify(cfg));
+  }catch(e){}
   location.href='chariot.html?id='+encodeURIComponent(p.qr_id)
 }
 async function markDelivered(qrId){

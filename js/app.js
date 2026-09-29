@@ -1553,8 +1553,7 @@ function setupEngineNumberPrefix(){
     const old=String(numberField.value||'').toUpperCase();
     const suffix=stripKnownPrefix(old);
     const next=prefix+suffix;
-    const changed=old!==next;
-    if(changed){
+    if(old!==next){
       const hadFocus=document.activeElement===numberField;
       numberField.value=next;
       if(hadFocus){
@@ -1568,25 +1567,28 @@ function setupEngineNumberPrefix(){
     numberField.placeholder=prefix||'Numéro du moteur';
   };
   window.applyEngineNumberPrefix=apply;
+
+  // Le changement de type moteur applique le préfixe.
   engineField.addEventListener('change',apply);
-  numberField.addEventListener('focus',apply);
-  numberField.addEventListener('input',()=>{
-    const hadFocus=true;
-    const prefix=getPrefix();
-    const old=String(numberField.value||'').toUpperCase();
-    const suffix=stripKnownPrefix(old);
-    const next=prefix+suffix;
-    if(old!==next){
-      numberField.value=next;
-      if(hadFocus){
-        try{
-          const pos=Math.max(prefix.length, numberField.value.length);
-          numberField.setSelectionRange(pos,pos);
-        }catch(e){}
-      }
-    }
-    numberField.dispatchEvent(new Event('change',{bubbles:true}));
+
+  // Au focus, proposer le préfixe si le champ est vide.
+  numberField.addEventListener('focus',()=>{
+    if(!String(numberField.value||'').trim()) apply();
+    else numberField.value=String(numberField.value||'').toUpperCase();
   });
+
+  // Le préfixe est une valeur normale : l'utilisateur peut le supprimer.
+  // Il ne sera pas réinjecté à chaque caractère.
+  numberField.addEventListener('input',()=>{
+    const start=numberField.selectionStart,end=numberField.selectionEnd;
+    const value=String(numberField.value||'');
+    const upper=value.toUpperCase();
+    if(value!==upper){
+      numberField.value=upper;
+      try{if(start!==null&&end!==null)numberField.setSelectionRange(start,end)}catch(e){}
+    }
+  });
+
   apply();
 }
 function applyEngineNumberPrefix(){

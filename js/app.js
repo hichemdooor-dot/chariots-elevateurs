@@ -1512,8 +1512,8 @@ async function saveChariot(){
   // Même lors d'une modification directe de la fiche, ces étapes imposent STOCK1.
   if(['preparation livraison','pret a livrer'].includes(normalizeStatus(p.status)))p.stock='STOCK1';
   delete p.status_display;
-  const duplicate=CHARIOTS.find(c=>norm(c.chassis)===norm(p.chassis)&&norm(c.engine)===norm(p.engine)&&String(c.qr_id)!==String(oldId));
-  if(duplicate){alert(`Le numéro de châssis « ${p.chassis} » existe déjà avec le même moteur (${p.engine}) — ${duplicate.qr_id}. La capacité ne participe plus au contrôle des doublons.`);return}
+  const duplicate=CHARIOTS.find(c=>norm(c.chassis)===norm(p.chassis)&&norm(c.engine)===norm(p.engine)&&norm(c.capacity)===norm(p.capacity)&&String(c.qr_id)!==String(oldId));
+  if(duplicate){alert(`Le numéro de châssis « ${p.chassis} » existe déjà avec le même moteur (${p.engine}) et la même capacité (${p.capacity||'—'}) — ${duplicate.qr_id}.`);return}
   p.updated_at=new Date().toISOString();p.delivery_date=p.delivery_date||null;p.qr_id=p.qr_id||nextQr();
   const {error}=oldId?await supabaseClient.from('chariots').update(p).eq('qr_id',oldId):await supabaseClient.from('chariots').insert(p);
   if(error){alert('Erreur : '+error.message);return}

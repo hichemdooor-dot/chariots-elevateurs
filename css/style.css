@@ -2219,3 +2219,16 @@ button.btn:disabled,
 .smart-form-warning[hidden]{display:none}
 .smart-form-warning strong{font-weight:800}
 .field-hint{display:block;margin-top:6px;font-size:.78rem;line-height:1.35;opacity:.7}
+
+/* v67.30 smart form fixes */
+.field:has(#clientSuggestionsPanel){position:relative}
+.client-suggestions-panel{position:absolute;z-index:1200;left:0;right:0;top:calc(100% - 2px);max-height:240px;overflow:auto;padding:6px;background:#fff;border:1px solid #d7e2ec;border-radius:12px;box-shadow:0 14px 32px rgba(16,50,79,.16)}
+.client-suggestions-panel[hidden]{display:none!important}
+.client-suggestion-item{display:block;width:100%;padding:10px 12px;border:0;border-radius:9px;background:transparent;text-align:left;color:#17344d;cursor:pointer}
+.client-suggestion-item:hover,.client-suggestion-item:focus{background:#f1f7fc;outline:none}
+.client-suggestion-item strong{display:block;font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.client-suggestion-empty{padding:12px;text-align:center;color:#718397;font-size:12px}
+.last-config-suggestion{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid #d7e2ec;border-radius:12px;background:#f7fafc}
+.last-config-suggestion>div{min-width:0}.last-config-suggestion strong,.last-config-suggestion small{display:block}.last-config-suggestion small{margin-top:3px;color:#718397;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.last-config-suggestion .btn{flex:0 0 auto}
+@media(max-width:600px){.client-suggestions-panel{max-height:200px}.last-config-suggestion{align-items:flex-start;flex-direction:column}.last-config-suggestion .btn{width:100%}}

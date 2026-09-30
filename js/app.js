@@ -498,7 +498,7 @@ async function resolvePasswordRequest(id){
 
 
 function statusClass(v){const s=normalizeStatus(v);return s==='en stock'?'status-stock':s==='livre'?'status-delivered':s.includes('reserve')?'status-reserved':s.includes('modification production')?'status-modification':s.includes('preparation')?'status-preparation':s.includes('pret a livrer')?'status-ready':s.includes('bloque')||s.includes('non conforme')?'status-blocked':s.includes('fabrication')?'status-fabrication':''}
-function isDelivered(c){return normalizeStatus(c.status)==='livre'||!!c.delivery_date}
+function isDelivered(c){return normalizeStatus(c?.status)==='livre'}
 const AUTO_WORKFLOW_FORWARD={
   'en fabrication':'En stock',
   'en stock':'Réservé',
@@ -508,6 +508,12 @@ const AUTO_WORKFLOW_FORWARD={
   'pret a livrer':'Livré'
 };
 function statusFromStock(stock,client=''){if(String(client||'').trim())return 'Réservé';return normalizeStatus(stock)==='fabrication'?'En fabrication':(String(stock||'').trim()?'En stock':'En fabrication');}
+function deliveryDateAfterStatusEdit(old,nextStatus,requestedDate){
+  // When an already-delivered forklift returns to an earlier workflow stage,
+  // clear its effective delivery date instead of retaining a stale delivery.
+  if(old&&normalizeStatus(old.status)==='livre'&&normalizeStatus(nextStatus)!=='livre')return null;
+  return String(requestedDate||'').trim()||String(old?.delivery_date||'').trim()||null;
+}
 function automaticStatusForChariot(old,p){
   if(!old)return statusFromStock(p.stock,p.client);
   const oldStatus=normalizeStatus(old.status),stock=normalizeStatus(p.stock),client=String(p.client||'').trim();
@@ -532,6 +538,7 @@ async function transitionChariotStatus(qrId,nextStatus,reason='',options={}){
   // son emplacement de stock devient automatiquement STOCK1.
   if(to==='preparation livraison'||to==='pret a livrer')payload.stock='STOCK1';
   if(to==='livre')payload.delivery_date=String(options?.deliveryDate||'').trim()||localISODateGlobal(now);
+  else if(from==='livre'&&to!=='livre')payload.delivery_date=null;
   const {error}=await supabaseClient.from('chariots').update(payload).eq('qr_id',qrId);
   if(error){alert('Erreur : '+friendlySupabaseError(error));return false}
   try{await supabaseClient.from('maintenance').insert({qr_id:qrId,date:localDateISO(now),technicien:getUserDisplayName(),type:'Statut',travaux:reason||`Statut : ${c.status||'—'} → ${nextStatus}`,created_by:currentUser.id})}catch(e){console.warn('Historique de statut non enregistré',e)}
@@ -1317,25 +1324,31 @@ async function saveDeliveryConfirmationToStock(qrId,plan,details){
   if(!currentUser)throw new Error('Connexion requise.');
   const c=CHARIOTS.find(x=>String(x.qr_id)===String(qrId));
   const now=new Date();
-  const nextDate=String(details.date||plan?.date||localISODateGlobal(now)).trim();
-  const nextTime=String(details.time||plan?.time||'').trim();
-  const nextDriver=String(details.driver||plan?.driver||'').trim();
-  const nextDestination=String(details.destination||plan?.destination||'').trim();
-  const nextClient=String(details.client||c?.client||'').trim();
+  // The effective delivery date is the source of truth after confirmation.
+  // Even when optional details are skipped or the date field is cleared,
+  // keep the date written on the chariot instead of reverting to an old plan.
+  const effectiveDate=String(c?.delivery_date||'').trim()||localISODateGlobal(now);
+  const nextDate=String(details?.date||effectiveDate).trim()||effectiveDate;
+  const nextTime=String(details?.time||plan?.time||'').trim();
+  const nextDriver=String(details?.driver||plan?.driver||'').trim();
+  const nextDestination=String(details?.destination||plan?.destination||'').trim();
+  const nextClient=String(details?.client||c?.client||'').trim();
   if(details.client){
     const {error}=await supabaseClient.from('chariots').update({client:String(details.client).trim(),updated_at:now.toISOString()}).eq('qr_id',qrId);
     if(error)throw error;
     if(c){c.client=String(details.client).trim();c.updated_at=now.toISOString();}
   }
-  if(plan?.id){
-    const payload={id:String(plan.id),qr:String(qrId),date:nextDate,time:nextTime,driver:nextDriver,destination:nextDestination,note:String(details.note||plan.note||'')};
-    const {error}=await supabaseClient.from('maintenance').insert({qr_id:qrId,date:nextDate,technicien:getUserDisplayName(),type:'Planification livraison',travaux:JSON.stringify(payload),created_by:currentUser.id});
-    if(error)throw error;
-    const index=DELIVERY_PLANS.findIndex(x=>String(x.id)===String(plan.id));
-    const updated={...plan,...payload};
-    if(index>=0)DELIVERY_PLANS[index]=updated;else DELIVERY_PLANS.push(updated);
-    cacheDeliveryPlans(DELIVERY_PLANS);
-  }
+  // Always persist a planning entry after delivery confirmation. Reuse the
+  // existing logical plan ID when present; otherwise create one so deliveries
+  // confirmed directly from the workflow also appear in Planning des livraisons.
+  const logicalId=String(plan?.id||('dp_'+String(qrId)+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,8)));
+  const payload={id:logicalId,qr:String(qrId),date:nextDate,time:nextTime,driver:nextDriver,destination:nextDestination,note:String(details?.note||plan?.note||'')};
+  const {error}=await supabaseClient.from('maintenance').insert({qr_id:qrId,date:nextDate,technicien:getUserDisplayName(),type:'Planification livraison',travaux:JSON.stringify(payload),created_by:currentUser.id});
+  if(error)throw error;
+  const index=DELIVERY_PLANS.findIndex(x=>String(x.id)===logicalId);
+  const updated={...(plan||{}),...payload};
+  if(index>=0)DELIVERY_PLANS[index]=updated;else DELIVERY_PLANS.push(updated);
+  cacheDeliveryPlans(DELIVERY_PLANS);
   return {date:nextDate,time:nextTime,driver:nextDriver,destination:nextDestination,client:nextClient};
 }
 
@@ -1373,8 +1386,8 @@ async function performWorkflowAction(qrId,action){
     if(!details)return false;
     const ok=await transitionChariotStatus(qrId,'Livré','Workflow livraison',{deliveryDate:details.skip?'':details.date});
     if(!ok)return false;
+    try{await saveDeliveryConfirmationToStock(qrId,getDeliveryPlan(qrId),details)}catch(e){console.warn('Entrée du planning après livraison non enregistrée',e);alert('La livraison est confirmée, mais son ajout au « Planning des livraisons » n’a pas pu être enregistré. Vérifiez la connexion puis actualisez le planning.')}
     if(!details.skip){
-      try{await saveDeliveryConfirmationToStock(qrId,getDeliveryPlan(qrId),details)}catch(e){console.warn('Informations de livraison non copiées dans Informations stock',e);alert('La livraison est confirmée, mais certaines informations n’ont pas pu être enregistrées dans « Informations stock ».')}
       const detailParts=[];
       if(details.date)detailParts.push('Date : '+details.date);
       if(details.time)detailParts.push('Heure : '+details.time);
@@ -1739,7 +1752,11 @@ async function saveChariot(){
   delete p.status_display;
   const duplicate=CHARIOTS.find(c=>norm(c.chassis)===norm(p.chassis)&&norm(c.engine)===norm(p.engine)&&norm(c.capacity)===norm(p.capacity)&&String(c.qr_id)!==String(oldId));
   if(duplicate){showDuplicatePopup(duplicate,{chassis:{value:p.chassis},engine:{value:p.engine},capacity:{value:p.capacity}});return}
-  p.updated_at=new Date().toISOString();p.delivery_date=p.delivery_date||null;p.qr_id=p.qr_id||nextQr();
+  p.updated_at=new Date().toISOString();
+  // Keep the date when editing other fields, but clear it when a delivered
+  // forklift is moved back to any earlier workflow stage.
+  p.delivery_date=deliveryDateAfterStatusEdit(old,p.status,p.delivery_date);
+  p.qr_id=p.qr_id||nextQr();
   const {error}=oldId?await supabaseClient.from('chariots').update(p).eq('qr_id',oldId):await supabaseClient.from('chariots').insert(p);
   if(error){alert('Erreur : '+error.message);return}
   if(oldId&&old){
@@ -1985,7 +2002,7 @@ async function deliveryPlanningPage(){
   function getMachine(qr){return CHARIOTS.find(c=>String(c.qr_id)===String(qr))}
   function availableChariots(excludeQr=''){
     const excluded=plans.filter(p=>String(p.qr)!==String(excludeQr)).map(p=>String(p.qr));
-    return CHARIOTS.filter(c=>normalizeStatus(c.status)!=='livre'&&!c.delivery_date&&!excluded.includes(String(c.qr_id)));
+    return CHARIOTS.filter(c=>!isDelivered(c)&&!excluded.includes(String(c.qr_id)));
   }
   function chariotSearchText(c){return Object.values(c||{}).filter(v=>v!==null&&v!==undefined).map(v=>String(v)).join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase()}
   function searchTokens(s){return norm(s).split(/\s+/).filter(Boolean)}

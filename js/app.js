@@ -498,7 +498,7 @@ async function resolvePasswordRequest(id){
 
 
 function statusClass(v){const s=normalizeStatus(v);return s==='en stock'?'status-stock':s==='livre'?'status-delivered':s.includes('reserve')?'status-reserved':s.includes('modification production')?'status-modification':s.includes('preparation')?'status-preparation':s.includes('pret a livrer')?'status-ready':s.includes('bloque')||s.includes('non conforme')?'status-blocked':s.includes('fabrication')?'status-fabrication':''}
-function isDelivered(c){return normalizeStatus(c.status)==='livre'||!!c.delivery_date}
+function isDelivered(c){return normalizeStatus(c?.status)==='livre'}
 const AUTO_WORKFLOW_FORWARD={
   'en fabrication':'En stock',
   'en stock':'Réservé',
@@ -508,6 +508,12 @@ const AUTO_WORKFLOW_FORWARD={
   'pret a livrer':'Livré'
 };
 function statusFromStock(stock,client=''){if(String(client||'').trim())return 'Réservé';return normalizeStatus(stock)==='fabrication'?'En fabrication':(String(stock||'').trim()?'En stock':'En fabrication');}
+function deliveryDateAfterStatusEdit(old,nextStatus,requestedDate){
+  // When an already-delivered forklift returns to an earlier workflow stage,
+  // clear its effective delivery date instead of retaining a stale delivery.
+  if(old&&normalizeStatus(old.status)==='livre'&&normalizeStatus(nextStatus)!=='livre')return null;
+  return String(requestedDate||'').trim()||String(old?.delivery_date||'').trim()||null;
+}
 function automaticStatusForChariot(old,p){
   if(!old)return statusFromStock(p.stock,p.client);
   const oldStatus=normalizeStatus(old.status),stock=normalizeStatus(p.stock),client=String(p.client||'').trim();
@@ -528,7 +534,11 @@ async function transitionChariotStatus(qrId,nextStatus,reason='',options={}){
   if(!isAdmin()&&['reserve','preparation livraison','pret a livrer'].includes(to)){alert('Cette action est réservée à l’administrateur.');return false}
   if(AUTO_WORKFLOW_FORWARD[from]!==nextStatus&&!(isAdmin()&&['livre','bloque / non conforme'].includes(to))){alert(`Transition non autorisée : ${c.status||'—'} → ${nextStatus}.`);return false}
   const now=new Date(),updatedAt=now.toISOString(),payload={status:nextStatus,updated_at:updatedAt};
+  // Workflow: dès qu'un chariot atteint Préparation livraison ou Prêt à livrer,
+  // son emplacement de stock devient automatiquement STOCK1.
+  if(to==='preparation livraison'||to==='pret a livrer')payload.stock='STOCK1';
   if(to==='livre')payload.delivery_date=String(options?.deliveryDate||'').trim()||localISODateGlobal(now);
+  else if(from==='livre'&&to!=='livre')payload.delivery_date=null;
   const {error}=await supabaseClient.from('chariots').update(payload).eq('qr_id',qrId);
   if(error){alert('Erreur : '+friendlySupabaseError(error));return false}
   try{await supabaseClient.from('maintenance').insert({qr_id:qrId,date:localDateISO(now),technicien:getUserDisplayName(),type:'Statut',travaux:reason||`Statut : ${c.status||'—'} → ${nextStatus}`,created_by:currentUser.id})}catch(e){console.warn('Historique de statut non enregistré',e)}
@@ -1314,25 +1324,31 @@ async function saveDeliveryConfirmationToStock(qrId,plan,details){
   if(!currentUser)throw new Error('Connexion requise.');
   const c=CHARIOTS.find(x=>String(x.qr_id)===String(qrId));
   const now=new Date();
-  const nextDate=String(details.date||plan?.date||localISODateGlobal(now)).trim();
-  const nextTime=String(details.time||plan?.time||'').trim();
-  const nextDriver=String(details.driver||plan?.driver||'').trim();
-  const nextDestination=String(details.destination||plan?.destination||'').trim();
-  const nextClient=String(details.client||c?.client||'').trim();
+  // The effective delivery date is the source of truth after confirmation.
+  // Even when optional details are skipped or the date field is cleared,
+  // keep the date written on the chariot instead of reverting to an old plan.
+  const effectiveDate=String(c?.delivery_date||'').trim()||localISODateGlobal(now);
+  const nextDate=String(details?.date||effectiveDate).trim()||effectiveDate;
+  const nextTime=String(details?.time||plan?.time||'').trim();
+  const nextDriver=String(details?.driver||plan?.driver||'').trim();
+  const nextDestination=String(details?.destination||plan?.destination||'').trim();
+  const nextClient=String(details?.client||c?.client||'').trim();
   if(details.client){
     const {error}=await supabaseClient.from('chariots').update({client:String(details.client).trim(),updated_at:now.toISOString()}).eq('qr_id',qrId);
     if(error)throw error;
     if(c){c.client=String(details.client).trim();c.updated_at=now.toISOString();}
   }
-  if(plan?.id){
-    const payload={id:String(plan.id),qr:String(qrId),date:nextDate,time:nextTime,driver:nextDriver,destination:nextDestination,note:String(details.note||plan.note||'')};
-    const {error}=await supabaseClient.from('maintenance').insert({qr_id:qrId,date:nextDate,technicien:getUserDisplayName(),type:'Planification livraison',travaux:JSON.stringify(payload),created_by:currentUser.id});
-    if(error)throw error;
-    const index=DELIVERY_PLANS.findIndex(x=>String(x.id)===String(plan.id));
-    const updated={...plan,...payload};
-    if(index>=0)DELIVERY_PLANS[index]=updated;else DELIVERY_PLANS.push(updated);
-    cacheDeliveryPlans(DELIVERY_PLANS);
-  }
+  // Always persist a planning entry after delivery confirmation. Reuse the
+  // existing logical plan ID when present; otherwise create one so deliveries
+  // confirmed directly from the workflow also appear in Planning des livraisons.
+  const logicalId=String(plan?.id||('dp_'+String(qrId)+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,8)));
+  const payload={id:logicalId,qr:String(qrId),date:nextDate,time:nextTime,driver:nextDriver,destination:nextDestination,note:String(details?.note||plan?.note||'')};
+  const {error}=await supabaseClient.from('maintenance').insert({qr_id:qrId,date:nextDate,technicien:getUserDisplayName(),type:'Planification livraison',travaux:JSON.stringify(payload),created_by:currentUser.id});
+  if(error)throw error;
+  const index=DELIVERY_PLANS.findIndex(x=>String(x.id)===logicalId);
+  const updated={...(plan||{}),...payload};
+  if(index>=0)DELIVERY_PLANS[index]=updated;else DELIVERY_PLANS.push(updated);
+  cacheDeliveryPlans(DELIVERY_PLANS);
   return {date:nextDate,time:nextTime,driver:nextDriver,destination:nextDestination,client:nextClient};
 }
 
@@ -1370,8 +1386,8 @@ async function performWorkflowAction(qrId,action){
     if(!details)return false;
     const ok=await transitionChariotStatus(qrId,'Livré','Workflow livraison',{deliveryDate:details.skip?'':details.date});
     if(!ok)return false;
+    try{await saveDeliveryConfirmationToStock(qrId,getDeliveryPlan(qrId),details)}catch(e){console.warn('Entrée du planning après livraison non enregistrée',e);alert('La livraison est confirmée, mais son ajout au « Planning des livraisons » n’a pas pu être enregistré. Vérifiez la connexion puis actualisez le planning.')}
     if(!details.skip){
-      try{await saveDeliveryConfirmationToStock(qrId,getDeliveryPlan(qrId),details)}catch(e){console.warn('Informations de livraison non copiées dans Informations stock',e);alert('La livraison est confirmée, mais certaines informations n’ont pas pu être enregistrées dans « Informations stock ».')}
       const detailParts=[];
       if(details.date)detailParts.push('Date : '+details.date);
       if(details.time)detailParts.push('Heure : '+details.time);
@@ -1486,15 +1502,238 @@ async function newPage(){
   else{$('[name="qr_id"]').value=nextQr();editingQrId=null;}
   setupAutomaticStatusField(old);
   const clientField=document.querySelector('[name="client"]');
+  // Client : toujours en MAJUSCULES, à la saisie et avant enregistrement.
+  if(clientField){
+    const forceClientUpper=()=>{
+      const start=clientField.selectionStart,end=clientField.selectionEnd;
+      const value=String(clientField.value||'');
+      const upper=value.toUpperCase();
+      if(value!==upper){
+        clientField.value=upper;
+        try{if(start!==null&&end!==null)clientField.setSelectionRange(start,end)}catch(e){}
+      }
+    };
+    forceClientUpper();
+    clientField.addEventListener('input',forceClientUpper);
+    clientField.addEventListener('change',forceClientUpper);
+  }
+
+  // N° châssis : préfixe automatique G6, supprimable par l'utilisateur.
+  setupChassisPrefix(old);
+
+  // N° moteur : préfixe automatique selon le type de moteur.
+  // XINCHAI = 2606 / MITSUBISHI = S4S- / ISUZU = C240- / GPL = CK25-.
+  // YANMAR n'a pas de préfixe imposé tant qu'il n'est pas spécifié.
+  setupEngineNumberPrefix();
+  setupSmartClientSuggestions(old);
+  setupLiveDuplicateGuard(old);
+  setupLastUsedConfiguration(old);
   const deleteBtn=document.querySelector('#chariotForm .btn.danger');
   if(!isAdmin()){
     if(clientField){clientField.value='';clientField.disabled=true;clientField.title='L’affectation d’un client est réservée à l’administrateur.'}
     if(deleteBtn)deleteBtn.style.display='none';
   }else if(deleteBtn){deleteBtn.style.display=old?'inline-flex':'none'}
+  const uppercaseFields=['chassis','serial_number','engine_number','client','observations'];
+  uppercaseFields.forEach(name=>{const el=document.querySelector(`[name="${name}"]`);if(!el)return;const upper=()=>{const start=el.selectionStart,end=el.selectionEnd,v=String(el.value||''),u=v.toUpperCase();if(v!==u){el.value=u;try{if(start!=null&&end!=null)el.setSelectionRange(start,end)}catch(e){}}};el.addEventListener('input',upper);el.addEventListener('change',upper);upper()});
   document.querySelectorAll('#chariotForm input,#chariotForm select,#chariotForm textarea').forEach(el=>el.addEventListener('input',updateSaveButtonState));
   document.querySelectorAll('#chariotForm select').forEach(el=>el.addEventListener('change',updateSaveButtonState));
   updateSaveButtonState()
 }
+function setupChassisPrefix(old){
+  const field=document.querySelector('[name="chassis"]');
+  if(!field)return;
+  if(field.dataset.chassisPrefixReady==='1')return;
+  const prefix='G6';
+  field.dataset.chassisPrefixReady='1';
+  field.dataset.chassisPrefix=prefix;
+  const normalize=()=>{
+    const start=field.selectionStart,end=field.selectionEnd;
+    const value=String(field.value||'').toUpperCase();
+    if(value!==field.value){
+      field.value=value;
+      try{if(start!=null&&end!=null)field.setSelectionRange(start,end)}catch(e){}
+    }
+  };
+  const apply=()=>{
+    const value=String(field.value||'').toUpperCase().trim();
+    if(value.startsWith(prefix))return;
+    if(!value){
+      field.value=prefix;
+      try{field.setSelectionRange(prefix.length,prefix.length)}catch(e){}
+    }
+  };
+  field.placeholder=prefix;
+  field.addEventListener('focus',()=>{ if(!String(field.value||'').trim()) apply(); else normalize(); });
+  field.addEventListener('input',normalize);
+  field.addEventListener('change',normalize);
+  // For a new chariot, propose G6 immediately. Existing chassis values stay untouched.
+  if(!old)apply();
+}
+function setupEngineNumberPrefix(){
+  const engineField=document.querySelector('[name="engine"]');
+  const numberField=document.querySelector('[name="engine_number"]');
+  if(!engineField||!numberField)return;
+  if(numberField.dataset.enginePrefixReady==='1'){
+    applyEngineNumberPrefix();
+    return;
+  }
+  const prefixes={
+    XINCHAI:'2606',
+    MITSUBISHI:'S4S-',
+    ISUZU:'C240-',
+    GPL:'CK25-',
+    YANMAR:''
+  };
+  numberField.dataset.enginePrefixReady='1';
+  numberField.dataset.enginePrefixes=JSON.stringify(prefixes);
+
+  const knownPrefixes=Object.values(prefixes).filter(Boolean).sort((a,b)=>b.length-a.length);
+  const getPrefix=()=>prefixes[String(engineField.value||'').trim().toUpperCase()]||'';
+  const stripKnownPrefix=(value)=>{
+    let v=String(value||'').toUpperCase().trim();
+    for(const prefix of knownPrefixes){
+      if(v.startsWith(prefix)){
+        v=v.slice(prefix.length);
+        break;
+      }
+    }
+    return v;
+  };
+  const apply=()=>{
+    const prefix=getPrefix();
+    const old=String(numberField.value||'').toUpperCase();
+    const suffix=stripKnownPrefix(old);
+    const next=prefix+suffix;
+    if(old!==next){
+      const hadFocus=document.activeElement===numberField;
+      numberField.value=next;
+      if(hadFocus){
+        try{
+          const pos=Math.max(prefix.length, numberField.value.length);
+          numberField.setSelectionRange(pos,pos);
+        }catch(e){}
+      }
+      numberField.dispatchEvent(new Event('input',{bubbles:true}));
+    }
+    numberField.placeholder=prefix||'Numéro du moteur';
+  };
+  window.applyEngineNumberPrefix=apply;
+
+  // Le changement de type moteur applique le préfixe.
+  engineField.addEventListener('change',apply);
+
+  // Au focus, proposer le préfixe si le champ est vide.
+  numberField.addEventListener('focus',()=>{
+    if(!String(numberField.value||'').trim()) apply();
+    else numberField.value=String(numberField.value||'').toUpperCase();
+  });
+
+  // Le préfixe est une valeur normale : l'utilisateur peut le supprimer.
+  // Il ne sera pas réinjecté à chaque caractère.
+  numberField.addEventListener('input',()=>{
+    const start=numberField.selectionStart,end=numberField.selectionEnd;
+    const value=String(numberField.value||'');
+    const upper=value.toUpperCase();
+    if(value!==upper){
+      numberField.value=upper;
+      try{if(start!==null&&end!==null)numberField.setSelectionRange(start,end)}catch(e){}
+    }
+  });
+
+  apply();
+}
+function applyEngineNumberPrefix(){
+  const engineField=document.querySelector('[name="engine"]');
+  const numberField=document.querySelector('[name="engine_number"]');
+  if(!engineField||!numberField)return;
+  const prefixes={XINCHAI:'2606',MITSUBISHI:'S4S-',ISUZU:'C240-',GPL:'CK25-',YANMAR:''};
+  const knownPrefixes=Object.values(prefixes).filter(Boolean).sort((a,b)=>b.length-a.length);
+  const prefix=prefixes[String(engineField.value||'').trim().toUpperCase()]||'';
+  let value=String(numberField.value||'').toUpperCase().trim();
+  for(const known of knownPrefixes){if(value.startsWith(known)){value=value.slice(known.length);break}}
+  numberField.value=prefix+value;
+  numberField.placeholder=prefix||'Numéro du moteur';
+}
+function setupSmartClientSuggestions(old){
+  const clientField=document.querySelector('[name="client"]');
+  const list=document.getElementById('clientSuggestions');
+  if(!clientField||!list)return;
+  const clients=[...new Set((CHARIOTS||[]).map(c=>String(c?.client||'').trim().toUpperCase()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fr'));
+  list.innerHTML=clients.map(v=>`<option value="${esc(v)}"></option>`).join('');
+  clientField.title='Clients existants proposés automatiquement. La saisie reste libre.';
+}
+function showDuplicatePopup(duplicate, fields){
+  const existing=document.getElementById('sbiDuplicateModal');
+  if(existing) existing.remove();
+  const chassis=String(fields?.chassis?.value||duplicate?.chassis||'').trim();
+  const engine=String(fields?.engine?.value||duplicate?.engine||'').trim();
+  const capacity=String(fields?.capacity?.value||duplicate?.capacity||'').trim();
+  const qr=String(duplicate?.qr_id||'chariot').trim();
+  const backdrop=document.createElement('div');
+  backdrop.id='sbiDuplicateModal';
+  backdrop.className='sbi-duplicate-modal-backdrop';
+  backdrop.innerHTML=`<div class="sbi-duplicate-modal" role="dialog" aria-modal="true" aria-labelledby="sbiDuplicateTitle">
+    <div class="sbi-duplicate-modal-head">
+      <div class="sbi-duplicate-modal-icon" aria-hidden="true">⚠</div>
+      <div><h3 id="sbiDuplicateTitle">Doublon détecté</h3><p>Cette combinaison existe déjà dans le stock.</p></div>
+      <button type="button" class="sbi-duplicate-modal-close" aria-label="Fermer">×</button>
+    </div>
+    <div class="sbi-duplicate-modal-body">
+      <p>Le chariot avec le châssis <strong>${esc(chassis)}</strong>, le moteur <strong>${esc(engine)}</strong> et la capacité <strong>${esc(capacity)}</strong> existe déjà.</p>
+      <div class="sbi-duplicate-modal-ref">Référence existante : <strong>${esc(qr)}</strong></div>
+    </div>
+    <div class="sbi-duplicate-modal-actions"><button type="button" class="btn" data-duplicate-ok>OK</button></div>
+  </div>`;
+  document.body.appendChild(backdrop);
+  const close=()=>backdrop.remove();
+  backdrop.querySelector('.sbi-duplicate-modal-close')?.addEventListener('click',close);
+  backdrop.querySelector('[data-duplicate-ok]')?.addEventListener('click',close);
+  backdrop.addEventListener('click',e=>{if(e.target===backdrop)close()});
+}
+function setupLiveDuplicateGuard(old){
+  const form=document.getElementById('chariotForm'),box=document.getElementById('duplicateSmartWarning');
+  if(!form)return;
+  if(box){box.hidden=true;box.textContent='';}
+  const fields={chassis:form.querySelector('[name="chassis"]'),engine:form.querySelector('[name="engine"]'),capacity:form.querySelector('[name="capacity"]')};
+  let lastPopupKey='';
+  let lastDuplicate=false;
+  const check=()=>{
+    const chassis=norm(fields.chassis?.value),engine=norm(fields.engine?.value),capacity=norm(fields.capacity?.value);
+    const duplicate=!!chassis&&!!engine&&!!capacity&&(CHARIOTS||[]).find(c=>norm(c?.chassis)===chassis&&norm(c?.engine)===engine&&norm(c?.capacity)===capacity&&String(c?.qr_id)!==String(old?.qr_id||''));
+    if(duplicate){
+      const key=[chassis,engine,capacity,String(duplicate.qr_id||'')].join('|');
+      if(!lastDuplicate||key!==lastPopupKey){
+        showDuplicatePopup(duplicate,fields);
+        lastPopupKey=key;
+      }
+      lastDuplicate=true;
+    }else{
+      lastDuplicate=false;
+      lastPopupKey='';
+    }
+    $('#saveBtn')?.classList.toggle('save-ready',!duplicate && ['chassis','color','engine','capacity','fork_dimension','tire_type'].every(k=>String(form.querySelector(`[name="${k}"]`)?.value||'').trim()));
+  };
+  [fields.chassis,fields.engine,fields.capacity].forEach(el=>{if(!el)return;el.addEventListener(el.tagName==='SELECT'?'change':'input',check)});
+  check();
+}
+function setupLastUsedConfiguration(old){
+  const form=document.getElementById('chariotForm');
+  if(!form||old)return;
+  const keys=['engine','capacity','lifting_height','fork_dimension','mast_type','tire_type','color'];
+  let saved={};
+  try{saved=JSON.parse(localStorage.getItem('sbi:lastChariotConfig')||'{}')||{}}catch(e){saved={}};
+  keys.forEach(k=>{
+    const el=form.querySelector(`[name="${k}"]`);
+    if(el&&!String(el.value||'').trim()&&String(saved[k]||'').trim()&&[...el.options].some(o=>String(o.value)===String(saved[k])))el.value=saved[k];
+  });
+  const remember=()=>{
+    const next={};keys.forEach(k=>{const el=form.querySelector(`[name="${k}"]`);if(el&&String(el.value||'').trim())next[k]=el.value});
+    try{localStorage.setItem('sbi:lastChariotConfig',JSON.stringify(next))}catch(e){}
+  };
+  keys.forEach(k=>form.querySelector(`[name="${k}"]`)?.addEventListener('change',remember));
+  remember();
+}
+
 function updateSaveButtonState(){const ok=['chassis','color','engine','capacity','fork_dimension','tire_type'].every(k=>String(document.querySelector(`[name="${k}"]`)?.value||'').trim());$('#saveBtn')?.classList.toggle('save-ready',ok)}
 async function saveChariot(){
   if(!requireValidLicense())return;if(!currentUser){alert('Connectez-vous pour gérer les chariots.');return}
@@ -1503,13 +1742,21 @@ async function saveChariot(){
   const oldId=new URLSearchParams(location.search).get('id')||'',old=CHARIOTS.find(c=>String(c.qr_id)===String(oldId));
   if(oldId&&!isAdmin()){alert('La modification d’un chariot est réservée à l’administrateur.');return}
   if(!isAdmin()&&!oldId){p.client='';}
+  // Normalisation définitive : le nom du client est toujours stocké en MAJUSCULES.
+  p.client=String(p.client||'').trim().toUpperCase();
   const requestedStatus=String(p.status||'').trim();
   const displayStatus=String(p.status_display||'').trim();
   p.status=(old&&isAdmin()&&displayStatus&&normalizeStatus(displayStatus)!==normalizeStatus(old.status))?displayStatus:automaticStatusForChariot(old,p);
+  // Même lors d'une modification directe de la fiche, ces étapes imposent STOCK1.
+  if(['preparation livraison','pret a livrer'].includes(normalizeStatus(p.status)))p.stock='STOCK1';
   delete p.status_display;
-  const duplicate=CHARIOTS.find(c=>norm(c.chassis)===norm(p.chassis)&&norm(c.engine)===norm(p.engine)&&String(c.qr_id)!==String(oldId));
-  if(duplicate){alert(`Le numéro de châssis « ${p.chassis} » existe déjà avec le même moteur (${p.engine}) — ${duplicate.qr_id}. La capacité ne participe plus au contrôle des doublons.`);return}
-  p.updated_at=new Date().toISOString();p.delivery_date=p.delivery_date||null;p.qr_id=p.qr_id||nextQr();
+  const duplicate=CHARIOTS.find(c=>norm(c.chassis)===norm(p.chassis)&&norm(c.engine)===norm(p.engine)&&norm(c.capacity)===norm(p.capacity)&&String(c.qr_id)!==String(oldId));
+  if(duplicate){showDuplicatePopup(duplicate,{chassis:{value:p.chassis},engine:{value:p.engine},capacity:{value:p.capacity}});return}
+  p.updated_at=new Date().toISOString();
+  // Keep the date when editing other fields, but clear it when a delivered
+  // forklift is moved back to any earlier workflow stage.
+  p.delivery_date=deliveryDateAfterStatusEdit(old,p.status,p.delivery_date);
+  p.qr_id=p.qr_id||nextQr();
   const {error}=oldId?await supabaseClient.from('chariots').update(p).eq('qr_id',oldId):await supabaseClient.from('chariots').insert(p);
   if(error){alert('Erreur : '+error.message);return}
   if(oldId&&old){
@@ -1519,6 +1766,10 @@ async function saveChariot(){
   }else{
     try{await supabaseClient.from('maintenance').insert({qr_id:p.qr_id,date:new Date().toISOString().slice(0,10),technicien:getUserDisplayName(),type:'Création chariot',travaux:`Chariot créé • Châssis : ${p.chassis||'—'} • Moteur : ${p.engine||'—'} • Statut initial : ${p.status||'—'}`,created_by:currentUser.id})}catch(e){console.warn('Historique création non enregistré',e)}
   }
+  try{
+    const cfg={};['engine','capacity','lifting_height','fork_dimension','mast_type','tire_type','color'].forEach(k=>{if(String(p[k]||'').trim())cfg[k]=p[k]});
+    localStorage.setItem('sbi:lastChariotConfig',JSON.stringify(cfg));
+  }catch(e){}
   location.href='chariot.html?id='+encodeURIComponent(p.qr_id)
 }
 async function markDelivered(qrId){
@@ -1709,7 +1960,24 @@ async function startSbiPresence(){
   return channel;
 }
 
-async function initPage(fn){if(!(await enforceMaintenance()))return;if(!(await getSession())){location.href=maintenanceEnabled()?'maintenance.html':'index.html';return}startSbiGlobalSync();applyLicenseCache();await fn();if(currentUser&&typeof renderConnectedUser==='function')renderConnectedUser();try{await startSbiPresence()}catch(e){console.warn('Présence SBI indisponible',e)}verifyLicense()}
+function setupUppercaseTextInputs(){
+  if(window.__SBI_UPPERCASE_TEXT_INPUTS)return;
+  window.__SBI_UPPERCASE_TEXT_INPUTS=true;
+  const excluded=new Set(['email','password','url','tel','number','date','time','datetime-local','month','week','color','file','hidden']);
+  const apply=el=>{
+    if(!el||!(el.matches('input,textarea'))||el.disabled||el.readOnly)return;
+    const type=String(el.type||'text').toLowerCase();
+    if(excluded.has(type))return;
+    const start=el.selectionStart,end=el.selectionEnd;
+    const value=String(el.value||'');
+    const upper=value.toUpperCase();
+    if(value!==upper){el.value=upper;try{if(start!==null&&end!==null)el.setSelectionRange(start,end)}catch(e){}}
+  };
+  document.addEventListener('input',e=>apply(e.target),true);
+  document.addEventListener('change',e=>apply(e.target),true);
+  document.querySelectorAll('input,textarea').forEach(apply);
+}
+async function initPage(fn){if(!(await enforceMaintenance()))return;if(!(await getSession())){location.href=maintenanceEnabled()?'maintenance.html':'index.html';return}startSbiGlobalSync();applyLicenseCache();await fn();setupUppercaseTextInputs();if(currentUser&&typeof renderConnectedUser==='function')renderConnectedUser();try{await startSbiPresence()}catch(e){console.warn('Présence SBI indisponible',e)}verifyLicense()}
 
 
 async function deliveryPlanningPage(){
@@ -1734,7 +2002,7 @@ async function deliveryPlanningPage(){
   function getMachine(qr){return CHARIOTS.find(c=>String(c.qr_id)===String(qr))}
   function availableChariots(excludeQr=''){
     const excluded=plans.filter(p=>String(p.qr)!==String(excludeQr)).map(p=>String(p.qr));
-    return CHARIOTS.filter(c=>normalizeStatus(c.status)!=='livre'&&!c.delivery_date&&!excluded.includes(String(c.qr_id)));
+    return CHARIOTS.filter(c=>!isDelivered(c)&&!excluded.includes(String(c.qr_id)));
   }
   function chariotSearchText(c){return Object.values(c||{}).filter(v=>v!==null&&v!==undefined).map(v=>String(v)).join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase()}
   function searchTokens(s){return norm(s).split(/\s+/).filter(Boolean)}

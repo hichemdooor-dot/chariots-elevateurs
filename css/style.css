@@ -2213,3 +2213,37 @@ button.btn:disabled,
 .sbi-typeahead-arrow{color:#8a9bac;font-size:22px;line-height:1}
 .sbi-typeahead-empty{padding:18px 10px;text-align:center;color:#718397;font-size:12px}
 @media(max-width:600px){.sbi-typeahead-panel{max-height:min(300px,55vh)}.sbi-typeahead-item{padding:11px 10px}.sbi-typeahead-copy small{font-size:10px}}
+
+/* v67.29 — smart Nouveau chariot form */
+.smart-form-warning{margin-top:12px;padding:12px 14px;border:1px solid rgba(220,53,69,.28);border-radius:12px;background:rgba(220,53,69,.07);color:#8a1f2b;font-size:.93rem;font-weight:600}
+.smart-form-warning[hidden]{display:none}
+.smart-form-warning strong{font-weight:800}
+.field-hint{display:block;margin-top:6px;font-size:.78rem;line-height:1.35;opacity:.7}
+
+/* v67.30 smart form fixes */
+.field:has(#clientSuggestionsPanel){position:relative}
+.client-suggestions-panel{position:absolute;z-index:1200;left:0;right:0;top:calc(100% - 2px);max-height:240px;overflow:auto;padding:6px;background:#fff;border:1px solid #d7e2ec;border-radius:12px;box-shadow:0 14px 32px rgba(16,50,79,.16)}
+.client-suggestions-panel[hidden]{display:none!important}
+.client-suggestion-item{display:block;width:100%;padding:10px 12px;border:0;border-radius:9px;background:transparent;text-align:left;color:#17344d;cursor:pointer}
+.client-suggestion-item:hover,.client-suggestion-item:focus{background:#f1f7fc;outline:none}
+.client-suggestion-item strong{display:block;font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.client-suggestion-empty{padding:12px;text-align:center;color:#718397;font-size:12px}
+.last-config-suggestion{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid #d7e2ec;border-radius:12px;background:#f7fafc}
+.last-config-suggestion>div{min-width:0}.last-config-suggestion strong,.last-config-suggestion small{display:block}.last-config-suggestion small{margin-top:3px;color:#718397;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.last-config-suggestion .btn{flex:0 0 auto}
+@media(max-width:600px){.client-suggestions-panel{max-height:200px}.last-config-suggestion{align-items:flex-start;flex-direction:column}.last-config-suggestion .btn{width:100%}}
+
+/* v67.31 — duplicate warning popup */
+.sbi-duplicate-modal-backdrop{position:fixed;inset:0;background:rgba(15,27,39,.55);display:flex;align-items:center;justify-content:center;padding:18px;z-index:10050;backdrop-filter:blur(2px)}
+.sbi-duplicate-modal{width:min(560px,100%);background:#fff;border:1px solid #ead0d4;border-radius:20px;box-shadow:0 24px 70px rgba(15,27,39,.25);overflow:hidden;color:#19354d}
+.sbi-duplicate-modal-head{display:grid;grid-template-columns:44px 1fr 40px;gap:12px;align-items:start;padding:20px 20px 14px;background:linear-gradient(180deg,#fff8f8,#fff)}
+.sbi-duplicate-modal-icon{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:#fde7ea;color:#b42335;font-size:24px;font-weight:900}
+.sbi-duplicate-modal-head h3{margin:1px 0 3px;font-size:20px;color:#9f2132}
+.sbi-duplicate-modal-head p{margin:0;color:#64778a;font-size:13px;line-height:1.4}
+.sbi-duplicate-modal-close{width:38px;height:38px;border:0;border-radius:10px;background:transparent;color:#73879a;font-size:28px;line-height:1;cursor:pointer}
+.sbi-duplicate-modal-close:hover{background:#f4f7fa}
+.sbi-duplicate-modal-body{padding:4px 20px 18px;font-size:15px;line-height:1.6}
+.sbi-duplicate-modal-body p{margin:0 0 12px}
+.sbi-duplicate-modal-ref{padding:12px 14px;border-radius:12px;background:#fff3f4;border:1px solid #f0ccd1;color:#7c2733}
+.sbi-duplicate-modal-actions{display:flex;justify-content:flex-end;padding:14px 20px 20px;border-top:1px solid #edf1f4}
+@media(max-width:600px){.sbi-duplicate-modal-backdrop{padding:12px}.sbi-duplicate-modal{border-radius:18px}.sbi-duplicate-modal-head{padding:17px 16px 12px;grid-template-columns:40px 1fr 36px;gap:10px}.sbi-duplicate-modal-icon{width:40px;height:40px;font-size:22px}.sbi-duplicate-modal-head h3{font-size:18px}.sbi-duplicate-modal-body{padding:3px 16px 15px;font-size:14px}.sbi-duplicate-modal-actions{padding:12px 16px 16px}.sbi-duplicate-modal-actions .btn{min-width:96px}}

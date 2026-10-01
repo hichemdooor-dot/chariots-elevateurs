@@ -1,1 +1,67 @@
-<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><script>(function(){const p=window.location.pathname;if(p.endsWith('/')&&!window.location.search){window.location.replace('./index.html?root=1');}})();</script><link rel="stylesheet" href="css/style.css?v=67.18"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><title>SBI — Connexion</title></head><body><div id="licenseGate" class="license-gate" data-first-login="true"><div class="license-inner"><img src="assets/logo-sbi-hangcha.png"><div class="license-loader"></div><h2>Vérification de la licence...</h2><div id="licenseInfo" class="license-info">Vérification en cours...</div></div></div><div class="login-page"><div class="login-card"><img class="login-logo" src="assets/logo-sbi-hangcha.png"><h1>LOGIN</h1><div class="sub">Gestion de flotte SBI</div><div class="login-field"><label for="email">Email Address</label><input id="email" type="email" autocomplete="username" placeholder=""></div><div class="login-field"><label for="password">Password</label><input id="password" type="password" autocomplete="current-password" placeholder="" onkeydown="if(event.key==='Enter'){event.preventDefault();login()}"></div><button class="btn" onclick="login()">LOGIN</button><div id="msg" class="error"></div></div></div><script src="maintenance-config.js?v=7"></script><script src="js/app.js?v=67.44"></script><script>setTimeout(()=>document.getElementById('licenseGate')?.classList.remove('loading-visible'),1500);restoreLoginSession()</script><script src="js/button-icons.js?v=67.18"></script><script src="js/search-suggestions.js?v=67.28"></script><script src="js/mobile-fiche-popup.js?v=67.43"></script></body></html>
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><script>(function(){const p=window.location.pathname;if(p.endsWith('/')&&!window.location.search){window.location.replace('./index.html?root=1');}})();</script><link rel="stylesheet" href="css/style.css?v=67.48"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><title>SBI — Connexion</title></head><body><div id="licenseGate" class="license-gate" data-first-login="true"><div class="license-inner"><img src="assets/logo-sbi-hangcha.png"><div class="license-loader"></div><h2>Vérification de la licence...</h2><div id="licenseInfo" class="license-info">Vérification en cours...</div></div></div><div class="login-page">
+  <div class="login-shell">
+    <section class="login-form-side">
+      <div class="login-form-inner">
+        <div class="login-mobile-logo"><img src="assets/logo-sbi-hangcha.png" alt="SBI"></div>
+        <div class="login-heading">
+          <h1>Sign in</h1>
+          <p>Connectez-vous à votre espace SBI</p>
+        </div>
+
+        <div id="loginPanel">
+          <div class="login-field-modern">
+            <label for="email">Email</label>
+            <input id="email" type="email" autocomplete="username" placeholder="Email">
+          </div>
+
+          <div class="login-field-modern">
+            <label for="password">Mot de passe</label>
+            <input id="password" type="password" autocomplete="current-password" placeholder="Mot de passe" onkeydown="if(event.key==='Enter'){event.preventDefault();login()}">
+          </div>
+
+          <div class="login-options-modern">
+            <label class="remember-option-modern" for="rememberMe">
+              <input id="rememberMe" type="checkbox">
+              <span>Remember me</span>
+            </label>
+            <button id="forgotPasswordBtn" class="forgot-link-modern" type="button" onclick="forgotPassword()">Mot de passe oublié ?</button>
+          </div>
+
+          <button class="login-submit-modern" type="button" onclick="login()">SE CONNECTER</button>
+          <div id="msg" class="error" role="status" aria-live="polite"></div>
+        </div>
+
+        <div id="resetPanel" class="login-reset-panel" hidden>
+          <h2>Nouveau mot de passe</h2>
+          <p>Cette étape est réservée aux liens de récupération configurés par l'administrateur.</p>
+          <div class="login-field-modern">
+            <label for="newPassword">Nouveau mot de passe</label>
+            <input id="newPassword" type="password" autocomplete="new-password" placeholder="Nouveau mot de passe">
+          </div>
+          <div class="login-field-modern">
+            <label for="confirmNewPassword">Confirmer le mot de passe</label>
+            <input id="confirmNewPassword" type="password" autocomplete="new-password" placeholder="Confirmer le mot de passe" onkeydown="if(event.key==='Enter'){event.preventDefault();updateRecoveredPassword()}">
+          </div>
+          <button id="updatePasswordBtn" class="login-submit-modern" type="button" onclick="updateRecoveredPassword()">METTRE À JOUR</button>
+          <button class="forgot-link-modern login-back" type="button" onclick="showSbiLogin()">Retour à la connexion</button>
+          <div id="resetMsg" class="error" role="status" aria-live="polite"></div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="login-welcome-side">
+      <div class="welcome-glow welcome-glow-1"></div>
+      <div class="welcome-glow welcome-glow-2"></div>
+      <div class="welcome-content">
+        <img class="welcome-logo" src="assets/logo-sbi-hangcha.png" alt="SBI">
+        <span class="welcome-kicker">SBI · GESTION DE FLOTTE</span>
+        <h2>Bienvenue<br>chez SBI !</h2>
+        <p>Gérez vos chariots élévateurs, vos livraisons et votre stock depuis un seul espace.</p>
+        <div class="welcome-line"></div>
+        <div class="welcome-points">
+          <span>Stock</span><span>Livraisons</span><span>Maintenance</span>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div><script src="maintenance-config.js?v=7"></script><script src="js/app.js?v=67.48"></script><script>setTimeout(()=>document.getElementById('licenseGate')?.classList.remove('loading-visible'),1500);initLoginControls();restoreLoginSession()</script><script src="js/button-icons.js?v=67.18"></script><script src="js/search-suggestions.js?v=67.28"></script><script src="js/mobile-fiche-popup.js?v=67.43"></script></body></html>

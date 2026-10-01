@@ -1,11 +1,35 @@
 const SUPABASE_URL="https://hkakedonludcqjgjzkei.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_AQWeYHI3Xli_1iBKVr9EPg_8L8PR-Hc";
+const SBI_AUTH_STORAGE_KEY='sbi-supabase-auth';
+const SBI_REMEMBER_KEY='sbi-remember-login';
+function sbiInitialRememberPreference(){
+  try{
+    const saved=localStorage.getItem(SBI_REMEMBER_KEY);
+    if(saved!==null)return saved==='true';
+    // Preserve an existing installation's persistent session once, then honor the new control.
+    const legacySession=!!localStorage.getItem(SBI_AUTH_STORAGE_KEY);
+    localStorage.setItem(SBI_REMEMBER_KEY,legacySession?'true':'false');
+    return legacySession;
+  }catch(_){return true}
+}
+let SBI_REMEMBER_LOGIN=sbiInitialRememberPreference();
+const sbiAuthStorage={
+  getItem(key){try{return (SBI_REMEMBER_LOGIN?localStorage:sessionStorage).getItem(key)}catch(_){return null}},
+  setItem(key,value){
+    const preferred=SBI_REMEMBER_LOGIN?localStorage:sessionStorage;
+    const alternate=SBI_REMEMBER_LOGIN?sessionStorage:localStorage;
+    preferred.setItem(key,value);
+    try{alternate.removeItem(key)}catch(_){}
+  },
+  removeItem(key){try{localStorage.removeItem(key)}catch(_){}try{sessionStorage.removeItem(key)}catch(_){}}
+};
 const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{
   auth:{
     persistSession:true,
     autoRefreshToken:true,
     detectSessionInUrl:true,
-    storageKey:'sbi-supabase-auth'
+    storageKey:SBI_AUTH_STORAGE_KEY,
+    storage:sbiAuthStorage
   }
 });
 const ADMIN_EMAIL="HICHEMDOOOR@GMAIL.COM",LICENSE_COMPANY="SBI";
@@ -339,7 +363,7 @@ async function getSession(){
   }
 }
 async function session(){if(!(await enforceMaintenance()))return false;if(!(await getSession())){location.href='index.html';return false}verifyLicense();startSbiGlobalSync();return true}
-document.addEventListener('keydown',e=>{if(e.key==='Enter'&&$('#email')&&$('#password')&&document.activeElement!==document.body){e.preventDefault();login()}});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&$('#email')&&$('#password')&&!$('#resetPanel')?.contains(document.activeElement)&&document.activeElement!==document.body){e.preventDefault();login()}});
 async function logUserConnection(action){
   try{
     if(!currentUser)return;
@@ -356,10 +380,99 @@ async function logUserConnection(action){
   }catch(e){console.warn('Journal connexion non enregistré',e)}
 }
 
-async function login(){const email=$('#email')?.value.trim(),password=$('#password')?.value,msg=$('#msg');if(!email||!password){if(msg)msg.textContent='Email et mot de passe requis.';return}if(msg)msg.textContent='Connexion...';try{const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});if(error)throw error;const {data:s,error:se}=await supabaseClient.rpc('get_my_sbi_status');if(se)throw se;if(s?.disabled){await supabaseClient.auth.signOut();throw new Error('Accès bloqué : votre compte est désactivé.')}currentUser=data.user;currentUser.user_metadata=currentUser.user_metadata||{};currentUser.user_metadata.sbi_role=s?.role||'user';await logUserConnection('Connexion');location.href='dashboard.html'}catch(e){if(msg)msg.textContent=friendlySupabaseError(e)}}
+function setSbiRememberMode(remember){
+  SBI_REMEMBER_LOGIN=!!remember;
+  try{localStorage.setItem(SBI_REMEMBER_KEY,SBI_REMEMBER_LOGIN?'true':'false')}catch(_){ }
+  // Avoid silently reusing a token from the other storage mode.
+  try{(SBI_REMEMBER_LOGIN?sessionStorage:localStorage).removeItem(SBI_AUTH_STORAGE_KEY)}catch(_){ }
+}
+function isSbiPasswordRecoveryRoute(){
+  return new URLSearchParams(location.search).get('reset')==='1'||/type=recovery/i.test(location.hash||'');
+}
+function showSbiPasswordReset(message=''){
+  const loginPanel=$('#loginPanel'),resetPanel=$('#resetPanel');
+  if(loginPanel)loginPanel.hidden=true;
+  if(resetPanel)resetPanel.hidden=false;
+  const msg=$('#resetMsg');if(msg)msg.textContent=message;
+  document.title='SBI — Nouveau mot de passe';
+}
+function showSbiLogin(message=''){
+  const loginPanel=$('#loginPanel'),resetPanel=$('#resetPanel');
+  if(loginPanel)loginPanel.hidden=false;
+  if(resetPanel)resetPanel.hidden=true;
+  const msg=$('#msg');if(msg)msg.textContent=message;
+  document.title='SBI — Connexion';
+  try{history.replaceState(null,'',location.pathname)}catch(_){ }
+}
+function initLoginControls(){
+  const remember=$('#rememberMe');if(remember)remember.checked=SBI_REMEMBER_LOGIN;
+  if(isSbiPasswordRecoveryRoute())showSbiPasswordReset();
+  try{supabaseClient.auth.onAuthStateChange((event)=>{if(event==='PASSWORD_RECOVERY')showSbiPasswordReset()})}catch(e){console.warn('Initialisation de la récupération du mot de passe impossible.',e)}
+}
+async function login(){
+  const email=$('#email')?.value.trim(),password=$('#password')?.value,msg=$('#msg');
+  if(!email||!password){if(msg)msg.textContent='Email et mot de passe requis.';return}
+  setSbiRememberMode($('#rememberMe')?.checked);
+  if(msg)msg.textContent='Connexion...';
+  const btn=document.querySelector('#loginPanel .btn');if(btn)btn.disabled=true;
+  try{
+    const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});if(error)throw error;
+    const {data:s,error:se}=await supabaseClient.rpc('get_my_sbi_status');if(se)throw se;
+    if(s?.disabled){await supabaseClient.auth.signOut();throw new Error('Accès bloqué : votre compte est désactivé.')}
+    currentUser=data.user;currentUser.user_metadata=currentUser.user_metadata||{};currentUser.user_metadata.sbi_role=s?.role||'user';
+    await logUserConnection('Connexion');location.href='dashboard.html';
+  }catch(e){if(msg)msg.textContent=friendlySupabaseError(e)}
+  finally{if(btn)btn.disabled=false}
+}
+async function forgotPassword(){
+  const email=$('#email')?.value.trim(),msg=$('#msg'),btn=$('#forgotPasswordBtn');
+  if(!email){if(msg)msg.textContent='Saisissez votre adresse email pour envoyer une demande à l’administrateur.';$('#email')?.focus();return}
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){if(msg)msg.textContent='Veuillez saisir une adresse email valide.';$('#email')?.focus();return}
+  if(btn)btn.disabled=true;
+  if(msg){msg.className='error';msg.textContent='Envoi de la demande à l’administrateur...'}
+  try{
+    const requestText=[
+      'Demande de changement de mot de passe',
+      'Utilisateur : Compte non connecté',
+      'Email : '+email,
+      'Motif :',
+      'Mot de passe oublié — demande envoyée depuis la page de connexion.'
+    ].join('\n');
+    const {error}=await supabaseClient.from('maintenance').insert({
+      qr_id:'password-reset-request',
+      date:new Date().toISOString().slice(0,10),
+      technicien:email,
+      type:'Demande changement mot de passe',
+      travaux:requestText,
+      created_by:null
+    });
+    if(error)throw error;
+    if(msg){msg.className='notice';msg.textContent='Votre demande a été envoyée à l’administrateur. Elle apparaîtra dans « Demandes de changement de mot de passe ».'}
+  }catch(e){
+    if(msg){msg.className='notice red';msg.textContent='Envoi impossible : '+friendlySupabaseError(e)+' Si vous venez de mettre cette fonction en place, vérifiez que la politique SQL des demandes anonymes a été activée dans Supabase.'}
+  }finally{if(btn)btn.disabled=false}
+}
+async function updateRecoveredPassword(){
+  const password=$('#newPassword')?.value||'',confirmPassword=$('#confirmNewPassword')?.value||'',msg=$('#resetMsg'),btn=$('#updatePasswordBtn');
+  if(password.length<6){if(msg)msg.textContent='Le mot de passe doit contenir au moins 6 caractères.';return}
+  if(password!==confirmPassword){if(msg)msg.textContent='Les deux mots de passe ne correspondent pas.';return}
+  if(btn)btn.disabled=true;if(msg)msg.textContent='Mise à jour du mot de passe...';
+  try{
+    const {error}=await supabaseClient.auth.updateUser({password});if(error)throw error;
+    await supabaseClient.auth.signOut();
+    if($('#newPassword'))$('#newPassword').value='';if($('#confirmNewPassword'))$('#confirmNewPassword').value='';
+    showSbiLogin('Mot de passe mis à jour. Vous pouvez maintenant vous connecter.');
+  }catch(e){if(msg)msg.textContent='Mise à jour impossible : '+friendlySupabaseError(e)}
+  finally{if(btn)btn.disabled=false}
+}
 async function logout(){try{if(currentUser)await logUserConnection('Déconnexion')}catch(e){}await supabaseClient.auth.signOut();location.href='index.html'}
 async function restoreLoginSession(){
   await syncMaintenanceConfig();
+  if(isSbiPasswordRecoveryRoute()){
+    showSbiPasswordReset();
+    verifyLicense();
+    return;
+  }
   const path=location.pathname;
   if(path.split('/').pop()!=='index.html' && !path.endsWith('/') && path!=='')return;
   // In maintenance mode, redirect immediately without waiting for Supabase.

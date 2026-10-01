@@ -2442,7 +2442,7 @@ button.btn:disabled,
 .login-card [hidden]{display:none!important}
 @media(max-width:430px){.login-options{font-size:12px;margin-bottom:18px}.login-card .remember-option,.login-card .login-link{font-size:12px}.login-card .login-reset-panel p{font-size:12px}}
 
-/* V67.48 — Modern split login style inspired by the supplied reference */
+/* V67.50 — Modern split login style inspired by the supplied reference */
 .login-page{
   min-height:100vh;
   display:grid;
@@ -2636,5 +2636,111 @@ button.btn:disabled,
   .login-form-side{padding:26px 18px 23px}
   .welcome-content h2{font-size:24px}
   .login-heading h1{font-size:27px}
+}
+@media(prefers-reduced-motion:reduce){.login-page::before,.login-page::after,.welcome-glow{animation:none}}
+
+/* V67.51 — Larger, high-contrast split login with SBI/HANGCHA promotional artwork */
+.login-page{
+  min-height:100vh;
+  min-height:100svh;
+  padding:clamp(14px,3vw,38px);
+  overflow:auto;
+  background:linear-gradient(135deg,#eef1f6 0%,#e5eaf2 52%,#dce3ef 100%);
+}
+.login-shell{
+  width:min(1440px,96vw);
+  min-height:min(850px,calc(100svh - 64px));
+  grid-template-columns:minmax(0,.94fr) minmax(0,1.06fr);
+  border-radius:34px;
+  box-shadow:0 28px 76px rgba(9,23,65,.18),0 7px 24px rgba(9,23,65,.08);
+}
+.login-form-side{
+  padding:clamp(30px,5vw,76px) clamp(26px,5.5vw,84px);
+}
+.login-form-inner{width:min(560px,100%)}
+.login-mobile-logo{display:block;text-align:center;margin:0 auto 28px;}
+.login-mobile-logo img{
+  display:block;
+  width:min(320px,82%);
+  height:auto;
+  max-height:128px;
+  object-fit:contain;
+  margin:0 auto;
+}
+.login-heading{text-align:left;margin-bottom:36px}
+.login-heading h1{font-size:clamp(38px,4vw,56px);line-height:1.06;letter-spacing:-1.2px;color:#171044}
+.login-heading p{font-size:clamp(16px,1.45vw,21px);line-height:1.5;color:#7e8496;margin-top:12px}
+.login-field-modern{margin-bottom:22px}
+.login-field-modern label{display:none}
+.login-field-modern input{
+  height:76px;
+  padding:0 22px 0 66px;
+  border-radius:15px;
+  background:#f0f1f4;
+  color:#191d35;
+  font-size:clamp(16px,1.35vw,20px);
+  border:1px solid rgba(22,28,66,.035);
+}
+.login-field-modern input::placeholder{color:#8f95a6;opacity:1}
+.login-field-modern input:focus{background:#fff;box-shadow:0 0 0 3px rgba(24,58,131,.12),0 10px 24px rgba(16,28,75,.08);transform:translateY(-1px)}
+.login-field-icon{
+  position:absolute;left:23px;top:50%;transform:translateY(-50%);
+  width:25px;height:25px;fill:none;stroke:#1b2850;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;pointer-events:none;
+}
+.login-options-modern{margin:4px 0 28px;gap:16px}
+.remember-option-modern{font-size:clamp(14px,1.15vw,18px);gap:10px;color:#777e91}
+.remember-option-modern input{width:19px;height:19px;accent-color:#181044}
+.forgot-link-modern{font-size:clamp(14px,1.15vw,18px);color:#174db7;text-align:right}
+.login-submit-modern{
+  height:72px;border-radius:14px;background:linear-gradient(110deg,#102b67,#171044 76%);
+  font-size:clamp(15px,1.3vw,20px);letter-spacing:.8px;box-shadow:0 12px 28px rgba(16,34,93,.18);
+}
+.login-submit-modern:hover{background:linear-gradient(110deg,#183a83,#24175e)}
+.login-form-inner .error,.login-form-inner .notice{font-size:14px;line-height:1.5;text-align:left;margin-top:14px;min-height:0}
+.login-welcome-side{
+  min-width:0;min-height:100%;padding:0;display:block;position:relative;overflow:hidden;
+  background:#071944;
+}
+.login-welcome-side::before{display:none}
+.welcome-promo-image{display:block;width:100%;height:100%;min-height:inherit;object-fit:cover;object-position:center;}
+@media(max-width:900px) and (min-width:761px){
+  .login-shell{min-height:690px;grid-template-columns:minmax(0,.98fr) minmax(0,1.02fr)}
+  .login-form-side{padding:32px 30px}
+  .login-mobile-logo{margin-bottom:18px}
+  .login-mobile-logo img{width:min(270px,90%);max-height:100px}
+  .login-heading{margin-bottom:26px}
+  .login-field-modern input{height:66px}
+  .login-submit-modern{height:62px}
+}
+@media(max-width:760px){
+  .login-page{padding:12px;align-items:start;place-items:start center;overflow:auto}
+  .login-shell{width:min(560px,100%);min-height:0;grid-template-columns:1fr;border-radius:24px}
+  .login-form-side{order:1;padding:30px clamp(20px,6vw,34px) 34px}
+  .login-form-inner{width:100%;max-width:520px}
+  .login-mobile-logo{display:block;margin:0 auto 18px}
+  .login-mobile-logo img{width:min(260px,76%);max-height:100px}
+  .login-heading{text-align:center;margin-bottom:24px}
+  .login-heading h1{font-size:clamp(34px,9vw,44px)}
+  .login-heading p{font-size:16px;margin-top:9px}
+  .login-field-modern{margin-bottom:16px}
+  .login-field-modern input{height:62px;padding-left:58px;font-size:16px;border-radius:13px}
+  .login-field-icon{left:19px;width:23px;height:23px}
+  .login-options-modern{margin:5px 0 22px;gap:12px}
+  .remember-option-modern{font-size:13px;gap:8px}
+  .remember-option-modern input{width:18px;height:18px}
+  .forgot-link-modern{font-size:13px}
+  .login-submit-modern{height:60px;font-size:15px}
+  .login-form-inner .error,.login-form-inner .notice{font-size:13px}
+  .login-welcome-side{order:2;min-height:0;height:auto;padding:0;background:#071944}
+  .welcome-promo-image{width:100%;height:auto;min-height:0;aspect-ratio:730/900;object-fit:cover;object-position:center}
+}
+@media(max-width:390px){
+  .login-page{padding:8px}
+  .login-shell{border-radius:19px}
+  .login-form-side{padding:26px 17px 28px}
+  .login-heading h1{font-size:33px}
+  .login-heading p{font-size:14px}
+  .login-options-modern{gap:8px}
+  .remember-option-modern,.forgot-link-modern{font-size:12px}
 }
 @media(prefers-reduced-motion:reduce){.login-page::before,.login-page::after,.welcome-glow{animation:none}}

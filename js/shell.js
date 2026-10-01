@@ -157,6 +157,25 @@ document.addEventListener('DOMContentLoaded',()=>{
       a.addEventListener('click',handleMobileNavClick);
     });
   });
+  // The hamburger menu renders Déconnexion as an anchor with href="#".
+  // Wire it explicitly so both desktop and mobile navigation use the same
+  // real logout flow as the user dropdown.
+  document.querySelectorAll('.logout-link').forEach(a=>{
+    if(a.dataset.logoutWired==='1')return;
+    a.dataset.logoutWired='1';
+    a.addEventListener('click',async e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      a.classList.add('tap-active');
+      try{
+        closeMobileMenu();
+        if(typeof logout==='function') await logout();
+        else location.href='index.html';
+      }catch(err){
+        location.href='index.html';
+      }
+    });
+  });
   document.querySelectorAll('.overlay').forEach((ov)=>{
     const side=ov.querySelector('.dashboard-mobile-drawer');
     if(!side) return;

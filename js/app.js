@@ -363,7 +363,7 @@ async function getSession(){
   }
 }
 async function session(){if(!(await enforceMaintenance()))return false;if(!(await getSession())){location.href='index.html';return false}verifyLicense();startSbiGlobalSync();return true}
-document.addEventListener('keydown',e=>{if(e.key==='Enter'&&$('#email')&&$('#password')&&!$('#resetPanel')?.contains(document.activeElement)&&document.activeElement!==document.body){e.preventDefault();login()}});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&$('#email')&&$('#password')&&document.activeElement!==document.body){e.preventDefault();login()}});
 async function logUserConnection(action){
   try{
     if(!currentUser)return;
@@ -386,29 +386,10 @@ function setSbiRememberMode(remember){
   // Avoid silently reusing a token from the other storage mode.
   try{(SBI_REMEMBER_LOGIN?sessionStorage:localStorage).removeItem(SBI_AUTH_STORAGE_KEY)}catch(_){ }
 }
-function isSbiPasswordRecoveryRoute(){
-  return new URLSearchParams(location.search).get('reset')==='1'||/type=recovery/i.test(location.hash||'');
-}
-function showSbiPasswordReset(message=''){
-  const loginPanel=$('#loginPanel'),resetPanel=$('#resetPanel');
-  if(loginPanel)loginPanel.hidden=true;
-  if(resetPanel)resetPanel.hidden=false;
-  const msg=$('#resetMsg');if(msg)msg.textContent=message;
-  document.title='SBI — Nouveau mot de passe';
-}
-function showSbiLogin(message=''){
-  const loginPanel=$('#loginPanel'),resetPanel=$('#resetPanel');
-  if(loginPanel)loginPanel.hidden=false;
-  if(resetPanel)resetPanel.hidden=true;
-  const msg=$('#msg');if(msg)msg.textContent=message;
-  document.title='SBI — Connexion';
-  try{history.replaceState(null,'',location.pathname)}catch(_){ }
-}
-function initLoginControls(){
-  const remember=$('#rememberMe');if(remember)remember.checked=SBI_REMEMBER_LOGIN;
-  if(isSbiPasswordRecoveryRoute())showSbiPasswordReset();
-  try{supabaseClient.auth.onAuthStateChange((event)=>{if(event==='PASSWORD_RECOVERY')showSbiPasswordReset()})}catch(e){console.warn('Initialisation de la récupération du mot de passe impossible.',e)}
-}
+
+
+
+function initLoginControls(){const remember=$('#rememberMe');if(remember)remember.checked=SBI_REMEMBER_LOGIN;}
 async function login(){
   const email=$('#email')?.value.trim(),password=$('#password')?.value,msg=$('#msg');
   if(!email||!password){if(msg)msg.textContent='Email et mot de passe requis.';return}
@@ -431,48 +412,26 @@ async function forgotPassword(){
   if(btn)btn.disabled=true;
   if(msg){msg.className='error';msg.textContent='Envoi de la demande à l’administrateur...'}
   try{
-    const requestText=[
-      'Demande de changement de mot de passe',
-      'Utilisateur : Compte non connecté',
-      'Email : '+email,
-      'Motif :',
-      'Mot de passe oublié — demande envoyée depuis la page de connexion.'
-    ].join('\n');
-    const {error}=await supabaseClient.from('maintenance').insert({
-      qr_id:'password-reset-request',
-      date:new Date().toISOString().slice(0,10),
-      technicien:email,
-      type:'Demande changement mot de passe',
-      travaux:requestText,
-      created_by:null
-    });
+    // Password changes are handled by the administrator. Use a dedicated
+    // SECURITY DEFINER RPC so the public login page never needs direct
+    // anonymous INSERT permission on the maintenance table.
+    const {error}=await supabaseClient.rpc('submit_password_change_request',{p_email:email});
     if(error)throw error;
-    if(msg){msg.className='notice';msg.textContent='Votre demande a été envoyée à l’administrateur. Elle apparaîtra dans « Demandes de changement de mot de passe ».'}
+    if(msg){msg.className='notice';msg.textContent='Votre demande a été envoyée à l’administrateur. Elle apparaîtra dans « Demandes de changement de mot de passe ». '}
   }catch(e){
-    if(msg){msg.className='notice red';msg.textContent='Envoi impossible : '+friendlySupabaseError(e)+' Si vous venez de mettre cette fonction en place, vérifiez que la politique SQL des demandes anonymes a été activée dans Supabase.'}
+    if(msg){
+      msg.className='notice red';
+      const raw=String(e?.message||e||'');
+      msg.textContent=/submit_password_change_request|function.*does not exist/i.test(raw)
+        ? 'La demande n’est pas encore activée côté Supabase. Exécutez le fichier SUPABASE_PASSWORD_CHANGE_REQUEST_RPC.sql une seule fois dans Supabase → SQL Editor.'
+        : 'Envoi impossible : '+friendlySupabaseError(e);
+    }
   }finally{if(btn)btn.disabled=false}
 }
-async function updateRecoveredPassword(){
-  const password=$('#newPassword')?.value||'',confirmPassword=$('#confirmNewPassword')?.value||'',msg=$('#resetMsg'),btn=$('#updatePasswordBtn');
-  if(password.length<6){if(msg)msg.textContent='Le mot de passe doit contenir au moins 6 caractères.';return}
-  if(password!==confirmPassword){if(msg)msg.textContent='Les deux mots de passe ne correspondent pas.';return}
-  if(btn)btn.disabled=true;if(msg)msg.textContent='Mise à jour du mot de passe...';
-  try{
-    const {error}=await supabaseClient.auth.updateUser({password});if(error)throw error;
-    await supabaseClient.auth.signOut();
-    if($('#newPassword'))$('#newPassword').value='';if($('#confirmNewPassword'))$('#confirmNewPassword').value='';
-    showSbiLogin('Mot de passe mis à jour. Vous pouvez maintenant vous connecter.');
-  }catch(e){if(msg)msg.textContent='Mise à jour impossible : '+friendlySupabaseError(e)}
-  finally{if(btn)btn.disabled=false}
-}
+
 async function logout(){try{if(currentUser)await logUserConnection('Déconnexion')}catch(e){}await supabaseClient.auth.signOut();location.href='index.html'}
 async function restoreLoginSession(){
   await syncMaintenanceConfig();
-  if(isSbiPasswordRecoveryRoute()){
-    showSbiPasswordReset();
-    verifyLicense();
-    return;
-  }
   const path=location.pathname;
   if(path.split('/').pop()!=='index.html' && !path.endsWith('/') && path!=='')return;
   // In maintenance mode, redirect immediately without waiting for Supabase.

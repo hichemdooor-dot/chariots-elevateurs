@@ -1,18 +1,15 @@
-SBI v67.47 — Mot de passe oublié → demande à l’administrateur
+SBI — Demande de changement de mot de passe
 
-Le bouton « Forgot Password? » de la page de connexion n’envoie plus d’email de réinitialisation.
-Il enregistre une ligne « Demande changement mot de passe » dans la table Supabase public.maintenance.
-L’administrateur la retrouve dans Gestion utilisateurs → Demandes de changement de mot de passe.
+Le bouton « Mot de passe oublié ? » de la page de connexion ne fait PAS de réinitialisation automatique.
+Il crée une demande qui apparaît dans :
+Gestion utilisateurs → Demandes de changement de mot de passe
 
-Activation requise pour les demandes envoyées sans session :
+INSTALLATION SUPABASE (une seule fois)
 1. Ouvrir Supabase → SQL Editor.
-2. Exécuter le fichier SUPABASE_PASSWORD_CHANGE_REQUEST_ANON_POLICY.sql inclus dans cette archive.
-3. Publier les fichiers du site.
+2. Exécuter : SUPABASE_PASSWORD_CHANGE_REQUEST_RPC.sql
+3. Recharger le site.
 
-La politique SQL autorise uniquement l’insertion du type de demande dédié, sans permettre la lecture,
-la modification ou la suppression anonyme des lignes. Vérifier les politiques RLS déjà présentes :
-les politiques permissives PostgreSQL sont combinées par OR, donc toute ancienne politique anon
-plus large doit être retirée ou resserrée par l’administrateur Supabase.
+Le site utilise ensuite la fonction RPC sécurisée « submit_password_change_request ».
+Aucun accès anonyme direct en écriture à la table maintenance n'est nécessaire.
 
-La demande contient l’adresse email saisie et le motif standard « Mot de passe oublié ».
-Aucun mot de passe n’est demandé ni transmis.
+Mise à jour visuelle v67.51 : le formulaire de connexion utilise maintenant une typographie plus grande et un visuel promotionnel SBI/HANGCHA dans le panneau droit. Les fonctions de connexion et de demande à l'administrateur sont conservées.

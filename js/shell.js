@@ -21,10 +21,10 @@ function menuHTML(){
     ${group('parc','Parc & stock',
       link('chariots.html','Tous les chariots','<path d="M3 16l2-7h10l5 4v3"/><path d="M5 16h14"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/><path d="M15 9V5h3v5"/>')+
       link('stock.html','Chariots en stock','<path d="M4 7h16v13H4z"/><path d="M8 7V4h8v3M8 11h8M8 15h5"/>')+
-      link('nouveau-chariot.html','Nouveau chariot','<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>'))}
+      link('nouveau-chariot.html','Nouveau chariot','<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>','admin-only-nav hidden'))}
     ${group('commercial','Commercial & production',
       link('affectation.html','Affectation commerciale','<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M16 11h6"/>')+
-      link('modification-production.html','Modification production','<path d="M4 7h16v10H4z"/><path d="M8 17v3M16 17v3M7 4h10M9 8l2 2 4-4"/>'))}
+      link('modification-production.html','Modification production','<path d="M4 7h16v10H4z"/><path d="M8 17v3M16 17v3M7 4h10M9 8l2 2 4-4"/>','admin-only-nav hidden'))}
     ${group('livraisons','Livraisons',
       link('preparation-livraison.html','Préparation livraison','<path d="M3 5h11v11H3z"/><path d="M14 9h4l3 3v4h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/>')+
       link('chariots-prevus-livraison.html','Chariots prévus livraison','<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M7 2v4M17 2v4M3 9h18"/><path d="M8 13h3M8 17h5"/>')+
@@ -32,7 +32,8 @@ function menuHTML(){
       link('livres.html','Chariots livrés','<path d="M4 5h12v14H4z"/><path d="M8 8h5M8 12h5M8 16h3"/><path d="M16 8h4v11h-4"/>'))}
     ${group('administration','Administration',
       link('gestion.html','Gestion utilisateurs','<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-5 6-5s6 1.7 6 5"/><path d="M17 11a3 3 0 1 0 0-6M17 15c2.4 0 4 1.5 4 4"/>','admin-only-nav hidden')+
-      link('licence.html','Paramètres','<path d="M12 3l2.2 1.5 2.7-.1.8 2.6 2.2 1.6-1 2.5.5 2.7-2.5 1.1-.9 2.5-2.7-.2L12 21l-2.3-1.6-2.7.2-.9-2.5-2.5-1.1.5-2.7-1-2.5L5.3 8.6l.8-2.6 2.7.1L12 3z"/><circle cx="12" cy="12" r="3"/>'))}
+      link('licence.html','Paramètres','<path d="M12 3l2.2 1.5 2.7-.1.8 2.6 2.2 1.6-1 2.5.5 2.7-2.5 1.1-.9 2.5-2.7-.2L12 21l-2.3-1.6-2.7.2-.9-2.5-2.5-1.1.5-2.7-1-2.5L5.3 8.6l.8-2.6 2.7.1L12 3z"/><circle cx="12" cy="12" r="3"/>','admin-only-nav hidden')+
+      link('profile.html','Mon profil','<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.2 3.6-7 8-7s8 2.8 8 7"/>'))}
     <div class="nav-separator"></div>
     ${link('#','Déconnexion','<path d="M9 5H4v14h5M13 8l4 4-4 4M17 12H8"/>','logout-link')}
   </div>`;
@@ -176,7 +177,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.querySelectorAll('.avatar').forEach(el=>{
     const wrap=document.createElement('div');
     wrap.className='user-menu-wrap';
-    wrap.innerHTML=`<button class="user-menu-button" type="button" onclick="toggleUserMenu();event.stopPropagation()" aria-label="Menu utilisateur"><span class="user-circle" id="userTopAvatar">U</span><span class="user-menu-name"><b id="userTopName">Utilisateur</b><small id="userTopRole">Utilisateur</small></span><span class="user-menu-chevron">⌄</span></button><div id="userMenu" class="user-menu hidden"><a href="profile.html">👤&nbsp; Profil</a><a id="userMenuAdmin" class="hidden" href="gestion.html">👥&nbsp; Gestion utilisateurs</a><button type="button" onclick="logout()">↪&nbsp; Déconnexion</button></div>`;
+    wrap.innerHTML=`<button class="user-menu-button" type="button" onclick="toggleUserMenu();event.stopPropagation()" aria-label="Menu utilisateur"><span class="user-circle" id="userTopAvatar">U</span><span class="user-menu-name"><b id="userTopName">Utilisateur</b><small id="userTopRole">Utilisateur</small></span><span class="user-menu-chevron">⌄</span></button><div id="userMenu" class="user-menu hidden"><a href="profile.html">👤&nbsp; Mon profil</a><a id="userMenuAdmin" class="hidden" href="gestion.html">👥&nbsp; Gestion utilisateurs</a><button type="button" onclick="logout()">↪&nbsp; Déconnexion</button></div>`;
     el.replaceWith(wrap);
   });
   nav();

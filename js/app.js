@@ -432,7 +432,20 @@ async function loadChariots(){
 
 function getUserDisplayName(){return currentUser?.user_metadata?.full_name||currentUser?.user_metadata?.name||currentUser?.email?.split('@')[0]||'Utilisateur'}
 function getUserRoleLabel(){return isAdmin()?'Administrateur':'Utilisateur'}
-function renderConnectedUser(){const name=getUserDisplayName(),role=getUserRoleLabel();if($('#welcomeUser'))$('#welcomeUser').textContent=name;if($('#userTopName'))$('#userTopName').textContent=name;if($('#userTopRole'))$('#userTopRole').textContent=role;if($('#userTopAvatar'))$('#userTopAvatar').textContent=String(name).trim().charAt(0).toUpperCase()||'U';document.querySelectorAll('.admin-only-nav,.admin-only-presence').forEach(el=>el.classList.toggle('hidden',!isAdmin()));if(isAdmin()){$('#userMenuAdmin')?.classList.remove('hidden')}}
+function renderConnectedUser(){
+  const name=getUserDisplayName(),role=getUserRoleLabel(),admin=isAdmin();
+  if($('#welcomeUser'))$('#welcomeUser').textContent=name;
+  if($('#userTopName'))$('#userTopName').textContent=name;
+  if($('#userTopRole'))$('#userTopRole').textContent=role;
+  if($('#userTopAvatar'))$('#userTopAvatar').textContent=String(name).trim().charAt(0).toUpperCase()||'U';
+  document.querySelectorAll('.admin-only-nav,.admin-only-presence,.admin-only-action').forEach(el=>el.classList.toggle('hidden',!admin));
+  document.querySelectorAll('#userMenuAdmin').forEach(el=>el.classList.toggle('hidden',!admin));
+  // Regular users see only Mon profil inside Administration.
+  document.querySelectorAll('[data-nav-group="administration"]').forEach(group=>{
+    group.querySelectorAll('a[href="profile.html"]').forEach(el=>el.classList.remove('hidden'));
+    group.querySelectorAll('a[href="gestion.html"],a[href="licence.html"]').forEach(el=>el.classList.toggle('hidden',!admin));
+  });
+}
 function toggleUserMenu(){const m=$('#userMenu');if(m)m.classList.toggle('hidden')}
 document.addEventListener('click',e=>{const w=document.querySelector('.user-menu-wrap');if(w&&!w.contains(e.target))$('#userMenu')?.classList.add('hidden')});
 async function profilePage(){if(!await session())return;renderConnectedUser();if($('#profileName'))$('#profileName').textContent=getUserDisplayName();if($('#profileEmail'))$('#profileEmail').textContent=currentUser?.email||'—';if($('#profileRole'))$('#profileRole').textContent=getUserRoleLabel();}
@@ -1494,6 +1507,7 @@ async function deleteMaintenance(id){if(!requireAdmin())return;if(!confirm('Supp
 function nextQr(){let n=Math.max(0,...CHARIOTS.map(c=>Number(String(c.qr_id||'').match(/^CH-(\d+)$/i)?.[1]||0)))+1;return'CH-'+String(n).padStart(4,'0')}
 async function newPage(){
   if(!await session())return;
+  if(!requireAdmin()){location.replace('dashboard.html');return}
   await loadChariots();
   const id=new URLSearchParams(location.search).get('id');
   const old=CHARIOTS.find(c=>String(c.qr_id)===String(id));
@@ -1736,12 +1750,11 @@ function setupLastUsedConfiguration(old){
 
 function updateSaveButtonState(){const ok=['chassis','color','engine','capacity','fork_dimension','tire_type'].every(k=>String(document.querySelector(`[name="${k}"]`)?.value||'').trim());$('#saveBtn')?.classList.toggle('save-ready',ok)}
 async function saveChariot(){
-  if(!requireValidLicense())return;if(!currentUser){alert('Connectez-vous pour gérer les chariots.');return}
+  if(!requireValidLicense()||!requireAdmin())return;
   const f=$('#chariotForm'),p=Object.fromEntries(new FormData(f).entries());
   for(const [k,label] of [['chassis','N° châssis'],['color','Couleur'],['engine','Type de moteur'],['capacity','Capacité'],['fork_dimension','Fourche'],['tire_type','Type de pneu']])if(!String(p[k]||'').trim()){alert(label+' obligatoire.');return}
   const oldId=new URLSearchParams(location.search).get('id')||'',old=CHARIOTS.find(c=>String(c.qr_id)===String(oldId));
   if(oldId&&!isAdmin()){alert('La modification d’un chariot est réservée à l’administrateur.');return}
-  if(!isAdmin()&&!oldId){p.client='';}
   // Normalisation définitive : le nom du client est toujours stocké en MAJUSCULES.
   p.client=String(p.client||'').trim().toUpperCase();
   const requestedStatus=String(p.status||'').trim();

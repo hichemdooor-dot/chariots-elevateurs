@@ -2977,3 +2977,13 @@ button.btn:disabled,
   .login-mobile-logo{margin-bottom:10px;}
   .login-mobile-logo img{width:min(215px,66vw);}
 }
+
+
+/* V67.55 — Login logo: embedded asset, reliable on GitHub Pages/mobile */
+@media (max-width:760px){
+  .login-mobile-logo{width:100%;overflow:visible;}
+  .login-mobile-logo img{display:block!important;width:min(230px,68vw)!important;height:auto!important;max-width:100%!important;margin:0 auto!important;object-fit:contain!important;}
+}
+@media (max-width:390px){
+  .login-mobile-logo img{width:min(215px,66vw)!important;}
+}

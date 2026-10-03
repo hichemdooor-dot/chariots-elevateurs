@@ -355,6 +355,11 @@ async function getSession(){
     }catch(roleErr){
       console.warn('Lecture du rôle utilisateur impossible, session conservée.',roleErr);
     }
+    // Keep the shared navigation in sync even when a page-specific initializer
+    // exits early or encounters an unrelated rendering error.
+    try{
+      document.querySelectorAll('.admin-only-nav').forEach(el=>el.classList.toggle('hidden',!isAdmin()));
+    }catch(_){ }
     return !!currentUser;
   }catch(e){
     console.warn('Restauration de session impossible.',e);
@@ -1831,11 +1836,18 @@ async function saveChariot(){
   p.client=String(p.client||'').trim().toUpperCase();
   const requestedStatus=String(p.status||'').trim();
   const displayStatus=String(p.status_display||'').trim();
-  p.status=(old&&isAdmin()&&displayStatus&&normalizeStatus(displayStatus)!==normalizeStatus(old.status))?displayStatus:automaticStatusForChariot(old,p);
+  // New chariot: the admin-selected status must be saved exactly as chosen.
+  // Existing chariots keep the workflow logic unless the admin explicitly changes the status.
+  if(isAdmin()&&displayStatus){
+    if(!old || normalizeStatus(displayStatus)!==normalizeStatus(old.status)) p.status=displayStatus;
+    else p.status=automaticStatusForChariot(old,p);
+  }else{
+    p.status=automaticStatusForChariot(old,p);
+  }
   // Même lors d'une modification directe de la fiche, ces étapes imposent STOCK1.
   if(['preparation livraison','pret a livrer'].includes(normalizeStatus(p.status)))p.stock='STOCK1';
   delete p.status_display;
-  const duplicate=CHARIOTS.find(c=>norm(c.chassis)===norm(p.chassis)&&norm(c.engine)===norm(p.engine)&&norm(c.capacity)===norm(p.capacity)&&String(c.qr_id)!==String(oldId));
+  const duplicate=CHARIOTS.find(c=>norm(c.chassis)===norm(p.chassis)&&norm(c.engine)===norm(p.engine)&&String(c.qr_id)!==String(oldId));
   if(duplicate){showDuplicatePopup(duplicate,{chassis:{value:p.chassis},engine:{value:p.engine},capacity:{value:p.capacity}});return}
   p.updated_at=new Date().toISOString();
   // Keep the date when editing other fields, but clear it when a delivered

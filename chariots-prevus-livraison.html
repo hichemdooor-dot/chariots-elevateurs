@@ -21,7 +21,7 @@ html.fiche-popup-lock,html.fiche-popup-lock body{overflow:hidden!important}
     <iframe id="fichePopupFrame" class="fiche-popup-frame" title="Fiche chariot" loading="eager"></iframe>
   </div>
 </div>
-<footer>QR ID permanent • Données techniques et modifications stockées dans Supabase<br>© 2026 · Developed by <strong>BaCkDoooR</strong></footer><script src="js/shell.js?v=67.41"></script><script src="maintenance-config.js?v=7"></script><script src="js/app.js?v=67.41"></script><script>
+<footer>QR ID permanent • Données techniques et modifications stockées dans Supabase<br>© 2026 · Developed by <strong>BaCkDoooR</strong></footer><script src="js/shell.js?v=67.59"></script><script src="maintenance-config.js?v=7"></script><script src="js/app.js?v=67.59"></script><script>
 async function plannedDeliveryPage(){
   if(!await session())return; await loadChariots();
   try{await loadDeliveryPlans({migrateLocal:true})}catch(e){DELIVERY_PLANS=readCachedDeliveryPlans(); console.warn('Chargement des planifications depuis le serveur impossible',e)}

@@ -145,7 +145,14 @@ document.addEventListener('DOMContentLoaded',()=>{
         <nav class="dash-nav" data-nav aria-label="Navigation principale"></nav>`;
     }
   });
-  document.querySelectorAll('[data-nav]').forEach(x=>x.innerHTML=menuHTML());
+  document.querySelectorAll('[data-nav]').forEach(x=>{
+    x.innerHTML=menuHTML();
+    // Admin-only links must be available in the shared navigation on every page,
+    // not only through dashboard quick actions. The final role check still lives
+    // in app.js; this simply syncs the freshly-rendered menu as soon as the
+    // shared shell is mounted.
+    if(typeof isAdmin==='function') x.querySelectorAll('.admin-only-nav').forEach(el=>el.classList.toggle('hidden',!isAdmin()));
+  });
   wireNavGroups();
   initSiteGlobalSearch();
   document.querySelectorAll('.menu-btn').forEach(btn=>{btn.setAttribute('aria-expanded','false');btn.setAttribute('aria-controls','mobileMenu');});

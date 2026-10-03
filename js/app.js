@@ -626,7 +626,8 @@ async function transitionChariotStatus(qrId,nextStatus,reason='',options={}){
   const now=new Date(),updatedAt=now.toISOString(),payload={status:nextStatus,updated_at:updatedAt};
   // Workflow: dès qu'un chariot atteint Préparation livraison ou Prêt à livrer,
   // son emplacement de stock devient automatiquement STOCK1.
-  if(to==='preparation livraison'||to==='pret a livrer')payload.stock='STOCK1';
+  if(to==='en fabrication'||to==='modification production')payload.stock='FABRICATION';
+  else if(to==='preparation livraison'||to==='pret a livrer')payload.stock='STOCK1';
   if(to==='livre')payload.delivery_date=String(options?.deliveryDate||'').trim()||localISODateGlobal(now);
   else if(from==='livre'&&to!=='livre')payload.delivery_date=null;
   const {error}=await supabaseClient.from('chariots').update(payload).eq('qr_id',qrId);
@@ -634,12 +635,55 @@ async function transitionChariotStatus(qrId,nextStatus,reason='',options={}){
   try{await supabaseClient.from('maintenance').insert({qr_id:qrId,date:localDateISO(now),technicien:getUserDisplayName(),type:'Statut',travaux:reason||`Statut : ${c.status||'—'} → ${nextStatus}`,created_by:currentUser.id})}catch(e){console.warn('Historique de statut non enregistré',e)}
   Object.assign(c,payload);return true;
 }
+function setupAutomaticHeightMastField(){
+  const heightEl=document.querySelector('[name="lifting_height"]');
+  const mastEl=document.querySelector('[name="mast_type"]');
+  if(!heightEl||!mastEl||heightEl.dataset.mastRuleReady==='1')return;
+  heightEl.dataset.mastRuleReady='1';
+  const applySuggestion=()=>{
+    const h=normalizeHeightValue(heightEl.value);
+    const suggested=(h==='3m'||h==='4m')?'DUPLEX':(['4.3m','4.5m','6m'].includes(h)?'TRIPLEX':'');
+    // The rule provides a default suggestion, but the admin/user may override it manually.
+    // Only replace the value automatically when it is empty or was previously auto-filled.
+    if(suggested && (!String(mastEl.value||'').trim() || mastEl.dataset.autoMast==='1')){
+      mastEl.value=suggested;
+      mastEl.dataset.autoMast='1';
+    }else if(!h && (!String(mastEl.value||'').trim() || mastEl.dataset.autoMast==='1')){
+      mastEl.value='';
+      delete mastEl.dataset.autoMast;
+    }
+    mastEl.disabled=false;
+    mastEl.title=suggested
+      ? `Suggestion automatique : ${suggested}. Vous pouvez modifier le type de mât.`
+      : 'Vous pouvez choisir ou modifier le type de mât.';
+  };
+  const markManualAndKeep=()=>{
+    delete mastEl.dataset.autoMast;
+    mastEl.title='Type de mât modifié manuellement.';
+    updateSaveButtonState();
+  };
+  const normalizeHeight=()=>{
+    const v=String(heightEl.value||'').trim().toUpperCase();
+    if(['3M','4M','4.3M','4.5M','6M'].includes(v))heightEl.value=v;
+    applySuggestion();
+    updateSaveButtonState();
+  };
+  heightEl.addEventListener('change',normalizeHeight);
+  mastEl.addEventListener('change',markManualAndKeep);
+  applySuggestion();
+}
+function normalizeHeightValue(v){
+  return String(v||'').trim().toLowerCase().replace(/\s+/g,'');
+}
 function setupAutomaticStatusField(old){
   const display=document.getElementById('statusDisplay'),hidden=document.getElementById('statusAuto');if(!display||!hidden)return;
-  const stock=document.querySelector('[name="stock"]')?.value||'',client=document.querySelector('[name="client"]')?.value||'',value=String(old?.status||statusFromStock(stock,client));
+  const stockEl=document.querySelector('[name="stock"]'),clientEl=document.querySelector('[name="client"]'),stock=stockEl?.value||'',client=clientEl?.value||'',value=String(old?.status||statusFromStock(stock,client));
   display.value=value;hidden.value=value;
+  const syncStockForStatus=()=>{const st=normalizeStatus(display.value);if(st==='en fabrication'||st==='modification production'){if(stockEl)stockEl.value='FABRICATION';stockEl.dataset.forcedByStatus='1';}else if(st==='preparation livraison'||st==='pret a livrer'){if(stockEl)stockEl.value='STOCK1';stockEl.dataset.forcedByStatus='1';}else if(stockEl?.dataset.forcedByStatus==='1'){delete stockEl.dataset.forcedByStatus;}};
+  syncStockForStatus();
   if(!isAdmin()){display.disabled=true;display.title='Statut géré automatiquement par le workflow.';}
-  else{display.disabled=false;display.title='Admin : intervention manuelle possible.';display.addEventListener('change',()=>{hidden.value=display.value});}
+  else{display.disabled=false;display.title='Admin : intervention manuelle possible.';display.addEventListener('change',()=>{hidden.value=display.value;syncStockForStatus();});}
+  stockEl?.addEventListener('change',()=>{const st=normalizeStatus(display.value);if(st==='en fabrication'||st==='modification production')stockEl.value='FABRICATION';else if(st==='preparation livraison'||st==='pret a livrer')stockEl.value='STOCK1';});
 }
 function renderWorkflowAction(c,planned){
   const b=document.getElementById('workflowAction');if(!b)return;
@@ -1592,6 +1636,7 @@ async function newPage(){
   if(old){editingQrId=old.qr_id;$('#formTitle').textContent='Modifier '+old.qr_id;for(const [k,v] of Object.entries(old)){const el=document.querySelector(`[name="${k}"]`);if(el)el.value=v??''}}
   else{$('[name="qr_id"]').value=nextQr();editingQrId=null;}
   setupAutomaticStatusField(old);
+  setupAutomaticHeightMastField();
   const clientField=document.querySelector('[name="client"]');
   // Client : toujours en MAJUSCULES, à la saisie et avant enregistrement.
   if(clientField){
@@ -1845,7 +1890,16 @@ async function saveChariot(){
     p.status=automaticStatusForChariot(old,p);
   }
   // Même lors d'une modification directe de la fiche, ces étapes imposent STOCK1.
-  if(['preparation livraison','pret a livrer'].includes(normalizeStatus(p.status)))p.stock='STOCK1';
+  if(['en fabrication','modification production'].includes(normalizeStatus(p.status)))p.stock='FABRICATION';
+  else if(['preparation livraison','pret a livrer'].includes(normalizeStatus(p.status)))p.stock='STOCK1';
+  // Règle hauteur de levage → type de mât : une suggestion automatique est appliquée,
+  // mais la valeur choisie manuellement reste prioritaire et peut être modifiée.
+  const heightRule=normalizeHeightValue(p.lifting_height);
+  if(!String(p.mast_type||'').trim())p.mast_type=String(old?.mast_type||'').trim();
+  if(!String(p.mast_type||'').trim()){
+    if(['3m','4m'].includes(heightRule))p.mast_type='DUPLEX';
+    else if(['4.3m','4.5m','6m'].includes(heightRule))p.mast_type='TRIPLEX';
+  }
   delete p.status_display;
   const duplicate=CHARIOTS.find(c=>norm(c.chassis)===norm(p.chassis)&&norm(c.engine)===norm(p.engine)&&String(c.qr_id)!==String(oldId));
   if(duplicate){showDuplicatePopup(duplicate,{chassis:{value:p.chassis},engine:{value:p.engine},capacity:{value:p.capacity}});return}

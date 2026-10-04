@@ -507,6 +507,132 @@ async function loadChariots(){
   }
 }
 
+
+
+// SBI V67.63 — reliable global Excel/PDF exports.
+// These functions are intentionally kept global because several pages call them
+// directly from inline onclick handlers (dashboard, chariots, export).
+function exportSafeText(value){
+  if(value===null||value===undefined)return '';
+  if(typeof value==='object'){
+    try{return JSON.stringify(value)}catch(_){return String(value)}
+  }
+  return String(value);
+}
+function exportMachineRows(){
+  const rows=Array.isArray(CHARIOTS)?CHARIOTS:[];
+  return rows.map((c,i)=>({
+    'QR ID':exportSafeText(c.qr_id),
+    'N° châssis':exportSafeText(c.chassis),
+    'N° de série':exportSafeText(c.serial_number),
+    'Couleur':exportSafeText(c.color),
+    'Moteur':exportSafeText(c.engine),
+    'N° moteur':exportSafeText(c.engine_number),
+    'Capacité':exportSafeText(c.capacity),
+    'Hauteur de levage':exportSafeText(c.lifting_height),
+    'Type de mât':exportSafeText(c.mast_type),
+    'Dimension de fourche':exportSafeText(c.fork_dimension),
+    'Statut':exportSafeText(c.status),
+    'Stock':exportSafeText(c.stock),
+    'Client':exportSafeText(c.client),
+    'Date de livraison':exportSafeText(c.delivery_date),
+    'Observations':exportSafeText(c.observations),
+    'Créé le':exportSafeText(c.created_at),
+    'Modifié le':exportSafeText(c.updated_at)
+  }));
+}
+function exportDownloadBlob(blob,filename){
+  try{
+    const url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download=filename;a.style.display='none';
+    document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(url)},1000);
+  }catch(e){console.error('Téléchargement export impossible',e);alert('Le téléchargement du fichier a échoué.');}
+}
+function exportCsvFallback(rows){
+  const headers=Object.keys(rows[0]||{'N° châssis':''});
+  const esc=v=>'"'+exportSafeText(v).replace(/"/g,'""')+'"';
+  const csv='\uFEFF'+headers.map(esc).join(';')+'\\r\\n'+rows.map(r=>headers.map(h=>esc(r[h])).join(';')).join('\\r\\n');
+  exportDownloadBlob(new Blob([csv],{type:'text/csv;charset=utf-8'}),'SBI_chariots.csv');
+}
+async function ensureChariotsForExport(){
+  if(Array.isArray(CHARIOTS)&&CHARIOTS.length)return CHARIOTS;
+  try{return await loadChariots()}catch(e){
+    console.error('Chargement des chariots pour export impossible',e);
+    throw new Error('Les données des chariots ne sont pas disponibles.');
+  }
+}
+async function exportChariotsExcel(){
+  try{
+    const machines=await ensureChariotsForExport();
+    const rows=exportMachineRows();
+    if(!rows.length){alert('Aucun chariot à exporter.');return}
+    if(window.XLSX&&window.XLSX.utils&&typeof window.XLSX.writeFile==='function'){
+      const XLSX=window.XLSX;
+      const wb=XLSX.utils.book_new();
+      const ws=XLSX.utils.json_to_sheet(rows);
+      ws['!freeze']={xSplit:0,ySplit:1};
+      ws['!autofilter']={ref:XLSX.utils.encode_range(ws['!ref'])};
+      const widths=Object.keys(rows[0]).map((h)=>({wch:Math.min(42,Math.max(12,h.length+2))}));
+      ws['!cols']=widths;
+      XLSX.utils.book_append_sheet(wb,ws,'Chariots');
+      XLSX.writeFile(wb,'SBI_chariots_'+new Date().toISOString().slice(0,10)+'.xlsx');
+      return;
+    }
+    // Fallback when the CDN library is blocked/unavailable.
+    exportCsvFallback(rows);
+  }catch(e){
+    console.error('Export Excel',e);
+    alert(e?.message||'Impossible d’exporter les chariots en Excel.');
+  }
+}
+async function exportChariotsPDF(){
+  try{
+    const machines=await ensureChariotsForExport();
+    const rows=exportMachineRows();
+    if(!rows.length){alert('Aucun chariot à exporter.');return}
+    const PDF=window.jspdf?.jsPDF;
+    if(PDF){
+      const doc=new PDF({orientation:'landscape',unit:'mm',format:'a4'});
+      const title='SBI — Liste des chariots élévateurs';
+      const date=new Date().toLocaleString('fr-FR');
+      doc.setFontSize(16);doc.text(title,14,14);
+      doc.setFontSize(8);doc.text('Exporté le '+date+' · '+machines.length+' chariot(s)',14,20);
+      const headers=Object.keys(rows[0]);
+      const body=rows.map(r=>headers.map(h=>exportSafeText(r[h])));
+      if(typeof doc.autoTable==='function'){
+        doc.autoTable({
+          head:[headers],body,startY:24,theme:'grid',
+          styles:{fontSize:6,cellPadding:1.4,overflow:'linebreak',valign:'middle'},
+          headStyles:{fontSize:6,fontStyle:'bold'},
+          margin:{left:8,right:8,top:24,bottom:10},
+          tableWidth:'auto'
+        });
+      }else{
+        // jsPDF loaded but the AutoTable plug-in was blocked.
+        let y=28;doc.setFontSize(7);const pageW=277;
+        headers.forEach((h,i)=>doc.text(h,8+(pageW/headers.length)*i,y,{maxWidth:pageW/headers.length-2}));
+        y+=5;
+        body.forEach(row=>{
+          if(y>190){doc.addPage();y=12}
+          row.forEach((v,i)=>doc.text(v,8+(pageW/headers.length)*i,y,{maxWidth:pageW/headers.length-2}));y+=4;
+        });
+      }
+      doc.save('SBI_chariots_'+new Date().toISOString().slice(0,10)+'.pdf');
+      return;
+    }
+    // Last-resort native browser print fallback when PDF libraries are unavailable.
+    const headers=Object.keys(rows[0]);
+    const escHtml=v=>exportSafeText(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    const w=window.open('','_blank','noopener,noreferrer,width=1200,height=800');
+    if(!w)throw new Error('La fenêtre d’impression a été bloquée par le navigateur.');
+    w.document.write('<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>SBI Export PDF</title><style>@page{size:A4 landscape;margin:10mm}body{font-family:Arial,sans-serif;font-size:9px}h1{font-size:18px;margin:0 0 4px}p{color:#666;margin:0 0 10px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #999;padding:3px;vertical-align:top}th{background:#eee}</style></head><body><h1>SBI — Liste des chariots élévateurs</h1><p>'+escHtml(new Date().toLocaleString('fr-FR'))+' · '+machines.length+' chariot(s)</p><table><thead><tr>'+headers.map(h=>'<th>'+escHtml(h)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(r=>'<tr>'+headers.map(h=>'<td>'+escHtml(r[h])+'</td>').join('')+'</tr>').join('')+'</tbody></table><script>window.onload=()=>setTimeout(()=>window.print(),250);</script></body></html>');
+    w.document.close();
+  }catch(e){
+    console.error('Export PDF',e);
+    alert(e?.message||'Impossible d’exporter les chariots en PDF.');
+  }
+}
+
 function getUserDisplayName(){return currentUser?.user_metadata?.full_name||currentUser?.user_metadata?.name||currentUser?.email?.split('@')[0]||'Utilisateur'}
 function getUserRoleLabel(){return isAdmin()?'Administrateur':'Utilisateur'}
 function renderConnectedUser(){

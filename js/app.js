@@ -561,28 +561,32 @@ async function ensureChariotsForExport(){
     throw new Error('Les données des chariots ne sont pas disponibles.');
   }
 }
+function exportExcelHtmlFallback(rows){
+  const headers=Object.keys(rows[0]||{});
+  const esc=v=>exportSafeText(v)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+  const stamp=new Date().toISOString().slice(0,10);
+  const html='<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta http-equiv="Content-Type" content="application/vnd.ms-excel; charset=utf-8"><title>SBI — Export Excel</title><style>body{font-family:Arial,sans-serif;font-size:10pt}table{border-collapse:collapse;width:100%}th,td{border:1px solid #999;padding:5px;vertical-align:top}th{background:#dbe8f7;font-weight:700}h1{font-size:16pt;margin:0 0 6px}p{color:#666;margin:0 0 10px}</style></head><body><h1>SBI — Liste des chariots élévateurs</h1><p>Exporté le '+esc(new Date().toLocaleString('fr-FR'))+' · '+rows.length+' chariot(s)</p><table><thead><tr>'+headers.map(h=>'<th>'+esc(h)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(r=>'<tr>'+headers.map(h=>'<td>'+esc(r[h])+'</td>').join('')+'</tr>').join('')+'</tbody></table></body></html>';
+  exportDownloadBlob(new Blob([html],{type:'application/vnd.ms-excel;charset=utf-8'}),'SBI_chariots_'+stamp+'.xls');
+}
 async function exportChariotsExcel(){
   try{
-    const machines=await ensureChariotsForExport();
+    await ensureChariotsForExport();
     const rows=exportMachineRows();
     if(!rows.length){alert('Aucun chariot à exporter.');return}
-    if(window.XLSX&&window.XLSX.utils&&typeof window.XLSX.writeFile==='function'){
-      const XLSX=window.XLSX;
-      const wb=XLSX.utils.book_new();
-      const ws=XLSX.utils.json_to_sheet(rows);
-      ws['!freeze']={xSplit:0,ySplit:1};
-      ws['!autofilter']={ref:XLSX.utils.encode_range(ws['!ref'])};
-      const widths=Object.keys(rows[0]).map((h)=>({wch:Math.min(42,Math.max(12,h.length+2))}));
-      ws['!cols']=widths;
-      XLSX.utils.book_append_sheet(wb,ws,'Chariots');
-      XLSX.writeFile(wb,'SBI_chariots_'+new Date().toISOString().slice(0,10)+'.xlsx');
-      return;
-    }
-    // Fallback when the CDN library is blocked/unavailable.
-    exportCsvFallback(rows);
+    // Use a native Excel-compatible .xls export as the primary path.
+    // This does not depend on any CDN library and works reliably on GitHub Pages.
+    exportExcelHtmlFallback(rows);
   }catch(e){
     console.error('Export Excel',e);
-    alert(e?.message||'Impossible d’exporter les chariots en Excel.');
+    try{
+      const rows=exportMachineRows();
+      if(rows.length)exportExcelHtmlFallback(rows);
+      else alert('Aucun chariot à exporter.');
+    }catch(_){
+      alert(e?.message||'Impossible d’exporter les chariots en Excel.');
+    }
   }
 }
 async function exportChariotsPDF(){

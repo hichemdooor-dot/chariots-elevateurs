@@ -140,10 +140,8 @@ document.addEventListener('DOMContentLoaded',()=>{
       side.classList.add('dashboard-mobile-drawer');
       // Keep the drawer shell separate from the desktop data-nav container so the close button survives rendering.
       side.removeAttribute('data-nav');
-      side.innerHTML=`<div class="mobile-drawer-title" aria-hidden="false">
-        <div class="mobile-drawer-brand"><img src="assets/login-sbi-logo.png" alt="SBI"><span>SBI</span></div>
-        <button type="button" class="mobile-drawer-close dashboard-menu-close" aria-label="Fermer le menu" title="Fermer le menu">×</button>
-      </div>
+      side.innerHTML=`<div class="mobile-drawer-title" aria-hidden="false"><span class="mobile-drawer-title-text">Menu</span>
+        <button type="button" class="mobile-drawer-close dashboard-menu-close" aria-label="Fermer le menu" title="Fermer le menu">×</button></div>
         <nav class="dash-nav" data-nav aria-label="Navigation principale"></nav>`;
     }
   });

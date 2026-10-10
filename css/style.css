@@ -1905,8 +1905,8 @@ button.menu-btn, button.notification-bell, button.user-admin-top, .text-link, .v
 .detail-layout-compact .detail-panel-head{min-height:42px;padding:7px 11px}
 .detail-layout-compact .detail-panel-values{padding:3px 11px 5px}
 .detail-layout-compact .detail-kv{min-height:30px;padding:5px 1px;gap:7px}
-.detail-layout-compact .detail-kv-label{font-size:13px}
-.detail-layout-compact .detail-kv strong{font-size:14px}
+.detail-layout-compact .detail-kv-label{font-size:11px}
+.detail-layout-compact .detail-kv strong{font-size:12px}
 .detail-layout-compact .detail-observation-text{min-height:0;padding:8px 11px}
 .detail-layout-compact .detail-panel--observations{margin-top:0}
 .workflow-card-compact{padding:8px 11px;border-radius:11px}
@@ -1950,36 +1950,1239 @@ button.menu-btn, button.notification-bell, button.user-admin-top, .text-link, .v
   .detail-layout-compact .detail-panel-icon{width:27px;height:27px}
   .detail-layout-compact .detail-panel-values{padding:2px 9px 4px}
   .detail-layout-compact .detail-kv{grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);min-height:28px;padding:4px 0;gap:6px}
-  .detail-layout-compact .detail-kv-label{font-size:12px}
-  .detail-layout-compact .detail-kv strong{font-size:13px}
+  .detail-layout-compact .detail-kv-label{font-size:10px}
+  .detail-layout-compact .detail-kv strong{font-size:11px}
   .detail-layout-compact .detail-observation-text{padding:7px 9px;font-size:12px}
   .detail-history-toggle{min-height:41px;padding:6px 10px}
   .detail-history-title h2{font-size:14px}
   .detail-history-card #history{padding:3px 9px 9px}
 }
+/* SBI v67.16 — unified button design across the application */
+:root{
+  --sbi-button-primary:#1677e8;
+  --sbi-button-primary-hover:#0f68ce;
+  --sbi-button-secondary-bg:#fff;
+  --sbi-button-secondary-border:#d5e1eb;
+  --sbi-button-secondary-text:#294b68;
+  --sbi-button-radius:10px;
+}
 
-/* SBI V67.15 — improve detail text readability */
-.detail-layout-compact .detail-kv{min-height:34px;padding:6px 1px;gap:8px}
-.detail-layout-compact .detail-kv-label{line-height:1.35}
-.detail-layout-compact .detail-kv strong{line-height:1.35}
-@media(max-width:640px){.detail-layout-compact .detail-kv{min-height:34px;padding:6px 0;gap:8px}.detail-layout-compact .detail-kv-label{font-size:12px}.detail-layout-compact .detail-kv strong{font-size:13px}}
+/* Main action buttons share one height, shape, type scale and interaction. */
+.btn,
+button.btn,
+a.btn,
+.view-chariot,
+.mark-all-read,
+.back-link{
+  box-sizing:border-box!important;
+  min-height:42px!important;
+  padding:0 15px!important;
+  border-radius:var(--sbi-button-radius)!important;
+  font-family:inherit!important;
+  font-size:13px!important;
+  font-weight:700!important;
+  line-height:1.2!important;
+  text-align:center!important;
+  text-decoration:none!important;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+  transition:background-color .16s ease,border-color .16s ease,color .16s ease,box-shadow .16s ease,transform .16s ease;
+}
 
-/* SBI V67.16 — improve readability across the entire detail page */
-.detail-content .detail-panel-head h2{font-size:17px!important;line-height:1.35}
-.detail-content .detail-kv-label{font-size:14px!important;line-height:1.45}
-.detail-content .detail-kv strong{font-size:15px!important;line-height:1.45}
-.detail-content .detail-observation-text{font-size:14px!important;line-height:1.5}
-.detail-content .detail-history-title h2{font-size:17px!important}
-.detail-content .detail-history-toggle{font-size:15px}
-.detail-content .workflow-head{font-size:14px}
-.detail-content .workflow-step{font-size:12px!important}
-.detail-content .workflow-step-dot{font-size:11px}
-.detail-content .detail-page-head .actions .btn{font-size:14px}
-@media(max-width:640px){
-  .detail-content .detail-panel-head h2{font-size:16px!important}
-  .detail-content .detail-kv-label{font-size:14px!important}
-  .detail-content .detail-kv strong{font-size:15px!important}
-  .detail-content .detail-observation-text{font-size:14px!important}
-  .detail-content .workflow-step{font-size:11px!important}
-  .detail-content .detail-history-title h2{font-size:16px!important}
+/* Primary, secondary and intent-based colors remain distinct. */
+.btn:not(.light):not(.danger):not(.save-ready):not(.pl-plan-disabled),
+button.btn:not(.light):not(.danger):not(.save-ready):not(.pl-plan-disabled),
+a.btn:not(.light):not(.danger):not(.save-ready):not(.pl-plan-disabled),
+.view-chariot{
+  background:var(--sbi-button-primary)!important;
+  color:#fff!important;
+  border:1px solid var(--sbi-button-primary)!important;
+  box-shadow:0 2px 6px rgba(22,119,232,.12)!important;
+}
+.btn.light,
+button.btn.light,
+a.btn.light,
+.mark-all-read,
+.back-link{
+  background:var(--sbi-button-secondary-bg)!important;
+  color:var(--sbi-button-secondary-text)!important;
+  border:1px solid var(--sbi-button-secondary-border)!important;
+  box-shadow:0 1px 3px rgba(24,65,101,.04)!important;
+}
+.btn.danger,
+button.btn.danger,
+a.btn.danger{
+  background:#dc3545!important;
+  color:#fff!important;
+  border:1px solid #dc3545!important;
+  box-shadow:0 2px 6px rgba(220,53,69,.10)!important;
+}
+.btn.save-ready,
+button.btn.save-ready,
+a.btn.save-ready,
+.save-ready{
+  background:#249957!important;
+  color:#fff!important;
+  border:1px solid #249957!important;
+  box-shadow:0 2px 6px rgba(36,153,87,.10)!important;
+}
+.btn.active,
+button.btn.active,
+a.btn.active,
+.delivery-view-filters .btn.active,
+.chip.active{
+  background:var(--sbi-button-primary)!important;
+  color:#fff!important;
+  border-color:var(--sbi-button-primary)!important;
+}
+
+.btn:not(:disabled):not(.pl-plan-disabled):hover,
+button.btn:not(:disabled):not(.pl-plan-disabled):hover,
+a.btn:not(.pl-plan-disabled):hover,
+.view-chariot:hover{
+  filter:brightness(.97);
+  transform:translateY(-1px);
+}
+.btn.light:not(:disabled):hover,
+button.btn.light:not(:disabled):hover,
+a.btn.light:hover,
+.mark-all-read:not(:disabled):not(.disabled):hover,
+.back-link:hover{
+  background:#f3f8fd!important;
+  border-color:#a9cce9!important;
+  color:#1769b0!important;
+  filter:none;
+}
+.btn.danger:not(:disabled):hover,
+button.btn.danger:not(:disabled):hover,
+a.btn.danger:hover{background:#c92f3e!important;border-color:#c92f3e!important;filter:none}
+.btn.save-ready:not(:disabled):hover,
+button.btn.save-ready:not(:disabled):hover,
+a.btn.save-ready:hover{background:#1d854a!important;border-color:#1d854a!important;filter:none}
+.btn:active:not(:disabled),
+button.btn:active:not(:disabled),
+a.btn:active,
+.view-chariot:active{transform:translateY(0)}
+.btn:focus-visible,
+button.btn:focus-visible,
+a.btn:focus-visible,
+.view-chariot:focus-visible,
+.mark-all-read:focus-visible,
+.back-link:focus-visible,
+.chip:focus-visible{
+  outline:3px solid rgba(22,119,232,.23)!important;
+  outline-offset:2px!important;
+}
+.btn:disabled,
+button.btn:disabled,
+.btn.disabled,
+.mark-all-read:disabled,
+.mark-all-read.disabled{
+  opacity:.55!important;
+  cursor:not-allowed!important;
+  transform:none!important;
+  box-shadow:none!important;
+}
+
+/* Remove the oversized first-action treatment so adjacent actions align. */
+.page-head .actions .btn:first-child,
+.page-head .actions a[href="nouveau-chariot.html"]{
+  min-height:42px!important;
+  padding:0 15px!important;
+  font-size:13px!important;
+  font-weight:700!important;
+  border-radius:var(--sbi-button-radius)!important;
+  box-shadow:0 2px 6px rgba(22,119,232,.12)!important;
+}
+
+/* Filter chips use the same visual language without competing with actions. */
+.chip{
+  min-height:36px!important;
+  padding:0 12px!important;
+  border:1px solid #dce6ee!important;
+  border-radius:999px!important;
+  background:#f4f7fa!important;
+  color:#31516d!important;
+  font-family:inherit!important;
+  font-size:12px!important;
+  font-weight:700!important;
+  line-height:1.2!important;
+  cursor:pointer;
+  transition:background-color .16s ease,border-color .16s ease,color .16s ease,box-shadow .16s ease;
+}
+.chip:not(.active):hover{background:#edf5fc!important;border-color:#b8d4eb!important;color:#1769b0!important}
+.chip.active{box-shadow:0 2px 6px rgba(22,119,232,.12)!important}
+
+/* Icon, account, navigation and disclosure controls keep their own layouts,
+   but receive consistent focus and motion feedback. */
+.menu-btn,
+.notification-bell,
+.user-admin-top,
+.user-menu-button,
+.search-action,
+.detail-history-toggle,
+.delivery-close,
+.input-clear,
+.nav-group-toggle,
+.text-link,
+.dashboard-search-footer button,
+.delivery-day,
+.delivery-search-result{
+  -webkit-tap-highlight-color:transparent;
+  transition:background-color .16s ease,border-color .16s ease,color .16s ease,box-shadow .16s ease,transform .16s ease;
+}
+.menu-btn:focus-visible,
+.notification-bell:focus-visible,
+.user-admin-top:focus-visible,
+.user-menu-button:focus-visible,
+.search-action:focus-visible,
+.detail-history-toggle:focus-visible,
+.delivery-close:focus-visible,
+.input-clear:focus-visible,
+.nav-group-toggle:focus-visible,
+.text-link:focus-visible,
+.dashboard-search-footer button:focus-visible,
+.delivery-day:focus-visible,
+.delivery-search-result:focus-visible{
+  outline:3px solid rgba(22,119,232,.23);
+  outline-offset:2px;
+}
+.notification-bell,
+.user-admin-top,
+.user-menu-button,
+.search-action{
+  border-radius:10px;
+}
+.user-menu a,
+.user-menu button{
+  min-height:40px;
+  border-radius:8px;
+  transition:background-color .16s ease,color .16s ease;
+}
+
+@media(max-width:800px),(hover:none) and (pointer:coarse){
+  .btn,
+  button.btn,
+  a.btn,
+  .view-chariot,
+  .mark-all-read,
+  .back-link{
+    min-height:44px!important;
+  }
+  .page-head .actions .btn:first-child,
+  .page-head .actions a[href="nouveau-chariot.html"]{
+    min-height:44px!important;
+    font-size:13px!important;
+  }
+  .chip{min-height:40px!important}
+}
+/* SBI v67.17 — inline SVG button icons, shared across static and dynamic actions. */
+.sbi-iconized{display:inline-flex!important;align-items:center;justify-content:center;gap:8px;}
+.sbi-button-icon{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;flex:0 0 16px;line-height:0;color:currentColor;pointer-events:none;}
+.sbi-button-icon svg{display:block;width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+.sbi-icon-only{display:inline-flex!important;align-items:center;justify-content:center;gap:0!important;min-width:40px;min-height:40px;padding:0 9px!important;}
+.sbi-icon-only .sbi-button-icon{width:18px;height:18px;flex-basis:18px;}
+.sbi-icon-only .sbi-button-icon svg{width:18px;height:18px;}
+.menu-btn.sbi-icon-only{font-size:0!important;}
+.menu-btn.sbi-icon-only .sbi-button-icon{width:25px;height:25px;flex-basis:25px;}
+.menu-btn.sbi-icon-only .sbi-button-icon svg{width:25px;height:25px;}
+.sbi-iconized:disabled .sbi-button-icon{opacity:.65;}
+@media(max-width:430px){.sbi-iconized{gap:7px;}}
+/* Keep icon-only utility controls compact; modal/menu hit areas remain touch-friendly. */
+.detail-history-symbol svg{display:block;width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+.input-clear.sbi-icon-only{min-width:32px;min-height:32px;width:32px;height:32px;padding:0!important;}
+.delivery-close.sbi-icon-only{min-width:40px;min-height:40px;width:40px;height:40px;padding:0!important;font-size:0!important;}
+.delivery-move-close.sbi-icon-only,.sbi-readiness-close.sbi-icon-only,.sbi-delivery-modal-close.sbi-icon-only{min-width:34px;min-height:34px;width:34px;height:34px;padding:0!important;font-size:0!important;}
+
+
+/* SBI v67.18 — live type-ahead suggestions */
+.sbi-typeahead-panel{position:fixed;z-index:2500;overflow:auto;padding:6px;background:#fff;border:1px solid #d7e2ec;border-radius:13px;box-shadow:0 16px 38px rgba(16,50,79,.18);overscroll-behavior:contain}
+.sbi-typeahead-panel[hidden]{display:none!important}
+.sbi-typeahead-item{display:flex;align-items:center;gap:10px;width:100%;padding:10px 11px;border:0;border-radius:9px;background:transparent;text-align:left;color:#17344d;cursor:pointer}
+.sbi-typeahead-item:hover,.sbi-typeahead-item.is-active{background:#f1f7fc}
+.sbi-typeahead-item:focus-visible{outline:2px solid #1677e8;outline-offset:-2px}
+.sbi-typeahead-mark{display:grid;place-items:center;flex:0 0 34px;width:34px;height:34px;border-radius:9px;background:#edf5fb;color:#1677e8}
+.sbi-typeahead-mark svg{width:18px;height:18px}
+.sbi-typeahead-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:3px}
+.sbi-typeahead-copy strong{overflow:hidden;color:#17344d;font-size:13px;font-weight:800;text-overflow:ellipsis;white-space:nowrap}
+.sbi-typeahead-copy small{overflow:hidden;color:#718397;font-size:11px;text-overflow:ellipsis;white-space:nowrap}
+.sbi-typeahead-arrow{color:#8a9bac;font-size:22px;line-height:1}
+.sbi-typeahead-empty{padding:18px 10px;text-align:center;color:#718397;font-size:12px}
+@media(max-width:600px){.sbi-typeahead-panel{max-height:min(300px,55vh)}.sbi-typeahead-item{padding:11px 10px}.sbi-typeahead-copy small{font-size:10px}}
+
+/* v67.29 — smart Nouveau chariot form */
+.smart-form-warning{margin-top:12px;padding:12px 14px;border:1px solid rgba(220,53,69,.28);border-radius:12px;background:rgba(220,53,69,.07);color:#8a1f2b;font-size:.93rem;font-weight:600}
+.smart-form-warning[hidden]{display:none}
+.smart-form-warning strong{font-weight:800}
+.field-hint{display:block;margin-top:6px;font-size:.78rem;line-height:1.35;opacity:.7}
+
+/* v67.30 smart form fixes */
+.field:has(#clientSuggestionsPanel){position:relative}
+.client-suggestions-panel{position:absolute;z-index:1200;left:0;right:0;top:calc(100% - 2px);max-height:240px;overflow:auto;padding:6px;background:#fff;border:1px solid #d7e2ec;border-radius:12px;box-shadow:0 14px 32px rgba(16,50,79,.16)}
+.client-suggestions-panel[hidden]{display:none!important}
+.client-suggestion-item{display:block;width:100%;padding:10px 12px;border:0;border-radius:9px;background:transparent;text-align:left;color:#17344d;cursor:pointer}
+.client-suggestion-item:hover,.client-suggestion-item:focus{background:#f1f7fc;outline:none}
+.client-suggestion-item strong{display:block;font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.client-suggestion-empty{padding:12px;text-align:center;color:#718397;font-size:12px}
+.last-config-suggestion{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid #d7e2ec;border-radius:12px;background:#f7fafc}
+.last-config-suggestion>div{min-width:0}.last-config-suggestion strong,.last-config-suggestion small{display:block}.last-config-suggestion small{margin-top:3px;color:#718397;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.last-config-suggestion .btn{flex:0 0 auto}
+@media(max-width:600px){.client-suggestions-panel{max-height:200px}.last-config-suggestion{align-items:flex-start;flex-direction:column}.last-config-suggestion .btn{width:100%}}
+
+/* v67.31 — duplicate warning popup */
+.sbi-duplicate-modal-backdrop{position:fixed;inset:0;background:rgba(15,27,39,.55);display:flex;align-items:center;justify-content:center;padding:18px;z-index:10050;backdrop-filter:blur(2px)}
+.sbi-duplicate-modal{width:min(560px,100%);background:#fff;border:1px solid #ead0d4;border-radius:20px;box-shadow:0 24px 70px rgba(15,27,39,.25);overflow:hidden;color:#19354d}
+.sbi-duplicate-modal-head{display:grid;grid-template-columns:44px 1fr 40px;gap:12px;align-items:start;padding:20px 20px 14px;background:linear-gradient(180deg,#fff8f8,#fff)}
+.sbi-duplicate-modal-icon{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:#fde7ea;color:#b42335;font-size:24px;font-weight:900}
+.sbi-duplicate-modal-head h3{margin:1px 0 3px;font-size:20px;color:#9f2132}
+.sbi-duplicate-modal-head p{margin:0;color:#64778a;font-size:13px;line-height:1.4}
+.sbi-duplicate-modal-close{width:38px;height:38px;border:0;border-radius:10px;background:transparent;color:#73879a;font-size:28px;line-height:1;cursor:pointer}
+.sbi-duplicate-modal-close:hover{background:#f4f7fa}
+.sbi-duplicate-modal-body{padding:4px 20px 18px;font-size:15px;line-height:1.6}
+.sbi-duplicate-modal-body p{margin:0 0 12px}
+.sbi-duplicate-modal-ref{padding:12px 14px;border-radius:12px;background:#fff3f4;border:1px solid #f0ccd1;color:#7c2733}
+.sbi-duplicate-modal-actions{display:flex;justify-content:flex-end;padding:14px 20px 20px;border-top:1px solid #edf1f4}
+@media(max-width:600px){.sbi-duplicate-modal-backdrop{padding:12px}.sbi-duplicate-modal{border-radius:18px}.sbi-duplicate-modal-head{padding:17px 16px 12px;grid-template-columns:40px 1fr 36px;gap:10px}.sbi-duplicate-modal-icon{width:40px;height:40px;font-size:22px}.sbi-duplicate-modal-head h3{font-size:18px}.sbi-duplicate-modal-body{padding:3px 16px 15px;font-size:14px}.sbi-duplicate-modal-actions{padding:12px 16px 16px}.sbi-duplicate-modal-actions .btn{min-width:96px}}
+
+
+/* V67.45 — Neon / Glowing login page inspired by the supplied reference */
+.login-page{
+  min-height:100vh;
+  display:grid;
+  place-items:center;
+  padding:24px;
+  position:relative;
+  overflow:hidden;
+  background:
+    radial-gradient(circle at 12% 46%, rgba(0,220,255,.22), transparent 30%),
+    radial-gradient(circle at 88% 78%, rgba(93,0,255,.27), transparent 34%),
+    radial-gradient(circle at 82% 12%, rgba(0,255,204,.10), transparent 28%),
+    #05070b;
+}
+.login-page::before,.login-page::after{
+  content:'';
+  position:absolute;
+  width:300px;height:300px;
+  border-radius:50%;
+  filter:blur(65px);
+  opacity:.30;
+  pointer-events:none;
+  animation:loginGlowFloat 8s ease-in-out infinite alternate;
+}
+.login-page::before{left:-130px;top:18%;background:#00eaff}
+.login-page::after{right:-120px;bottom:6%;background:#6a1dff;animation-delay:-3s}
+.login-card{
+  width:min(430px,94vw);
+  position:relative;
+  z-index:1;
+  padding:36px 34px 30px;
+  border-radius:26px;
+  background:linear-gradient(180deg,rgba(7,10,18,.96),rgba(5,7,13,.98));
+  border:1px solid rgba(0,238,255,.34);
+  box-shadow:
+    0 0 0 1px rgba(24,74,88,.18),
+    0 0 18px rgba(0,234,255,.20),
+    0 0 55px rgba(0,234,255,.12),
+    0 28px 80px rgba(0,0,0,.55);
+  backdrop-filter:blur(12px);
+  animation:loginCardPulse 4.8s ease-in-out infinite;
+}
+.login-card::before{
+  content:'';
+  position:absolute;
+  inset:-1px;
+  border-radius:27px;
+  padding:1px;
+  background:linear-gradient(135deg,rgba(0,242,255,.75),rgba(0,242,255,.08) 42%,rgba(105,35,255,.64));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;
+  mask-composite:exclude;
+  pointer-events:none;
+  opacity:.85;
+}
+.login-logo{
+  display:block;
+  width:170px;
+  height:92px;
+  object-fit:contain;
+  margin:0 auto 10px;
+  filter:drop-shadow(0 0 10px rgba(0,238,255,.28));
+}
+.login-card h1{
+  margin:0 0 8px;
+  text-align:center;
+  font-size:34px;
+  line-height:1;
+  font-weight:900;
+  letter-spacing:3px;
+  color:#eaffff;
+  text-shadow:
+    0 0 5px rgba(212,255,255,.95),
+    0 0 14px rgba(0,238,255,.85),
+    0 0 28px rgba(0,238,255,.48);
+}
+.login-card .sub{
+  text-align:center;
+  margin:0 0 28px;
+  color:#88a2ae;
+  font-size:12px;
+  letter-spacing:.4px;
+}
+.login-field{position:relative;margin:0 0 25px}
+.login-field label{
+  position:absolute;
+  left:18px;
+  top:50%;
+  transform:translateY(-50%);
+  z-index:2;
+  margin:0;
+  padding:0 7px;
+  color:#7e8b99;
+  background:#070a11;
+  font-size:15px;
+  font-weight:500;
+  pointer-events:none;
+  transition:.25s ease;
+}
+.login-field input{
+  width:100%;
+  height:58px;
+  padding:0 18px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.18);
+  outline:none;
+  background:rgba(5,8,14,.62);
+  color:#f4ffff;
+  font-size:16px;
+  box-shadow:inset 0 0 18px rgba(0,0,0,.28);
+  transition:.25s ease;
+}
+.login-field input:focus{
+  border-color:#00eaff;
+  box-shadow:
+    0 0 0 1px rgba(0,234,255,.55),
+    0 0 9px rgba(0,234,255,.68),
+    0 0 24px rgba(0,234,255,.28),
+    inset 0 0 18px rgba(0,0,0,.25);
+}
+.login-field input:focus + label{}
+.login-field:focus-within label,
+.login-field:has(input:not(:placeholder-shown)) label{
+  top:0;
+  transform:translateY(-50%);
+  color:#00eaff;
+  text-shadow:0 0 8px rgba(0,234,255,.65);
+}
+.login-card .btn{
+  width:100%;
+  min-height:58px;
+  margin-top:3px;
+  border:0;
+  border-radius:12px;
+  color:#081018;
+  font-size:16px;
+  font-weight:900;
+  letter-spacing:1.4px;
+  cursor:pointer;
+  background:linear-gradient(100deg,#1b8dff 0%,#00eaff 50%,#583dff 100%);
+  box-shadow:
+    0 0 12px rgba(0,234,255,.40),
+    0 9px 24px rgba(35,82,255,.25);
+  transition:transform .18s ease,filter .18s ease,box-shadow .18s ease;
+}
+.login-card .btn:hover{
+  transform:translateY(-1px);
+  filter:brightness(1.08);
+  box-shadow:
+    0 0 16px rgba(0,234,255,.56),
+    0 12px 30px rgba(35,82,255,.34);
+}
+.login-card .btn:active{transform:translateY(0)}
+.login-card .error{
+  min-height:20px;
+  margin-top:14px;
+  color:#ff7f9e;
+  text-align:center;
+  font-size:12px;
+  text-shadow:0 0 8px rgba(255,65,120,.42);
+}
+@keyframes loginGlowFloat{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(18px,-16px,0) scale(1.06)}}
+@keyframes loginCardPulse{0%,100%{box-shadow:0 0 0 1px rgba(24,74,88,.18),0 0 18px rgba(0,234,255,.20),0 0 55px rgba(0,234,255,.12),0 28px 80px rgba(0,0,0,.55)}50%{box-shadow:0 0 0 1px rgba(24,74,88,.18),0 0 22px rgba(0,234,255,.28),0 0 68px rgba(0,234,255,.16),0 28px 80px rgba(0,0,0,.55)}}
+@media(max-width:430px){
+  .login-page{padding:14px}
+  .login-card{width:min(360px,94vw);padding:30px 22px 24px;border-radius:22px}
+  .login-card::before{border-radius:23px}
+  .login-logo{width:150px;height:78px}
+  .login-card h1{font-size:29px;letter-spacing:2.5px}
+  .login-card .sub{margin-bottom:23px}
+  .login-field{margin-bottom:21px}
+  .login-field input{height:55px;font-size:15px}
+  .login-field label{font-size:14px}
+  .login-card .btn{min-height:55px;font-size:15px}
+}
+@media(prefers-reduced-motion:reduce){.login-page::before,.login-page::after,.login-card{animation:none}}
+
+
+/* V67.46 — usable remember-me and password recovery controls */
+.login-options{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:-2px 0 22px;font-size:13px}
+.login-card .remember-option{display:inline-flex;align-items:center;gap:8px;margin:0;color:#a9b8c5;font-size:13px;font-weight:500;cursor:pointer;user-select:none}
+.login-card .remember-option input{appearance:auto;-webkit-appearance:checkbox;accent-color:#00eaff;width:16px;height:16px;margin:0;padding:0;border:0;border-radius:2px;background:transparent;box-shadow:none;flex:0 0 16px;cursor:pointer}
+.login-card .login-link{display:inline-flex;align-items:center;justify-content:center;border:0;background:transparent;color:#55ecf2;font-family:inherit;font-size:13px;font-weight:600;line-height:1.4;padding:5px 0;cursor:pointer;text-decoration:none;text-shadow:0 0 8px rgba(0,234,255,.24)}
+.login-card .login-link:hover{color:#fff;text-decoration:underline;text-shadow:0 0 10px rgba(0,234,255,.65)}
+.login-card .login-link:focus-visible{outline:2px solid #00eaff;outline-offset:3px;border-radius:4px}
+.login-card .login-link:disabled{opacity:.55;cursor:wait}
+.login-card .login-reset-panel h2{margin:5px 0 8px;text-align:center;color:#eaffff;font-size:21px;text-shadow:0 0 12px rgba(0,234,255,.45)}
+.login-card .login-reset-panel p{margin:0 0 22px;text-align:center;color:#91a6b4;font-size:13px;line-height:1.5}
+.login-card .login-reset-panel .login-field{margin-bottom:20px}
+.login-card .login-reset-panel .login-back{display:flex;margin:12px auto 0}
+.login-card [hidden]{display:none!important}
+@media(max-width:430px){.login-options{font-size:12px;margin-bottom:18px}.login-card .remember-option,.login-card .login-link{font-size:12px}.login-card .login-reset-panel p{font-size:12px}}
+
+/* V67.50 — Modern split login style inspired by the supplied reference */
+.login-page{
+  min-height:100vh;
+  display:grid;
+  place-items:center;
+  padding:28px;
+  box-sizing:border-box;
+  position:relative;
+  overflow:hidden;
+  background:linear-gradient(135deg,#f0f1f4 0%,#e7e8ec 52%,#dcdde3 100%);
+}
+.login-page::before,.login-page::after{
+  content:"";
+  position:absolute;
+  border-radius:50%;
+  filter:blur(75px);
+  pointer-events:none;
+  animation:modernLoginFloat 9s ease-in-out infinite alternate;
+}
+.login-page::before{width:250px;height:250px;left:-110px;top:12%;background:rgba(39,22,126,.16)}
+.login-page::after{width:300px;height:300px;right:-130px;bottom:-70px;background:rgba(38,16,132,.14);animation-delay:-3s}
+.login-shell{
+  width:min(900px,96vw);
+  min-height:560px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  overflow:hidden;
+  position:relative;
+  z-index:1;
+  border-radius:30px;
+  background:#fff;
+  box-shadow:0 24px 70px rgba(24,20,61,.18),0 6px 22px rgba(24,20,61,.08);
+}
+.login-form-side{
+  background:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:58px 58px 52px;
+}
+.login-form-inner{width:min(360px,100%)}
+.login-mobile-logo{display:none}
+.login-heading{text-align:center;margin-bottom:30px}
+.login-heading h1{
+  margin:0;
+  color:#171044;
+  font-size:34px;
+  line-height:1.1;
+  font-weight:900;
+  letter-spacing:-.7px;
+}
+.login-heading p{margin:10px 0 0;color:#9a98a9;font-size:13px}
+.login-field-modern{position:relative;margin-bottom:18px}
+.login-field-modern label{display:none}
+.login-field-modern input{
+  box-sizing:border-box;
+  width:100%;
+  height:52px;
+  border:0;
+  border-radius:10px;
+  background:#ececef;
+  color:#201c3a;
+  padding:0 16px;
+  outline:none;
+  font:inherit;
+  font-size:14px;
+  transition:.2s ease;
+}
+.login-field-modern input::placeholder{color:#a09daa}
+.login-field-modern input:focus{
+  background:#f7f7fa;
+  box-shadow:0 0 0 2px rgba(30,17,100,.13),0 7px 18px rgba(31,20,95,.08);
+  transform:translateY(-1px);
+}
+.login-options-modern{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  margin:4px 0 22px;
+}
+.remember-option-modern{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  color:#8f8d99;
+  font-size:12px;
+  cursor:pointer;
+  user-select:none;
+}
+.remember-option-modern input{
+  width:15px;
+  height:15px;
+  margin:0;
+  accent-color:#171044;
+  cursor:pointer;
+}
+.forgot-link-modern{
+  border:0;
+  background:transparent;
+  padding:4px 0;
+  color:#4c467b;
+  font:inherit;
+  font-size:12px;
+  cursor:pointer;
+}
+.forgot-link-modern:hover{color:#171044;text-decoration:underline}
+.login-submit-modern{
+  width:100%;
+  height:48px;
+  border:0;
+  border-radius:9px;
+  background:#181044;
+  color:#fff;
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:.7px;
+  cursor:pointer;
+  box-shadow:0 10px 20px rgba(24,16,68,.16);
+  transition:transform .18s ease,box-shadow .18s ease,background .18s ease;
+}
+.login-submit-modern:hover{transform:translateY(-1px);background:#24175e;box-shadow:0 14px 24px rgba(24,16,68,.20)}
+.login-submit-modern:active{transform:translateY(0)}
+.login-submit-modern:disabled{opacity:.65;cursor:wait;transform:none}
+.login-welcome-side{
+  position:relative;
+  overflow:hidden;
+  min-height:560px;
+  background:linear-gradient(155deg,#171047 0%,#120a48 55%,#0e073c 100%);
+  color:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:54px;
+}
+.login-welcome-side::before{
+  content:"";
+  position:absolute;
+  inset:16px;
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:22px;
+  pointer-events:none;
+}
+.welcome-glow{position:absolute;border-radius:50%;filter:blur(10px);opacity:.32;pointer-events:none;animation:welcomePulse 7s ease-in-out infinite}
+.welcome-glow-1{width:190px;height:190px;right:-65px;top:16%;background:#6d5cff}
+.welcome-glow-2{width:160px;height:160px;left:-75px;bottom:10%;background:#24d3ff;animation-delay:-2.5s}
+.welcome-content{position:relative;z-index:1;text-align:center;max-width:350px}
+.welcome-logo{
+  width:180px;
+  max-width:70%;
+  height:92px;
+  object-fit:contain;
+  margin:0 auto 12px;
+  filter:brightness(0) invert(1) drop-shadow(0 10px 24px rgba(255,255,255,.10));
+}
+.welcome-kicker{display:block;margin-bottom:24px;color:#b7b3d8;font-size:11px;font-weight:800;letter-spacing:1.6px}
+.welcome-content h2{margin:0;color:#fff;font-size:38px;line-height:1.04;font-weight:900;letter-spacing:-1px}
+.welcome-content p{margin:22px auto 0;max-width:300px;color:#cbc8e0;font-size:13px;line-height:1.65}
+.welcome-line{width:62px;height:3px;border-radius:4px;background:#fff;margin:28px auto 20px;opacity:.92}
+.welcome-points{display:flex;justify-content:center;gap:7px;flex-wrap:wrap}
+.welcome-points span{padding:7px 10px;border:1px solid rgba(255,255,255,.14);border-radius:999px;color:#e3e0f0;background:rgba(255,255,255,.05);font-size:10px}
+.login-card .error{min-height:20px;margin-top:12px;text-align:center;color:#c4374b;font-size:11px}
+.login-reset-panel{text-align:left}
+.login-reset-panel h2{text-align:center;color:#171044;font-size:25px;margin:0 0 8px}
+.login-reset-panel p{text-align:center;color:#8f8d99;font-size:12px;line-height:1.55;margin:0 0 22px}
+.login-reset-panel .login-field-modern{margin-bottom:16px}
+.login-reset-panel .login-back{display:flex;margin:13px auto 0}
+@keyframes modernLoginFloat{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(18px,-14px,0) scale(1.06)}}
+@keyframes welcomePulse{0%,100%{transform:scale(1);opacity:.25}50%{transform:scale(1.12);opacity:.38}}
+@media(max-width:760px){
+  .login-page{padding:16px;overflow:auto}
+  .login-shell{width:min(430px,100%);min-height:0;grid-template-columns:1fr;border-radius:24px}
+  .login-welcome-side{min-height:210px;padding:28px 26px;order:1}
+  .login-welcome-side::before{inset:10px;border-radius:18px}
+  .welcome-logo{width:125px;height:60px;margin-bottom:4px}
+  .welcome-kicker{font-size:9px;margin-bottom:10px}
+  .welcome-content h2{font-size:27px;line-height:1.03}
+  .welcome-content p{font-size:11px;margin-top:10px;max-width:270px}
+  .welcome-line{margin:13px auto 12px;height:2px}
+  .welcome-points span{font-size:9px;padding:5px 8px}
+  .login-form-side{order:2;padding:30px 24px 28px}
+  .login-heading{margin-bottom:23px}
+  .login-heading h1{font-size:29px}
+  .login-heading p{font-size:12px}
+  .login-options-modern{margin-bottom:19px}
+  .login-submit-modern{height:50px}
+}
+@media(max-width:390px){
+  .login-page{padding:10px}
+  .login-shell{border-radius:20px}
+  .login-welcome-side{min-height:190px}
+  .login-form-side{padding:26px 18px 23px}
+  .welcome-content h2{font-size:24px}
+  .login-heading h1{font-size:27px}
+}
+@media(prefers-reduced-motion:reduce){.login-page::before,.login-page::after,.welcome-glow{animation:none}}
+
+/* V67.51 — Larger, high-contrast split login with SBI/HANGCHA promotional artwork */
+.login-page{
+  min-height:100vh;
+  min-height:100svh;
+  padding:clamp(14px,3vw,38px);
+  overflow:auto;
+  background:linear-gradient(135deg,#eef1f6 0%,#e5eaf2 52%,#dce3ef 100%);
+}
+.login-shell{
+  width:min(1440px,96vw);
+  min-height:min(850px,calc(100svh - 64px));
+  grid-template-columns:minmax(0,.94fr) minmax(0,1.06fr);
+  border-radius:34px;
+  box-shadow:0 28px 76px rgba(9,23,65,.18),0 7px 24px rgba(9,23,65,.08);
+}
+.login-form-side{
+  padding:clamp(30px,5vw,76px) clamp(26px,5.5vw,84px);
+}
+.login-form-inner{width:min(560px,100%)}
+.login-mobile-logo{display:block;text-align:center;margin:0 auto 28px;}
+.login-mobile-logo img{
+  display:block;
+  width:min(320px,82%);
+  height:auto;
+  max-height:128px;
+  object-fit:contain;
+  margin:0 auto;
+}
+.login-heading{text-align:left;margin-bottom:36px}
+.login-heading h1{font-size:clamp(38px,4vw,56px);line-height:1.06;letter-spacing:-1.2px;color:#171044}
+.login-heading p{font-size:clamp(16px,1.45vw,21px);line-height:1.5;color:#7e8496;margin-top:12px}
+.login-field-modern{margin-bottom:22px}
+.login-field-modern label{display:none}
+.login-field-modern input{
+  height:76px;
+  padding:0 22px 0 66px;
+  border-radius:15px;
+  background:#f0f1f4;
+  color:#191d35;
+  font-size:clamp(16px,1.35vw,20px);
+  border:1px solid rgba(22,28,66,.035);
+}
+.login-field-modern input::placeholder{color:#8f95a6;opacity:1}
+.login-field-modern input:focus{background:#fff;box-shadow:0 0 0 3px rgba(24,58,131,.12),0 10px 24px rgba(16,28,75,.08);transform:translateY(-1px)}
+.login-field-icon{
+  position:absolute;left:23px;top:50%;transform:translateY(-50%);
+  width:25px;height:25px;fill:none;stroke:#1b2850;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;pointer-events:none;
+}
+.login-options-modern{margin:4px 0 28px;gap:16px}
+.remember-option-modern{font-size:clamp(14px,1.15vw,18px);gap:10px;color:#777e91}
+.remember-option-modern input{width:19px;height:19px;accent-color:#181044}
+.forgot-link-modern{font-size:clamp(14px,1.15vw,18px);color:#174db7;text-align:right}
+.login-submit-modern{
+  height:72px;border-radius:14px;background:linear-gradient(110deg,#102b67,#171044 76%);
+  font-size:clamp(15px,1.3vw,20px);letter-spacing:.8px;box-shadow:0 12px 28px rgba(16,34,93,.18);
+}
+.login-submit-modern:hover{background:linear-gradient(110deg,#183a83,#24175e)}
+.login-form-inner .error,.login-form-inner .notice{font-size:14px;line-height:1.5;text-align:left;margin-top:14px;min-height:0}
+.login-welcome-side{
+  min-width:0;min-height:100%;padding:0;display:block;position:relative;overflow:hidden;
+  background:#071944;
+}
+.login-welcome-side::before{display:none}
+.welcome-promo-image{display:block;width:100%;height:100%;min-height:inherit;object-fit:cover;object-position:center;}
+@media(max-width:900px) and (min-width:761px){
+  .login-shell{min-height:690px;grid-template-columns:minmax(0,.98fr) minmax(0,1.02fr)}
+  .login-form-side{padding:32px 30px}
+  .login-mobile-logo{margin-bottom:18px}
+  .login-mobile-logo img{width:min(270px,90%);max-height:100px}
+  .login-heading{margin-bottom:26px}
+  .login-field-modern input{height:66px}
+  .login-submit-modern{height:62px}
+}
+@media(max-width:760px){
+  .login-page{padding:12px;align-items:start;place-items:start center;overflow:auto}
+  .login-shell{width:min(560px,100%);min-height:0;grid-template-columns:1fr;border-radius:24px}
+  .login-form-side{order:1;padding:30px clamp(20px,6vw,34px) 34px}
+  .login-form-inner{width:100%;max-width:520px}
+  .login-mobile-logo{display:block;margin:0 auto 18px}
+  .login-mobile-logo img{width:min(260px,76%);max-height:100px}
+  .login-heading{text-align:center;margin-bottom:24px}
+  .login-heading h1{font-size:clamp(34px,9vw,44px)}
+  .login-heading p{font-size:16px;margin-top:9px}
+  .login-field-modern{margin-bottom:16px}
+  .login-field-modern input{height:62px;padding-left:58px;font-size:16px;border-radius:13px}
+  .login-field-icon{left:19px;width:23px;height:23px}
+  .login-options-modern{margin:5px 0 22px;gap:12px}
+  .remember-option-modern{font-size:13px;gap:8px}
+  .remember-option-modern input{width:18px;height:18px}
+  .forgot-link-modern{font-size:13px}
+  .login-submit-modern{height:60px;font-size:15px}
+  .login-form-inner .error,.login-form-inner .notice{font-size:13px}
+  .login-welcome-side{order:2;min-height:0;height:auto;padding:0;background:#071944}
+  .welcome-promo-image{width:100%;height:auto;min-height:0;aspect-ratio:730/900;object-fit:cover;object-position:center}
+}
+@media(max-width:390px){
+  .login-page{padding:8px}
+  .login-shell{border-radius:19px}
+  .login-form-side{padding:26px 17px 28px}
+  .login-heading h1{font-size:33px}
+  .login-heading p{font-size:14px}
+  .login-options-modern{gap:8px}
+  .remember-option-modern,.forgot-link-modern{font-size:12px}
+}
+@media(prefers-reduced-motion:reduce){.login-page::before,.login-page::after,.welcome-glow{animation:none}}
+
+/* V67.52 — login asset fallback + strict mobile viewport fit */
+.login-page{width:100%;max-width:100vw;overflow-x:hidden;}
+.login-shell{max-width:100%;}
+.login-mobile-logo img,.welcome-promo-image{max-width:100%;}
+@media(max-width:760px){
+  html,body{width:100%;max-width:100%;overflow-x:hidden;}
+  .login-page{width:100%;max-width:100vw;min-height:100svh;padding:8px;overflow-x:hidden;overflow-y:auto;box-sizing:border-box;}
+  .login-shell{width:100%;max-width:100%;min-width:0;grid-template-columns:1fr;overflow:hidden;}
+  .login-form-side,.login-welcome-side{width:100%;min-width:0;box-sizing:border-box;}
+  .login-form-inner{width:100%;max-width:100%;min-width:0;}
+  .login-mobile-logo img{width:min(280px,88vw);max-width:100%;height:auto;}
+  .login-heading h1{font-size:clamp(34px,9vw,46px);}
+  .login-heading p{font-size:17px;}
+  .login-field-modern input{width:100%;max-width:100%;font-size:17px;}
+  .remember-option-modern,.forgot-link-modern{font-size:14px;}
+  .login-submit-modern{width:100%;max-width:100%;font-size:16px;}
+  .welcome-promo-image{display:block;width:100%;max-width:100%;height:auto;aspect-ratio:730/900;object-fit:cover;}
+}
+@media(max-width:390px){
+  .login-page{padding:6px;}
+  .login-form-side{padding-left:16px!important;padding-right:16px!important;}
+  .login-heading h1{font-size:32px;}
+  .login-heading p{font-size:15px;}
+}
+
+
+/* V67.53 — Mobile login redesign: compact, balanced and app-like */
+@media (max-width:760px){
+  html,body{
+    background:#fff;
+  }
+
+  .login-page{
+    padding:0;
+    min-height:100svh;
+    background:#fff;
+    place-items:start center;
+  }
+
+  .login-shell{
+    width:100%;
+    max-width:560px;
+    min-height:100svh;
+    border-radius:0;
+    background:#fff;
+    box-shadow:none;
+  }
+
+  .login-form-side{
+    padding:18px 18px 20px;
+  }
+
+  .login-form-inner{
+    width:100%;
+    max-width:430px;
+    margin:0 auto;
+  }
+
+  .login-mobile-logo{
+    margin:0 auto 10px;
+  }
+
+  .login-mobile-logo img{
+    width:min(215px,62vw);
+    max-height:82px;
+    object-fit:contain;
+  }
+
+  .login-heading{
+    margin-bottom:17px;
+  }
+
+  .login-heading h1{
+    font-size:32px;
+    line-height:1.08;
+    letter-spacing:-.8px;
+  }
+
+  .login-heading p{
+    margin-top:6px;
+    font-size:14px;
+    line-height:1.35;
+  }
+
+  .login-field-modern{
+    margin-bottom:11px;
+  }
+
+  .login-field-modern input{
+    height:56px;
+    padding-left:54px;
+    padding-right:14px;
+    border-radius:14px;
+    font-size:16px;
+  }
+
+  .login-field-icon{
+    left:17px;
+    width:22px;
+    height:22px;
+  }
+
+  .login-options-modern{
+    margin:6px 0 15px;
+    gap:8px;
+    min-height:30px;
+  }
+
+  .remember-option-modern{
+    gap:7px;
+    font-size:13px;
+    white-space:nowrap;
+  }
+
+  .remember-option-modern input{
+    width:18px;
+    height:18px;
+  }
+
+  .forgot-link-modern{
+    padding:4px 0;
+    font-size:13px;
+    white-space:nowrap;
+  }
+
+  .login-submit-modern{
+    height:56px;
+    border-radius:14px;
+    font-size:15px;
+    letter-spacing:.45px;
+  }
+
+  .login-form-inner .error,
+  .login-form-inner .notice{
+    font-size:12px;
+    margin-top:10px;
+  }
+
+  .login-welcome-side{
+    order:2;
+    width:100%;
+    height:170px;
+    min-height:170px;
+    padding:0;
+    background:#071944;
+  }
+
+  .welcome-promo-image{
+    width:100%;
+    height:170px;
+    min-height:170px;
+    aspect-ratio:auto;
+    object-fit:cover;
+    object-position:center 43%;
+  }
+}
+
+@media (max-width:390px){
+  .login-form-side{
+    padding:15px 15px 17px;
+  }
+
+  .login-mobile-logo{
+    margin-bottom:8px;
+  }
+
+  .login-mobile-logo img{
+    width:min(195px,60vw);
+    max-height:74px;
+  }
+
+  .login-heading{
+    margin-bottom:14px;
+  }
+
+  .login-heading h1{
+    font-size:30px;
+  }
+
+  .login-heading p{
+    font-size:13.5px;
+  }
+
+  .login-field-modern input{
+    height:54px;
+    font-size:15.5px;
+  }
+
+  .login-field-icon{
+    left:16px;
+    width:21px;
+    height:21px;
+  }
+
+  .remember-option-modern,
+  .forgot-link-modern{
+    font-size:12.5px;
+  }
+
+  .login-submit-modern{
+    height:54px;
+    font-size:14.5px;
+  }
+
+  .login-welcome-side,
+  .welcome-promo-image{
+    height:155px;
+    min-height:155px;
+  }
+}
+
+
+/* V67.54 — Clean SBI login branding for mobile */
+@media (max-width:760px){
+  .login-mobile-logo{
+    display:block;
+    margin:0 auto 12px;
+    text-align:center;
+  }
+  .login-mobile-logo img{
+    display:block;
+    width:min(230px,68vw);
+    height:auto;
+    max-height:none;
+    object-fit:contain;
+    margin:0 auto;
+  }
+}
+@media (max-width:390px){
+  .login-mobile-logo{margin-bottom:10px;}
+  .login-mobile-logo img{width:min(215px,66vw);}
+}
+
+
+/* V67.55 — Login logo: embedded asset, reliable on GitHub Pages/mobile */
+@media (max-width:760px){
+  .login-mobile-logo{width:100%;overflow:visible;}
+  .login-mobile-logo img{display:block!important;width:min(230px,68vw)!important;height:auto!important;max-width:100%!important;margin:0 auto!important;object-fit:contain!important;}
+}
+@media (max-width:390px){
+  .login-mobile-logo img{width:min(215px,66vw)!important;}
+}
+
+
+/* V67.57 — Restore site scrolling; keep only the login viewport locked */
+@media (max-width:760px){
+  html, body{
+    width:100%;
+    min-height:100%;
+    height:auto;
+    overflow-x:hidden !important;
+    overflow-y:auto !important;
+  }
+
+  .login-page{
+    width:100%;
+    height:100svh;
+    min-height:100svh;
+    max-height:100svh;
+    padding:0;
+    margin:0;
+    overflow:hidden !important;
+    display:grid;
+    place-items:stretch;
+    box-sizing:border-box;
+  }
+
+  .login-shell{
+    width:100%;
+    height:100svh;
+    min-height:0;
+    max-height:100svh;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    border-radius:0;
+    box-sizing:border-box;
+  }
+
+  .login-form-side{
+    flex:0 0 auto;
+    width:100%;
+    padding:clamp(8px,1.8svh,16px) 16px clamp(8px,1.5svh,14px);
+    box-sizing:border-box;
+  }
+
+  .login-form-inner{
+    width:100%;
+    max-width:430px;
+    margin:0 auto;
+  }
+
+  .login-mobile-logo{
+    margin:0 auto clamp(4px,0.8svh,8px) !important;
+    height:clamp(52px,9svh,72px);
+    display:flex !important;
+    align-items:center;
+    justify-content:center;
+  }
+
+  .login-mobile-logo img{
+    width:min(190px,58vw) !important;
+    max-height:clamp(52px,9svh,72px) !important;
+    height:auto !important;
+    object-fit:contain !important;
+  }
+
+  .login-heading{
+    margin-bottom:clamp(8px,1.3svh,12px) !important;
+  }
+
+  .login-heading h1{
+    font-size:clamp(27px,7.5vw,32px) !important;
+    line-height:1.05;
+  }
+
+  .login-heading p{
+    margin-top:4px !important;
+    font-size:clamp(12px,3.4vw,14px) !important;
+    line-height:1.2;
+  }
+
+  .login-field-modern{
+    margin-bottom:clamp(7px,1.1svh,10px) !important;
+  }
+
+  .login-field-modern input{
+    height:clamp(48px,7.5svh,54px) !important;
+    font-size:clamp(15px,4vw,16px) !important;
+    border-radius:13px;
+  }
+
+  .login-field-icon{
+    width:21px !important;
+    height:21px !important;
+    left:16px !important;
+  }
+
+  .login-options-modern{
+    margin:clamp(4px,0.9svh,7px) 0 clamp(8px,1.2svh,12px) !important;
+    min-height:26px;
+    gap:8px;
+  }
+
+  .remember-option-modern,
+  .forgot-link-modern{
+    font-size:clamp(12px,3.5vw,14px) !important;
+  }
+
+  .remember-option-modern input{
+    width:18px;
+    height:18px;
+  }
+
+  .login-submit-modern{
+    width:100%;
+    height:clamp(50px,7.5svh,56px) !important;
+    border-radius:14px;
+    font-size:clamp(14px,3.8vw,16px) !important;
+  }
+
+  .login-form-inner .error,
+  .login-form-inner .notice{
+    font-size:11px;
+    margin-top:5px;
+  }
+
+  .login-welcome-side{
+    order:2;
+    flex:1 1 auto;
+    width:100%;
+    min-height:0 !important;
+    height:auto !important;
+    padding:0;
+    overflow:hidden;
+  }
+
+  .welcome-promo-image{
+    display:block;
+    width:100%;
+    height:100% !important;
+    min-height:0 !important;
+    max-height:none !important;
+    object-fit:cover;
+    object-position:center center;
+  }
+}
+
+@media (max-width:390px), (max-height:700px) and (max-width:760px){
+  .login-form-side{
+    padding-top:6px;
+    padding-bottom:7px;
+  }
+  .login-mobile-logo{
+    height:clamp(46px,8svh,62px);
+    margin-bottom:3px !important;
+  }
+  .login-mobile-logo img{
+    width:min(175px,54vw) !important;
+    max-height:62px !important;
+  }
+  .login-heading{
+    margin-bottom:7px !important;
+  }
+  .login-heading h1{
+    font-size:28px !important;
+  }
+  .login-heading p{
+    font-size:12.5px !important;
+  }
+  .login-field-modern{
+    margin-bottom:6px !important;
+  }
+  .login-field-modern input{
+    height:47px !important;
+  }
+  .login-options-modern{
+    margin-top:3px !important;
+    margin-bottom:7px !important;
+  }
+  .login-submit-modern{
+    height:49px !important;
+  }
+}
+
+
+/* V67.57 — Login-only scroll lock (do not lock the rest of the site) */
+@media (max-width:760px){
+  .login-page{
+    height:100svh !important;
+    min-height:100svh !important;
+    max-height:100svh !important;
+    overflow:hidden !important;
+  }
+  .login-shell{
+    height:100svh !important;
+    min-height:0 !important;
+    max-height:100svh !important;
+    overflow:hidden !important;
+  }
 }

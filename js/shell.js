@@ -21,20 +21,21 @@ function menuHTML(){
     ${group('parc','Parc & stock',
       link('chariots.html','Tous les chariots','<path d="M3 16l2-7h10l5 4v3"/><path d="M5 16h14"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/><path d="M15 9V5h3v5"/>')+
       link('stock.html','Chariots en stock','<path d="M4 7h16v13H4z"/><path d="M8 7V4h8v3M8 11h8M8 15h5"/>')+
-      link('nouveau-chariot.html','Nouveau chariot','<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>'))}
+      link('nouveau-chariot.html','Nouveau chariot','<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>','admin-only-nav hidden'))}
     ${group('commercial','Commercial & production',
       link('affectation.html','Affectation commerciale','<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M16 11h6"/>')+
-      link('modification-production.html','Modification production','<path d="M4 7h16v10H4z"/><path d="M8 17v3M16 17v3M7 4h10M9 8l2 2 4-4"/>'))}
-    ${group('sav','SAV & retours',
-      link('retours-clients.html','Pannes & retours clients','<path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/>'))}
+      link('modification-production.html','Modification production','<path d="M4 7h16v10H4z"/><path d="M8 17v3M16 17v3M7 4h10M9 8l2 2 4-4"/>','admin-only-nav hidden'))}
     ${group('livraisons','Livraisons',
       link('preparation-livraison.html','Préparation livraison','<path d="M3 5h11v11H3z"/><path d="M14 9h4l3 3v4h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/>')+
       link('chariots-prevus-livraison.html','Chariots prévus livraison','<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M7 2v4M17 2v4M3 9h18"/><path d="M8 13h3M8 17h5"/>')+
       link('planning-livraisons.html','Planning des livraisons','<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M7 2v4M17 2v4M3 9h18"/><path d="M8 13h2M12 13h2M16 13h0M8 17h2M12 17h2"/>')+
       link('livres.html','Chariots livrés','<path d="M4 5h12v14H4z"/><path d="M8 8h5M8 12h5M8 16h3"/><path d="M16 8h4v11h-4"/>'))}
+    ${group('sav','SAV & retours',
+      link('retours-clients.html','Pannes & retours clients','<path d="M3 12h4l3 8 4-16 3 8h4"/><circle cx="12" cy="12" r="10"/>'))}
     ${group('administration','Administration',
       link('gestion.html','Gestion utilisateurs','<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-5 6-5s6 1.7 6 5"/><path d="M17 11a3 3 0 1 0 0-6M17 15c2.4 0 4 1.5 4 4"/>','admin-only-nav hidden')+
-      link('licence.html','Paramètres','<path d="M12 3l2.2 1.5 2.7-.1.8 2.6 2.2 1.6-1 2.5.5 2.7-2.5 1.1-.9 2.5-2.7-.2L12 21l-2.3-1.6-2.7.2-.9-2.5-2.5-1.1.5-2.7-1-2.5L5.3 8.6l.8-2.6 2.7.1L12 3z"/><circle cx="12" cy="12" r="3"/>'))}
+      link('licence.html','Paramètres','<path d="M12 3l2.2 1.5 2.7-.1.8 2.6 2.2 1.6-1 2.5.5 2.7-2.5 1.1-.9 2.5-2.7-.2L12 21l-2.3-1.6-2.7.2-.9-2.5-2.5-1.1.5-2.7-1-2.5L5.3 8.6l.8-2.6 2.7.1L12 3z"/><circle cx="12" cy="12" r="3"/>','admin-only-nav hidden')+
+      link('profile.html','Mon profil','<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.2 3.6-7 8-7s8 2.8 8 7"/>'))}
     <div class="nav-separator"></div>
     ${link('#','Déconnexion','<path d="M9 5H4v14h5M13 8l4 4-4 4M17 12H8"/>','logout-link')}
   </div>`;
@@ -126,7 +127,7 @@ function initSiteGlobalSearch(){
   const header=document.querySelector('header.top');
   if(!header||header.querySelector('.sbi-global-searchbar'))return;
   const form=document.createElement('form');form.className='sbi-global-searchbar';form.setAttribute('role','search');form.setAttribute('aria-label','Recherche globale dans le site');
-  form.innerHTML='<input id="siteGlobalSearchInput" type="search" autocomplete="off" placeholder="Recherche globale : châssis, client, moteur..." aria-label="Rechercher dans tout le site"><button class="sbi-global-submit" type="submit" aria-label="Lancer la recherche"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></svg></button><button class="sbi-global-date-btn" type="button" title="Rechercher par date" aria-label="Recherche par date"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M8 14h3M8 17h6"/></svg></button>';
+  form.innerHTML='<input id="siteGlobalSearchInput" type="search" autocomplete="off" placeholder="Recherche globale : châssis, série, client, moteur..." aria-label="Rechercher dans tout le site"><button class="sbi-global-submit" type="submit" aria-label="Lancer la recherche"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></svg></button><button class="sbi-global-date-btn" type="button" title="Rechercher par date" aria-label="Recherche par date"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M8 14h3M8 17h6"/></svg></button>';
   form.addEventListener('submit',e=>{e.preventDefault();goToGlobalSearch(form.querySelector('input')?.value||'')});
   form.querySelector('.sbi-global-date-btn')?.addEventListener('click',()=>openGlobalDateSearch());
   const avatar=header.querySelector('.avatar');
@@ -146,7 +147,14 @@ document.addEventListener('DOMContentLoaded',()=>{
         <nav class="dash-nav" data-nav aria-label="Navigation principale"></nav>`;
     }
   });
-  document.querySelectorAll('[data-nav]').forEach(x=>x.innerHTML=menuHTML());
+  document.querySelectorAll('[data-nav]').forEach(x=>{
+    x.innerHTML=menuHTML();
+    // Admin-only links must be available in the shared navigation on every page,
+    // not only through dashboard quick actions. The final role check still lives
+    // in app.js; this simply syncs the freshly-rendered menu as soon as the
+    // shared shell is mounted.
+    if(typeof isAdmin==='function') x.querySelectorAll('.admin-only-nav').forEach(el=>el.classList.toggle('hidden',!isAdmin()));
+  });
   wireNavGroups();
   initSiteGlobalSearch();
   document.querySelectorAll('.menu-btn').forEach(btn=>{btn.setAttribute('aria-expanded','false');btn.setAttribute('aria-controls','mobileMenu');});
@@ -156,6 +164,25 @@ document.addEventListener('DOMContentLoaded',()=>{
     if(close) close.addEventListener('click',(e)=>{e.preventDefault();e.stopPropagation();closeMobileMenu();},{passive:false});
     ov.querySelectorAll('.nav a').forEach(a=>{
       a.addEventListener('click',handleMobileNavClick);
+    });
+  });
+  // The hamburger menu renders Déconnexion as an anchor with href="#".
+  // Wire it explicitly so both desktop and mobile navigation use the same
+  // real logout flow as the user dropdown.
+  document.querySelectorAll('.logout-link').forEach(a=>{
+    if(a.dataset.logoutWired==='1')return;
+    a.dataset.logoutWired='1';
+    a.addEventListener('click',async e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      a.classList.add('tap-active');
+      try{
+        closeMobileMenu();
+        if(typeof logout==='function') await logout();
+        else location.href='index.html';
+      }catch(err){
+        location.href='index.html';
+      }
     });
   });
   document.querySelectorAll('.overlay').forEach((ov)=>{
@@ -178,7 +205,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.querySelectorAll('.avatar').forEach(el=>{
     const wrap=document.createElement('div');
     wrap.className='user-menu-wrap';
-    wrap.innerHTML=`<button class="user-menu-button" type="button" onclick="toggleUserMenu();event.stopPropagation()" aria-label="Menu utilisateur"><span class="user-circle" id="userTopAvatar">U</span><span class="user-menu-name"><b id="userTopName">Utilisateur</b><small id="userTopRole">Utilisateur</small></span><span class="user-menu-chevron">⌄</span></button><div id="userMenu" class="user-menu hidden"><a href="profile.html">👤&nbsp; Profil</a><a id="userMenuAdmin" class="hidden" href="gestion.html">👥&nbsp; Gestion utilisateurs</a><button type="button" onclick="logout()">↪&nbsp; Déconnexion</button></div>`;
+    wrap.innerHTML=`<button class="user-menu-button" type="button" onclick="toggleUserMenu();event.stopPropagation()" aria-label="Menu utilisateur"><span class="user-circle" id="userTopAvatar">U</span><span class="user-menu-name"><b id="userTopName">Utilisateur</b><small id="userTopRole">Utilisateur</small></span><span class="user-menu-chevron">⌄</span></button><div id="userMenu" class="user-menu hidden"><a href="profile.html">👤&nbsp; Mon profil</a><a id="userMenuAdmin" class="hidden" href="gestion.html">👥&nbsp; Gestion utilisateurs</a><button type="button" onclick="logout()">↪&nbsp; Déconnexion</button></div>`;
     el.replaceWith(wrap);
   });
   nav();

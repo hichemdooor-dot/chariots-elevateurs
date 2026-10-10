@@ -1,11 +1,35 @@
 const SUPABASE_URL="https://hkakedonludcqjgjzkei.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_AQWeYHI3Xli_1iBKVr9EPg_8L8PR-Hc";
+const SBI_AUTH_STORAGE_KEY='sbi-supabase-auth';
+const SBI_REMEMBER_KEY='sbi-remember-login';
+function sbiInitialRememberPreference(){
+  try{
+    const saved=localStorage.getItem(SBI_REMEMBER_KEY);
+    if(saved!==null)return saved==='true';
+    // Preserve an existing installation's persistent session once, then honor the new control.
+    const legacySession=!!localStorage.getItem(SBI_AUTH_STORAGE_KEY);
+    localStorage.setItem(SBI_REMEMBER_KEY,legacySession?'true':'false');
+    return legacySession;
+  }catch(_){return true}
+}
+let SBI_REMEMBER_LOGIN=sbiInitialRememberPreference();
+const sbiAuthStorage={
+  getItem(key){try{return (SBI_REMEMBER_LOGIN?localStorage:sessionStorage).getItem(key)}catch(_){return null}},
+  setItem(key,value){
+    const preferred=SBI_REMEMBER_LOGIN?localStorage:sessionStorage;
+    const alternate=SBI_REMEMBER_LOGIN?sessionStorage:localStorage;
+    preferred.setItem(key,value);
+    try{alternate.removeItem(key)}catch(_){}
+  },
+  removeItem(key){try{localStorage.removeItem(key)}catch(_){}try{sessionStorage.removeItem(key)}catch(_){}}
+};
 const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{
   auth:{
     persistSession:true,
     autoRefreshToken:true,
     detectSessionInUrl:true,
-    storageKey:'sbi-supabase-auth'
+    storageKey:SBI_AUTH_STORAGE_KEY,
+    storage:sbiAuthStorage
   }
 });
 const ADMIN_EMAIL="HICHEMDOOOR@GMAIL.COM",LICENSE_COMPANY="SBI";
@@ -65,26 +89,140 @@ async function enforceMaintenance(){
 let CHARIOTS=[],currentUser=null,current=null,editingQrId=null,licenseValid=false,DELIVERY_PLANS=[];
 const DELIVERY_PLAN_KEY='sbi_delivery_plans_v1',DELIVERY_PLAN_TYPES=['Planification livraison','Annulation planification livraison'];
 
-// Real-time synchronization layer. Pages can subscribe to database changes while
-// keeping their existing polling fallback. If Realtime is not enabled in Supabase,
-// the subscription fails gracefully and the normal refresh logic continues.
+// Shared live synchronization. Realtime handles immediate changes; a small
+// snapshot poll is the fallback when the Supabase publication is not configured.
 let SBI_REALTIME_CHANNELS=[];
+let SBI_GLOBAL_REALTIME_STARTED=false;
+let SBI_GLOBAL_POLL_TIMER=null;
+let SBI_GLOBAL_POLL_BUSY=false;
+let SBI_GLOBAL_FINGERPRINT=null;
+let SBI_GLOBAL_RELOAD_TIMER=null;
+let SBI_GLOBAL_RELOAD_PENDING=false;
+let SBI_GLOBAL_FORM_SUBMIT_UNTIL=0;
+let SBI_GLOBAL_LAST_REFRESH_REQUEST=0;
+let SBI_GLOBAL_POLL_WARNING_SHOWN=false;
+
+function sbiHasFocusedEditor(){
+  const active=document.activeElement;
+  if(active&&(['INPUT','TEXTAREA','SELECT'].includes(active.tagName)||active.isContentEditable))return true;
+  return !!document.querySelector('form:focus-within input,form:focus-within textarea,form:focus-within select,form:focus-within [contenteditable="true"]');
+}
+function sbiRealtimeNotice(message){
+  let box=document.getElementById('sbiRealtimeToast');
+  if(!box){box=document.createElement('div');box.id='sbiRealtimeToast';box.className='card-action-toast';box.setAttribute('role','status');document.body.appendChild(box)}
+  box.textContent=message;box.classList.add('show');
+  clearTimeout(window.__sbiRealtimeToastTimer);
+  window.__sbiRealtimeToastTimer=setTimeout(()=>box.classList.remove('show'),6000);
+}
+function sbiRunPendingRefresh(){
+  if(!SBI_GLOBAL_RELOAD_PENDING||document.visibilityState==='hidden'||sbiHasFocusedEditor())return;
+  const wait=Math.max(0,SBI_GLOBAL_FORM_SUBMIT_UNTIL-Date.now());
+  if(wait){clearTimeout(SBI_GLOBAL_RELOAD_TIMER);SBI_GLOBAL_RELOAD_TIMER=setTimeout(sbiRunPendingRefresh,Math.min(wait+250,2500));return;}
+  SBI_GLOBAL_RELOAD_PENDING=false;
+  clearTimeout(SBI_GLOBAL_RELOAD_TIMER);
+  SBI_GLOBAL_RELOAD_TIMER=setTimeout(()=>{if(document.visibilityState==='visible'&&!sbiHasFocusedEditor())location.reload()},900);
+}
+function sbiRequestAutoRefresh(source='realtime'){
+  if(document.visibilityState==='hidden'){SBI_GLOBAL_RELOAD_PENDING=true;return;}
+  const now=Date.now();
+  if(now-SBI_GLOBAL_LAST_REFRESH_REQUEST<1800)return;
+  SBI_GLOBAL_LAST_REFRESH_REQUEST=now;
+  if(sbiHasFocusedEditor()){
+    SBI_GLOBAL_RELOAD_PENDING=true;
+    sbiRealtimeNotice('Des données ont changé sur le serveur. La page sera actualisée après votre saisie.');
+    return;
+  }
+  clearTimeout(SBI_GLOBAL_RELOAD_TIMER);
+  SBI_GLOBAL_RELOAD_TIMER=setTimeout(()=>{if(document.visibilityState==='visible'&&!sbiHasFocusedEditor())location.reload()},source==='poll'?350:900);
+}
+document.addEventListener('focusout',()=>setTimeout(sbiRunPendingRefresh,350),true);
+document.addEventListener('submit',()=>{SBI_GLOBAL_FORM_SUBMIT_UNTIL=Date.now()+6000},true);
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'){
+    sbiRunPendingRefresh();
+    if(SBI_GLOBAL_REALTIME_STARTED)pollSbiGlobalSnapshot();
+  }
+});
+
 function startSbiRealtime(onChange, tables=['chariots','maintenance']){
   if(!supabaseClient?.channel||typeof onChange!=='function')return null;
   const channelName='sbi-live-'+Date.now()+'-'+Math.random().toString(36).slice(2,7);
   let channel=supabaseClient.channel(channelName);
   tables.forEach(table=>{
     channel=channel.on('postgres_changes',{event:'*',schema:'public',table},payload=>{
-      try{onChange({table,event:payload?.eventType||'*',payload})}catch(e){console.warn('SBI realtime callback',e)}
+      const event={table,event:payload?.eventType||'*',payload};
+      try{
+        const result=onChange(event);
+        Promise.resolve(result).then(()=>{
+          window.__SBI_LAST_REALTIME_HANDLED_AT=Date.now();
+          window.__SBI_LAST_REALTIME_EVENT={table,event:event.event};
+          // Keep the polling fallback baseline aligned after a page-specific
+          // refresh, so it does not cause a second, unnecessary page reload.
+          if(SBI_GLOBAL_REALTIME_STARTED)readSbiGlobalFingerprint().then(fp=>{SBI_GLOBAL_FINGERPRINT=fp}).catch(()=>{});
+        }).catch(e=>console.warn('SBI realtime callback',e));
+      }catch(e){console.warn('SBI realtime callback',e)}
     });
   });
   channel.subscribe(status=>{
     if(status==='SUBSCRIBED')console.info('SBI Realtime connecté');
-    if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')console.warn('SBI Realtime indisponible, actualisation de secours conservée.');
+    if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')console.warn('SBI Realtime indisponible; actualisation périodique de secours active. Vérifiez la publication supabase_realtime et les droits SELECT/RLS.');
   });
   SBI_REALTIME_CHANNELS.push(channel);
   return channel;
 }
+
+async function readSbiGlobalFingerprint(){
+  const [fleetResult,historyResult]=await Promise.all([
+    supabaseClient.from('chariots').select('*').order('id',{ascending:false}),
+    supabaseClient.from('maintenance').select('id,qr_id,date,technicien,type,travaux,created_at,created_by').order('created_at',{ascending:false}).limit(1000)
+  ]);
+  if(fleetResult?.error)throw fleetResult.error;
+  if(historyResult?.error)throw historyResult.error;
+  const stableRows=rows=>(Array.isArray(rows)?rows:[]).map(row=>JSON.stringify(row)).sort();
+  return JSON.stringify({chariots:stableRows(fleetResult?.data),maintenance:stableRows(historyResult?.data)});
+}
+async function pollSbiGlobalSnapshot(){
+  if(SBI_GLOBAL_POLL_BUSY||document.visibilityState==='hidden'||!currentUser)return;
+  SBI_GLOBAL_POLL_BUSY=true;
+  try{
+    const fingerprint=await readSbiGlobalFingerprint();
+    if(SBI_GLOBAL_FINGERPRINT===null){SBI_GLOBAL_FINGERPRINT=fingerprint;}
+    else if(fingerprint!==SBI_GLOBAL_FINGERPRINT){
+      SBI_GLOBAL_FINGERPRINT=fingerprint;
+      sbiRequestAutoRefresh('poll');
+    }
+    SBI_GLOBAL_POLL_WARNING_SHOWN=false;
+  }catch(e){
+    if(!SBI_GLOBAL_POLL_WARNING_SHOWN){console.warn('SBI actualisation de secours indisponible. Vérifiez les droits de lecture Supabase.',e);SBI_GLOBAL_POLL_WARNING_SHOWN=true;}
+  }finally{SBI_GLOBAL_POLL_BUSY=false;}
+}
+function startSbiGlobalRealtime(){
+  if(SBI_GLOBAL_REALTIME_STARTED||!supabaseClient?.channel)return;
+  SBI_GLOBAL_REALTIME_STARTED=true;
+  let channel=supabaseClient.channel('sbi-global-live-'+Math.random().toString(36).slice(2,10));
+  ['chariots','maintenance'].forEach(table=>{
+    channel=channel.on('postgres_changes',{event:'*',schema:'public',table},payload=>{
+      if(document.visibilityState==='hidden'){SBI_GLOBAL_RELOAD_PENDING=true;return;}
+      const eventAt=Date.now();
+      setTimeout(()=>{
+        if(document.visibilityState==='hidden'){SBI_GLOBAL_RELOAD_PENDING=true;return;}
+        // A page-local listener may have refreshed its own content already.
+        if(Number(window.__SBI_LAST_REALTIME_HANDLED_AT||0)>=eventAt-100)return;
+        sbiRequestAutoRefresh('realtime');
+      },1400);
+    });
+  });
+  channel.subscribe(status=>{
+    if(status==='SUBSCRIBED')console.info('SBI Realtime global connecté');
+    if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')console.warn('SBI Realtime global indisponible; contrôle périodique de secours actif.');
+  });
+  window.__SBI_GLOBAL_REALTIME_CHANNEL=channel;
+  // Establish a baseline, then check every 20 seconds if Realtime is unavailable.
+  pollSbiGlobalSnapshot();
+  if(!SBI_GLOBAL_POLL_TIMER)SBI_GLOBAL_POLL_TIMER=setInterval(pollSbiGlobalSnapshot,20000);
+}
+function startSbiGlobalSync(){startSbiGlobalRealtime();}
+
 function stopSbiRealtime(channel){
   if(!channel||!supabaseClient?.removeChannel)return;
   try{supabaseClient.removeChannel(channel)}catch(e){}
@@ -217,6 +355,11 @@ async function getSession(){
     }catch(roleErr){
       console.warn('Lecture du rôle utilisateur impossible, session conservée.',roleErr);
     }
+    // Keep the shared navigation in sync even when a page-specific initializer
+    // exits early or encounters an unrelated rendering error.
+    try{
+      document.querySelectorAll('.admin-only-nav').forEach(el=>el.classList.toggle('hidden',!isAdmin()));
+    }catch(_){ }
     return !!currentUser;
   }catch(e){
     console.warn('Restauration de session impossible.',e);
@@ -224,7 +367,7 @@ async function getSession(){
     return false;
   }
 }
-async function session(){if(!(await enforceMaintenance()))return false;if(!(await getSession())){location.href='index.html';return false}verifyLicense();return true}
+async function session(){if(!(await enforceMaintenance()))return false;if(!(await getSession())){location.href='index.html';return false}verifyLicense();startSbiGlobalSync();return true}
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&$('#email')&&$('#password')&&document.activeElement!==document.body){e.preventDefault();login()}});
 async function logUserConnection(action){
   try{
@@ -242,7 +385,55 @@ async function logUserConnection(action){
   }catch(e){console.warn('Journal connexion non enregistré',e)}
 }
 
-async function login(){const email=$('#email')?.value.trim(),password=$('#password')?.value,msg=$('#msg');if(!email||!password){if(msg)msg.textContent='Email et mot de passe requis.';return}if(msg)msg.textContent='Connexion...';try{const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});if(error)throw error;const {data:s,error:se}=await supabaseClient.rpc('get_my_sbi_status');if(se)throw se;if(s?.disabled){await supabaseClient.auth.signOut();throw new Error('Accès bloqué : votre compte est désactivé.')}currentUser=data.user;currentUser.user_metadata=currentUser.user_metadata||{};currentUser.user_metadata.sbi_role=s?.role||'user';await logUserConnection('Connexion');location.href='dashboard.html'}catch(e){if(msg)msg.textContent=friendlySupabaseError(e)}}
+function setSbiRememberMode(remember){
+  SBI_REMEMBER_LOGIN=!!remember;
+  try{localStorage.setItem(SBI_REMEMBER_KEY,SBI_REMEMBER_LOGIN?'true':'false')}catch(_){ }
+  // Avoid silently reusing a token from the other storage mode.
+  try{(SBI_REMEMBER_LOGIN?sessionStorage:localStorage).removeItem(SBI_AUTH_STORAGE_KEY)}catch(_){ }
+}
+
+
+
+function initLoginControls(){const remember=$('#rememberMe');if(remember)remember.checked=SBI_REMEMBER_LOGIN;}
+async function login(){
+  const email=$('#email')?.value.trim(),password=$('#password')?.value,msg=$('#msg');
+  if(!email||!password){if(msg)msg.textContent='Email et mot de passe requis.';return}
+  setSbiRememberMode($('#rememberMe')?.checked);
+  if(msg)msg.textContent='Connexion...';
+  const btn=document.querySelector('#loginPanel .btn');if(btn)btn.disabled=true;
+  try{
+    const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});if(error)throw error;
+    const {data:s,error:se}=await supabaseClient.rpc('get_my_sbi_status');if(se)throw se;
+    if(s?.disabled){await supabaseClient.auth.signOut();throw new Error('Accès bloqué : votre compte est désactivé.')}
+    currentUser=data.user;currentUser.user_metadata=currentUser.user_metadata||{};currentUser.user_metadata.sbi_role=s?.role||'user';
+    await logUserConnection('Connexion');location.href='dashboard.html';
+  }catch(e){if(msg)msg.textContent=friendlySupabaseError(e)}
+  finally{if(btn)btn.disabled=false}
+}
+async function forgotPassword(){
+  const email=$('#email')?.value.trim(),msg=$('#msg'),btn=$('#forgotPasswordBtn');
+  if(!email){if(msg)msg.textContent='Saisissez votre adresse email pour envoyer une demande à l’administrateur.';$('#email')?.focus();return}
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){if(msg)msg.textContent='Veuillez saisir une adresse email valide.';$('#email')?.focus();return}
+  if(btn)btn.disabled=true;
+  if(msg){msg.className='error';msg.textContent='Envoi de la demande à l’administrateur...'}
+  try{
+    // Password changes are handled by the administrator. Use a dedicated
+    // SECURITY DEFINER RPC so the public login page never needs direct
+    // anonymous INSERT permission on the maintenance table.
+    const {error}=await supabaseClient.rpc('submit_password_change_request',{p_email:email});
+    if(error)throw error;
+    if(msg){msg.className='notice';msg.textContent='Votre demande a été envoyée à l’administrateur. Elle apparaîtra dans « Demandes de changement de mot de passe ». '}
+  }catch(e){
+    if(msg){
+      msg.className='notice red';
+      const raw=String(e?.message||e||'');
+      msg.textContent=/submit_password_change_request|function.*does not exist/i.test(raw)
+        ? 'La demande n’est pas encore activée côté Supabase. Exécutez le fichier SUPABASE_PASSWORD_CHANGE_REQUEST_RPC.sql une seule fois dans Supabase → SQL Editor.'
+        : 'Envoi impossible : '+friendlySupabaseError(e);
+    }
+  }finally{if(btn)btn.disabled=false}
+}
+
 async function logout(){try{if(currentUser)await logUserConnection('Déconnexion')}catch(e){}await supabaseClient.auth.signOut();location.href='index.html'}
 async function restoreLoginSession(){
   await syncMaintenanceConfig();
@@ -316,9 +507,152 @@ async function loadChariots(){
   }
 }
 
+
+
+// SBI V67.63 — reliable global Excel/PDF exports.
+// These functions are intentionally kept global because several pages call them
+// directly from inline onclick handlers (dashboard, chariots, export).
+function exportSafeText(value){
+  if(value===null||value===undefined)return '';
+  if(typeof value==='object'){
+    try{return JSON.stringify(value)}catch(_){return String(value)}
+  }
+  return String(value);
+}
+function exportMachineRows(){
+  const rows=Array.isArray(CHARIOTS)?CHARIOTS:[];
+  return rows.map((c,i)=>({
+    'QR ID':exportSafeText(c.qr_id),
+    'N° châssis':exportSafeText(c.chassis),
+    'N° de série':exportSafeText(c.serial_number),
+    'Couleur':exportSafeText(c.color),
+    'Moteur':exportSafeText(c.engine),
+    'N° moteur':exportSafeText(c.engine_number),
+    'Capacité':exportSafeText(c.capacity),
+    'Hauteur de levage':exportSafeText(c.lifting_height),
+    'Type de mât':exportSafeText(c.mast_type),
+    'Dimension de fourche':exportSafeText(c.fork_dimension),
+    'Statut':exportSafeText(c.status),
+    'Stock':exportSafeText(c.stock),
+    'Client':exportSafeText(c.client),
+    'Date de livraison':exportSafeText(c.delivery_date),
+    'Observations':exportSafeText(c.observations),
+    'Créé le':exportSafeText(c.created_at),
+    'Modifié le':exportSafeText(c.updated_at)
+  }));
+}
+function exportDownloadBlob(blob,filename){
+  try{
+    const url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download=filename;a.style.display='none';
+    document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(url)},1000);
+  }catch(e){console.error('Téléchargement export impossible',e);alert('Le téléchargement du fichier a échoué.');}
+}
+function exportCsvFallback(rows){
+  const headers=Object.keys(rows[0]||{'N° châssis':''});
+  const esc=v=>'"'+exportSafeText(v).replace(/"/g,'""')+'"';
+  const csv='\uFEFF'+headers.map(esc).join(';')+'\\r\\n'+rows.map(r=>headers.map(h=>esc(r[h])).join(';')).join('\\r\\n');
+  exportDownloadBlob(new Blob([csv],{type:'text/csv;charset=utf-8'}),'SBI_chariots.csv');
+}
+async function ensureChariotsForExport(){
+  if(Array.isArray(CHARIOTS)&&CHARIOTS.length)return CHARIOTS;
+  try{return await loadChariots()}catch(e){
+    console.error('Chargement des chariots pour export impossible',e);
+    throw new Error('Les données des chariots ne sont pas disponibles.');
+  }
+}
+function exportExcelHtmlFallback(rows){
+  const headers=Object.keys(rows[0]||{});
+  const esc=v=>exportSafeText(v)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+  const stamp=new Date().toISOString().slice(0,10);
+  const html='<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta http-equiv="Content-Type" content="application/vnd.ms-excel; charset=utf-8"><title>SBI — Export Excel</title><style>body{font-family:Arial,sans-serif;font-size:10pt}table{border-collapse:collapse;width:100%}th,td{border:1px solid #999;padding:5px;vertical-align:top}th{background:#dbe8f7;font-weight:700}h1{font-size:16pt;margin:0 0 6px}p{color:#666;margin:0 0 10px}</style></head><body><h1>SBI — Liste des chariots élévateurs</h1><p>Exporté le '+esc(new Date().toLocaleString('fr-FR'))+' · '+rows.length+' chariot(s)</p><table><thead><tr>'+headers.map(h=>'<th>'+esc(h)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(r=>'<tr>'+headers.map(h=>'<td>'+esc(r[h])+'</td>').join('')+'</tr>').join('')+'</tbody></table></body></html>';
+  exportDownloadBlob(new Blob([html],{type:'application/vnd.ms-excel;charset=utf-8'}),'SBI_chariots_'+stamp+'.xls');
+}
+async function exportChariotsExcel(){
+  try{
+    await ensureChariotsForExport();
+    const rows=exportMachineRows();
+    if(!rows.length){alert('Aucun chariot à exporter.');return}
+    // Use a native Excel-compatible .xls export as the primary path.
+    // This does not depend on any CDN library and works reliably on GitHub Pages.
+    exportExcelHtmlFallback(rows);
+  }catch(e){
+    console.error('Export Excel',e);
+    try{
+      const rows=exportMachineRows();
+      if(rows.length)exportExcelHtmlFallback(rows);
+      else alert('Aucun chariot à exporter.');
+    }catch(_){
+      alert(e?.message||'Impossible d’exporter les chariots en Excel.');
+    }
+  }
+}
+async function exportChariotsPDF(){
+  try{
+    const machines=await ensureChariotsForExport();
+    const rows=exportMachineRows();
+    if(!rows.length){alert('Aucun chariot à exporter.');return}
+    const PDF=window.jspdf?.jsPDF;
+    if(PDF){
+      const doc=new PDF({orientation:'landscape',unit:'mm',format:'a4'});
+      const title='SBI — Liste des chariots élévateurs';
+      const date=new Date().toLocaleString('fr-FR');
+      doc.setFontSize(16);doc.text(title,14,14);
+      doc.setFontSize(8);doc.text('Exporté le '+date+' · '+machines.length+' chariot(s)',14,20);
+      const headers=Object.keys(rows[0]);
+      const body=rows.map(r=>headers.map(h=>exportSafeText(r[h])));
+      if(typeof doc.autoTable==='function'){
+        doc.autoTable({
+          head:[headers],body,startY:24,theme:'grid',
+          styles:{fontSize:6,cellPadding:1.4,overflow:'linebreak',valign:'middle'},
+          headStyles:{fontSize:6,fontStyle:'bold'},
+          margin:{left:8,right:8,top:24,bottom:10},
+          tableWidth:'auto'
+        });
+      }else{
+        // jsPDF loaded but the AutoTable plug-in was blocked.
+        let y=28;doc.setFontSize(7);const pageW=277;
+        headers.forEach((h,i)=>doc.text(h,8+(pageW/headers.length)*i,y,{maxWidth:pageW/headers.length-2}));
+        y+=5;
+        body.forEach(row=>{
+          if(y>190){doc.addPage();y=12}
+          row.forEach((v,i)=>doc.text(v,8+(pageW/headers.length)*i,y,{maxWidth:pageW/headers.length-2}));y+=4;
+        });
+      }
+      doc.save('SBI_chariots_'+new Date().toISOString().slice(0,10)+'.pdf');
+      return;
+    }
+    // Last-resort native browser print fallback when PDF libraries are unavailable.
+    const headers=Object.keys(rows[0]);
+    const escHtml=v=>exportSafeText(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    const w=window.open('','_blank','noopener,noreferrer,width=1200,height=800');
+    if(!w)throw new Error('La fenêtre d’impression a été bloquée par le navigateur.');
+    w.document.write('<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>SBI Export PDF</title><style>@page{size:A4 landscape;margin:10mm}body{font-family:Arial,sans-serif;font-size:9px}h1{font-size:18px;margin:0 0 4px}p{color:#666;margin:0 0 10px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #999;padding:3px;vertical-align:top}th{background:#eee}</style></head><body><h1>SBI — Liste des chariots élévateurs</h1><p>'+escHtml(new Date().toLocaleString('fr-FR'))+' · '+machines.length+' chariot(s)</p><table><thead><tr>'+headers.map(h=>'<th>'+escHtml(h)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(r=>'<tr>'+headers.map(h=>'<td>'+escHtml(r[h])+'</td>').join('')+'</tr>').join('')+'</tbody></table><script>window.onload=()=>setTimeout(()=>window.print(),250);</script></body></html>');
+    w.document.close();
+  }catch(e){
+    console.error('Export PDF',e);
+    alert(e?.message||'Impossible d’exporter les chariots en PDF.');
+  }
+}
+
 function getUserDisplayName(){return currentUser?.user_metadata?.full_name||currentUser?.user_metadata?.name||currentUser?.email?.split('@')[0]||'Utilisateur'}
 function getUserRoleLabel(){return isAdmin()?'Administrateur':'Utilisateur'}
-function renderConnectedUser(){const name=getUserDisplayName(),role=getUserRoleLabel();if($('#welcomeUser'))$('#welcomeUser').textContent=name;if($('#userTopName'))$('#userTopName').textContent=name;if($('#userTopRole'))$('#userTopRole').textContent=role;if($('#userTopAvatar'))$('#userTopAvatar').textContent=String(name).trim().charAt(0).toUpperCase()||'U';document.querySelectorAll('.admin-only-nav,.admin-only-presence').forEach(el=>el.classList.toggle('hidden',!isAdmin()));if(isAdmin()){$('#userMenuAdmin')?.classList.remove('hidden')}}
+function renderConnectedUser(){
+  const name=getUserDisplayName(),role=getUserRoleLabel(),admin=isAdmin();
+  if($('#welcomeUser'))$('#welcomeUser').textContent=name;
+  if($('#userTopName'))$('#userTopName').textContent=name;
+  if($('#userTopRole'))$('#userTopRole').textContent=role;
+  if($('#userTopAvatar'))$('#userTopAvatar').textContent=String(name).trim().charAt(0).toUpperCase()||'U';
+  document.querySelectorAll('.admin-only-nav,.admin-only-presence,.admin-only-action').forEach(el=>el.classList.toggle('hidden',!admin));
+  document.querySelectorAll('#userMenuAdmin').forEach(el=>el.classList.toggle('hidden',!admin));
+  // Regular users see only Mon profil inside Administration.
+  document.querySelectorAll('[data-nav-group="administration"]').forEach(group=>{
+    group.querySelectorAll('a[href="profile.html"]').forEach(el=>el.classList.remove('hidden'));
+    group.querySelectorAll('a[href="gestion.html"],a[href="licence.html"]').forEach(el=>el.classList.toggle('hidden',!admin));
+  });
+}
 function toggleUserMenu(){const m=$('#userMenu');if(m)m.classList.toggle('hidden')}
 document.addEventListener('click',e=>{const w=document.querySelector('.user-menu-wrap');if(w&&!w.contains(e.target))$('#userMenu')?.classList.add('hidden')});
 async function profilePage(){if(!await session())return;renderConnectedUser();if($('#profileName'))$('#profileName').textContent=getUserDisplayName();if($('#profileEmail'))$('#profileEmail').textContent=currentUser?.email||'—';if($('#profileRole'))$('#profileRole').textContent=getUserRoleLabel();}
@@ -384,7 +718,7 @@ async function resolvePasswordRequest(id){
 
 
 function statusClass(v){const s=normalizeStatus(v);return s==='en stock'?'status-stock':s==='livre'?'status-delivered':s.includes('reserve')?'status-reserved':s.includes('modification production')?'status-modification':s.includes('preparation')?'status-preparation':s.includes('pret a livrer')?'status-ready':s.includes('bloque')||s.includes('non conforme')?'status-blocked':s.includes('fabrication')?'status-fabrication':''}
-function isDelivered(c){return normalizeStatus(c.status)==='livre'||!!c.delivery_date}
+function isDelivered(c){return normalizeStatus(c?.status)==='livre'}
 const AUTO_WORKFLOW_FORWARD={
   'en fabrication':'En stock',
   'en stock':'Réservé',
@@ -394,6 +728,12 @@ const AUTO_WORKFLOW_FORWARD={
   'pret a livrer':'Livré'
 };
 function statusFromStock(stock,client=''){if(String(client||'').trim())return 'Réservé';return normalizeStatus(stock)==='fabrication'?'En fabrication':(String(stock||'').trim()?'En stock':'En fabrication');}
+function deliveryDateAfterStatusEdit(old,nextStatus,requestedDate){
+  // When an already-delivered forklift returns to an earlier workflow stage,
+  // clear its effective delivery date instead of retaining a stale delivery.
+  if(old&&normalizeStatus(old.status)==='livre'&&normalizeStatus(nextStatus)!=='livre')return null;
+  return String(requestedDate||'').trim()||String(old?.delivery_date||'').trim()||null;
+}
 function automaticStatusForChariot(old,p){
   if(!old)return statusFromStock(p.stock,p.client);
   const oldStatus=normalizeStatus(old.status),stock=normalizeStatus(p.stock),client=String(p.client||'').trim();
@@ -414,18 +754,66 @@ async function transitionChariotStatus(qrId,nextStatus,reason='',options={}){
   if(!isAdmin()&&['reserve','preparation livraison','pret a livrer'].includes(to)){alert('Cette action est réservée à l’administrateur.');return false}
   if(AUTO_WORKFLOW_FORWARD[from]!==nextStatus&&!(isAdmin()&&['livre','bloque / non conforme'].includes(to))){alert(`Transition non autorisée : ${c.status||'—'} → ${nextStatus}.`);return false}
   const now=new Date(),updatedAt=now.toISOString(),payload={status:nextStatus,updated_at:updatedAt};
+  // Workflow: dès qu'un chariot atteint Préparation livraison ou Prêt à livrer,
+  // son emplacement de stock devient automatiquement STOCK1.
+  if(to==='en fabrication'||to==='modification production')payload.stock='FABRICATION';
+  else if(to==='preparation livraison'||to==='pret a livrer')payload.stock='STOCK1';
   if(to==='livre')payload.delivery_date=String(options?.deliveryDate||'').trim()||localISODateGlobal(now);
+  else if(from==='livre'&&to!=='livre')payload.delivery_date=null;
   const {error}=await supabaseClient.from('chariots').update(payload).eq('qr_id',qrId);
   if(error){alert('Erreur : '+friendlySupabaseError(error));return false}
   try{await supabaseClient.from('maintenance').insert({qr_id:qrId,date:localDateISO(now),technicien:getUserDisplayName(),type:'Statut',travaux:reason||`Statut : ${c.status||'—'} → ${nextStatus}`,created_by:currentUser.id})}catch(e){console.warn('Historique de statut non enregistré',e)}
   Object.assign(c,payload);return true;
 }
+function setupAutomaticHeightMastField(){
+  const heightEl=document.querySelector('[name="lifting_height"]');
+  const mastEl=document.querySelector('[name="mast_type"]');
+  if(!heightEl||!mastEl||heightEl.dataset.mastRuleReady==='1')return;
+  heightEl.dataset.mastRuleReady='1';
+  const applySuggestion=()=>{
+    const h=normalizeHeightValue(heightEl.value);
+    const suggested=(h==='3m'||h==='4m')?'DUPLEX':(['4.3m','4.5m','6m'].includes(h)?'TRIPLEX':'');
+    // The rule provides a default suggestion, but the admin/user may override it manually.
+    // Only replace the value automatically when it is empty or was previously auto-filled.
+    if(suggested && (!String(mastEl.value||'').trim() || mastEl.dataset.autoMast==='1')){
+      mastEl.value=suggested;
+      mastEl.dataset.autoMast='1';
+    }else if(!h && (!String(mastEl.value||'').trim() || mastEl.dataset.autoMast==='1')){
+      mastEl.value='';
+      delete mastEl.dataset.autoMast;
+    }
+    mastEl.disabled=false;
+    mastEl.title=suggested
+      ? `Suggestion automatique : ${suggested}. Vous pouvez modifier le type de mât.`
+      : 'Vous pouvez choisir ou modifier le type de mât.';
+  };
+  const markManualAndKeep=()=>{
+    delete mastEl.dataset.autoMast;
+    mastEl.title='Type de mât modifié manuellement.';
+    updateSaveButtonState();
+  };
+  const normalizeHeight=()=>{
+    const v=String(heightEl.value||'').trim().toUpperCase();
+    if(['3M','4M','4.3M','4.5M','6M'].includes(v))heightEl.value=v;
+    applySuggestion();
+    updateSaveButtonState();
+  };
+  heightEl.addEventListener('change',normalizeHeight);
+  mastEl.addEventListener('change',markManualAndKeep);
+  applySuggestion();
+}
+function normalizeHeightValue(v){
+  return String(v||'').trim().toLowerCase().replace(/\s+/g,'');
+}
 function setupAutomaticStatusField(old){
   const display=document.getElementById('statusDisplay'),hidden=document.getElementById('statusAuto');if(!display||!hidden)return;
-  const stock=document.querySelector('[name="stock"]')?.value||'',client=document.querySelector('[name="client"]')?.value||'',value=String(old?.status||statusFromStock(stock,client));
+  const stockEl=document.querySelector('[name="stock"]'),clientEl=document.querySelector('[name="client"]'),stock=stockEl?.value||'',client=clientEl?.value||'',value=String(old?.status||statusFromStock(stock,client));
   display.value=value;hidden.value=value;
+  const syncStockForStatus=()=>{const st=normalizeStatus(display.value);if(st==='en fabrication'||st==='modification production'){if(stockEl)stockEl.value='FABRICATION';stockEl.dataset.forcedByStatus='1';}else if(st==='preparation livraison'||st==='pret a livrer'){if(stockEl)stockEl.value='STOCK1';stockEl.dataset.forcedByStatus='1';}else if(stockEl?.dataset.forcedByStatus==='1'){delete stockEl.dataset.forcedByStatus;}};
+  syncStockForStatus();
   if(!isAdmin()){display.disabled=true;display.title='Statut géré automatiquement par le workflow.';}
-  else{display.disabled=false;display.title='Admin : intervention manuelle possible.';display.addEventListener('change',()=>{hidden.value=display.value});}
+  else{display.disabled=false;display.title='Admin : intervention manuelle possible.';display.addEventListener('change',()=>{hidden.value=display.value;syncStockForStatus();});}
+  stockEl?.addEventListener('change',()=>{const st=normalizeStatus(display.value);if(st==='en fabrication'||st==='modification production')stockEl.value='FABRICATION';else if(st==='preparation livraison'||st==='pret a livrer')stockEl.value='STOCK1';});
 }
 function renderWorkflowAction(c,planned){
   const b=document.getElementById('workflowAction');if(!b)return;
@@ -532,7 +920,7 @@ function card(c,from=''){
     else if(st==='preparation livraison') action=`<button class="btn light card-action" type="button" data-card-action="ready" data-qr="${esc(id)}">Prêt à livrer</button>`;
     else if(st==='pret a livrer' && canDeliver) action=`<button class="btn delivered-action card-action" type="button" data-card-action="deliver" data-qr="${esc(id)}">Livrer</button>`;
   }
-  return `<div class="item interactive-card chariot-list-card" data-card-id="${esc(id)}"><a class="item-open-link" href="${href}" aria-label="Ouvrir le chariot ${esc(id)}"></a><div class="item-main"><div class="item-title chariot-list-id">${esc(id)}</div><div class="mobile-chariot-tech"><span><small>Châssis</small><strong>${esc(c.chassis||'—')}</strong></span><span><small>Moteur</small><strong>${esc(c.engine||'—')}</strong></span><span><small>Capacité</small><strong>${esc(fmtCapacity(c.capacity)||'—')}</strong></span></div><div class="meta chariot-desktop-meta">${esc(c.chassis||'—')} • ${esc(c.engine||'—')} • ${esc(fmtCapacity(c.capacity))}</div>${c.client?`<div class="client-line"><strong>Client :</strong> ${esc(c.client)}</div>`:''}<div class="mobile-chariot-client">${c.client?`<span><small>Client</small><strong>${esc(c.client)}</strong></span>`:'<span><small>Client</small><strong>—</strong></span>'}</div><div class="recent-time">${c.updated_at?'Mis à jour : '+new Date(c.updated_at).toLocaleString('fr-FR'):''}</div></div><span class="badge ${statusClass(c.status)} chariot-status-badge">${esc(c.status||c.stock||'—')}</span><div class="desktop-card-action">${action}</div><div class="mobile-chariot-workflow-wrap">${compactWorkflowHtml(c)}</div><div class="mobile-chariot-buttons"><a class="btn light" href="${href}">Voir la fiche</a>${action||'<span class="mobile-chariot-no-action">Aucune action</span>'}</div></div>`;
+  return `<div class="item interactive-card chariot-list-card" data-card-id="${esc(id)}"><a class="item-open-link" href="${href}" aria-label="Ouvrir le chariot ${esc(id)}"></a><div class="item-main"><div class="item-title chariot-list-id">${esc(id)}</div><div class="mobile-chariot-tech"><span><small>Châssis</small><strong>${esc(c.chassis||'—')}</strong></span><span><small>Moteur</small><strong>${esc(c.engine||'—')}</strong></span><span><small>Capacité</small><strong>${esc(fmtCapacity(c.capacity)||'—')}</strong></span></div><div class="meta chariot-desktop-meta">${esc(c.chassis||'—')} • ${esc(c.engine||'—')} • ${esc(fmtCapacity(c.capacity))}</div>${c.client?`<div class="client-line"><strong>Client :</strong> ${esc(c.client)}</div>`:''}<div class="mobile-chariot-client">${c.client?`<span><small>Client</small><strong>${esc(c.client)}</strong></span>`:'<span><small>Client</small><strong>—</strong></span>'}</div><div class="recent-time">${c.updated_at?'Mis à jour : '+new Date(c.updated_at).toLocaleString('fr-FR'):''}</div></div><span class="badge ${statusClass(c.status)} chariot-status-badge">${esc(c.status||c.stock||'—')}</span><div class="desktop-card-action">${action}</div><div class="mobile-chariot-workflow-wrap">${compactWorkflowHtml(c)}</div><div class="mobile-chariot-buttons"><a class="btn light mobile-fiche-popup-link" data-popup-qr="${esc(id)}" href="${href}">Voir la fiche</a>${action||'<span class="mobile-chariot-no-action">Aucune action</span>'}</div></div>`;
 }
 function initInteractiveCards(){
   if(window.__sbiInteractiveCardsBound)return;
@@ -1200,25 +1588,31 @@ async function saveDeliveryConfirmationToStock(qrId,plan,details){
   if(!currentUser)throw new Error('Connexion requise.');
   const c=CHARIOTS.find(x=>String(x.qr_id)===String(qrId));
   const now=new Date();
-  const nextDate=String(details.date||plan?.date||localISODateGlobal(now)).trim();
-  const nextTime=String(details.time||plan?.time||'').trim();
-  const nextDriver=String(details.driver||plan?.driver||'').trim();
-  const nextDestination=String(details.destination||plan?.destination||'').trim();
-  const nextClient=String(details.client||c?.client||'').trim();
+  // The effective delivery date is the source of truth after confirmation.
+  // Even when optional details are skipped or the date field is cleared,
+  // keep the date written on the chariot instead of reverting to an old plan.
+  const effectiveDate=String(c?.delivery_date||'').trim()||localISODateGlobal(now);
+  const nextDate=String(details?.date||effectiveDate).trim()||effectiveDate;
+  const nextTime=String(details?.time||plan?.time||'').trim();
+  const nextDriver=String(details?.driver||plan?.driver||'').trim();
+  const nextDestination=String(details?.destination||plan?.destination||'').trim();
+  const nextClient=String(details?.client||c?.client||'').trim();
   if(details.client){
     const {error}=await supabaseClient.from('chariots').update({client:String(details.client).trim(),updated_at:now.toISOString()}).eq('qr_id',qrId);
     if(error)throw error;
     if(c){c.client=String(details.client).trim();c.updated_at=now.toISOString();}
   }
-  if(plan?.id){
-    const payload={id:String(plan.id),qr:String(qrId),date:nextDate,time:nextTime,driver:nextDriver,destination:nextDestination,note:String(details.note||plan.note||'')};
-    const {error}=await supabaseClient.from('maintenance').insert({qr_id:qrId,date:nextDate,technicien:getUserDisplayName(),type:'Planification livraison',travaux:JSON.stringify(payload),created_by:currentUser.id});
-    if(error)throw error;
-    const index=DELIVERY_PLANS.findIndex(x=>String(x.id)===String(plan.id));
-    const updated={...plan,...payload};
-    if(index>=0)DELIVERY_PLANS[index]=updated;else DELIVERY_PLANS.push(updated);
-    cacheDeliveryPlans(DELIVERY_PLANS);
-  }
+  // Always persist a planning entry after delivery confirmation. Reuse the
+  // existing logical plan ID when present; otherwise create one so deliveries
+  // confirmed directly from the workflow also appear in Planning des livraisons.
+  const logicalId=String(plan?.id||('dp_'+String(qrId)+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,8)));
+  const payload={id:logicalId,qr:String(qrId),date:nextDate,time:nextTime,driver:nextDriver,destination:nextDestination,note:String(details?.note||plan?.note||'')};
+  const {error}=await supabaseClient.from('maintenance').insert({qr_id:qrId,date:nextDate,technicien:getUserDisplayName(),type:'Planification livraison',travaux:JSON.stringify(payload),created_by:currentUser.id});
+  if(error)throw error;
+  const index=DELIVERY_PLANS.findIndex(x=>String(x.id)===logicalId);
+  const updated={...(plan||{}),...payload};
+  if(index>=0)DELIVERY_PLANS[index]=updated;else DELIVERY_PLANS.push(updated);
+  cacheDeliveryPlans(DELIVERY_PLANS);
   return {date:nextDate,time:nextTime,driver:nextDriver,destination:nextDestination,client:nextClient};
 }
 
@@ -1256,8 +1650,8 @@ async function performWorkflowAction(qrId,action){
     if(!details)return false;
     const ok=await transitionChariotStatus(qrId,'Livré','Workflow livraison',{deliveryDate:details.skip?'':details.date});
     if(!ok)return false;
+    try{await saveDeliveryConfirmationToStock(qrId,getDeliveryPlan(qrId),details)}catch(e){console.warn('Entrée du planning après livraison non enregistrée',e);alert('La livraison est confirmée, mais son ajout au « Planning des livraisons » n’a pas pu être enregistré. Vérifiez la connexion puis actualisez le planning.')}
     if(!details.skip){
-      try{await saveDeliveryConfirmationToStock(qrId,getDeliveryPlan(qrId),details)}catch(e){console.warn('Informations de livraison non copiées dans Informations stock',e);alert('La livraison est confirmée, mais certaines informations n’ont pas pu être enregistrées dans « Informations stock ».')}
       const detailParts=[];
       if(details.date)detailParts.push('Date : '+details.date);
       if(details.time)detailParts.push('Heure : '+details.time);
@@ -1364,6 +1758,7 @@ async function deleteMaintenance(id){if(!requireAdmin())return;if(!confirm('Supp
 function nextQr(){let n=Math.max(0,...CHARIOTS.map(c=>Number(String(c.qr_id||'').match(/^CH-(\d+)$/i)?.[1]||0)))+1;return'CH-'+String(n).padStart(4,'0')}
 async function newPage(){
   if(!await session())return;
+  if(!requireAdmin()){location.replace('dashboard.html');return}
   await loadChariots();
   const id=new URLSearchParams(location.search).get('id');
   const old=CHARIOTS.find(c=>String(c.qr_id)===String(id));
@@ -1371,31 +1766,278 @@ async function newPage(){
   if(old){editingQrId=old.qr_id;$('#formTitle').textContent='Modifier '+old.qr_id;for(const [k,v] of Object.entries(old)){const el=document.querySelector(`[name="${k}"]`);if(el)el.value=v??''}}
   else{$('[name="qr_id"]').value=nextQr();editingQrId=null;}
   setupAutomaticStatusField(old);
+  setupAutomaticHeightMastField();
   const clientField=document.querySelector('[name="client"]');
+  // Client : toujours en MAJUSCULES, à la saisie et avant enregistrement.
+  if(clientField){
+    const forceClientUpper=()=>{
+      const start=clientField.selectionStart,end=clientField.selectionEnd;
+      const value=String(clientField.value||'');
+      const upper=value.toUpperCase();
+      if(value!==upper){
+        clientField.value=upper;
+        try{if(start!==null&&end!==null)clientField.setSelectionRange(start,end)}catch(e){}
+      }
+    };
+    forceClientUpper();
+    clientField.addEventListener('input',forceClientUpper);
+    clientField.addEventListener('change',forceClientUpper);
+  }
+
+  // N° châssis : préfixe automatique G6, supprimable par l'utilisateur.
+  setupChassisPrefix(old);
+
+  // N° moteur : préfixe automatique selon le type de moteur.
+  // XINCHAI = 2606 / MITSUBISHI = S4S- / ISUZU = C240- / GPL = CK25-.
+  // YANMAR n'a pas de préfixe imposé tant qu'il n'est pas spécifié.
+  setupEngineNumberPrefix();
+  setupSmartClientSuggestions(old);
+  setupLiveDuplicateGuard(old);
+  setupLastUsedConfiguration(old);
   const deleteBtn=document.querySelector('#chariotForm .btn.danger');
   if(!isAdmin()){
     if(clientField){clientField.value='';clientField.disabled=true;clientField.title='L’affectation d’un client est réservée à l’administrateur.'}
     if(deleteBtn)deleteBtn.style.display='none';
   }else if(deleteBtn){deleteBtn.style.display=old?'inline-flex':'none'}
+  const uppercaseFields=['chassis','serial_number','engine_number','client','observations'];
+  uppercaseFields.forEach(name=>{const el=document.querySelector(`[name="${name}"]`);if(!el)return;const upper=()=>{const start=el.selectionStart,end=el.selectionEnd,v=String(el.value||''),u=v.toUpperCase();if(v!==u){el.value=u;try{if(start!=null&&end!=null)el.setSelectionRange(start,end)}catch(e){}}};el.addEventListener('input',upper);el.addEventListener('change',upper);upper()});
   document.querySelectorAll('#chariotForm input,#chariotForm select,#chariotForm textarea').forEach(el=>el.addEventListener('input',updateSaveButtonState));
   document.querySelectorAll('#chariotForm select').forEach(el=>el.addEventListener('change',updateSaveButtonState));
   updateSaveButtonState()
 }
+function setupChassisPrefix(old){
+  const field=document.querySelector('[name="chassis"]');
+  if(!field)return;
+  if(field.dataset.chassisPrefixReady==='1')return;
+  const prefix='G6';
+  field.dataset.chassisPrefixReady='1';
+  field.dataset.chassisPrefix=prefix;
+  const normalize=()=>{
+    const start=field.selectionStart,end=field.selectionEnd;
+    const value=String(field.value||'').toUpperCase();
+    if(value!==field.value){
+      field.value=value;
+      try{if(start!=null&&end!=null)field.setSelectionRange(start,end)}catch(e){}
+    }
+  };
+  const apply=()=>{
+    const value=String(field.value||'').toUpperCase().trim();
+    if(value.startsWith(prefix))return;
+    if(!value){
+      field.value=prefix;
+      try{field.setSelectionRange(prefix.length,prefix.length)}catch(e){}
+    }
+  };
+  field.placeholder=prefix;
+  field.addEventListener('focus',()=>{ if(!String(field.value||'').trim()) apply(); else normalize(); });
+  field.addEventListener('input',normalize);
+  field.addEventListener('change',normalize);
+  // For a new chariot, propose G6 immediately. Existing chassis values stay untouched.
+  if(!old)apply();
+}
+function setupEngineNumberPrefix(){
+  const engineField=document.querySelector('[name="engine"]');
+  const numberField=document.querySelector('[name="engine_number"]');
+  if(!engineField||!numberField)return;
+  if(numberField.dataset.enginePrefixReady==='1'){
+    applyEngineNumberPrefix();
+    return;
+  }
+  const prefixes={
+    XINCHAI:'2606',
+    MITSUBISHI:'S4S-',
+    ISUZU:'C240-',
+    GPL:'CK25-',
+    YANMAR:''
+  };
+  numberField.dataset.enginePrefixReady='1';
+  numberField.dataset.enginePrefixes=JSON.stringify(prefixes);
+
+  const knownPrefixes=Object.values(prefixes).filter(Boolean).sort((a,b)=>b.length-a.length);
+  const getPrefix=()=>prefixes[String(engineField.value||'').trim().toUpperCase()]||'';
+  const stripKnownPrefix=(value)=>{
+    let v=String(value||'').toUpperCase().trim();
+    for(const prefix of knownPrefixes){
+      if(v.startsWith(prefix)){
+        v=v.slice(prefix.length);
+        break;
+      }
+    }
+    return v;
+  };
+  const apply=()=>{
+    const prefix=getPrefix();
+    const old=String(numberField.value||'').toUpperCase();
+    const suffix=stripKnownPrefix(old);
+    const next=prefix+suffix;
+    if(old!==next){
+      const hadFocus=document.activeElement===numberField;
+      numberField.value=next;
+      if(hadFocus){
+        try{
+          const pos=Math.max(prefix.length, numberField.value.length);
+          numberField.setSelectionRange(pos,pos);
+        }catch(e){}
+      }
+      numberField.dispatchEvent(new Event('input',{bubbles:true}));
+    }
+    numberField.placeholder=prefix||'Numéro du moteur';
+  };
+  window.applyEngineNumberPrefix=apply;
+
+  // Le changement de type moteur applique le préfixe.
+  engineField.addEventListener('change',apply);
+
+  // Au focus, proposer le préfixe si le champ est vide.
+  numberField.addEventListener('focus',()=>{
+    if(!String(numberField.value||'').trim()) apply();
+    else numberField.value=String(numberField.value||'').toUpperCase();
+  });
+
+  // Le préfixe est une valeur normale : l'utilisateur peut le supprimer.
+  // Il ne sera pas réinjecté à chaque caractère.
+  numberField.addEventListener('input',()=>{
+    const start=numberField.selectionStart,end=numberField.selectionEnd;
+    const value=String(numberField.value||'');
+    const upper=value.toUpperCase();
+    if(value!==upper){
+      numberField.value=upper;
+      try{if(start!==null&&end!==null)numberField.setSelectionRange(start,end)}catch(e){}
+    }
+  });
+
+  apply();
+}
+function applyEngineNumberPrefix(){
+  const engineField=document.querySelector('[name="engine"]');
+  const numberField=document.querySelector('[name="engine_number"]');
+  if(!engineField||!numberField)return;
+  const prefixes={XINCHAI:'2606',MITSUBISHI:'S4S-',ISUZU:'C240-',GPL:'CK25-',YANMAR:''};
+  const knownPrefixes=Object.values(prefixes).filter(Boolean).sort((a,b)=>b.length-a.length);
+  const prefix=prefixes[String(engineField.value||'').trim().toUpperCase()]||'';
+  let value=String(numberField.value||'').toUpperCase().trim();
+  for(const known of knownPrefixes){if(value.startsWith(known)){value=value.slice(known.length);break}}
+  numberField.value=prefix+value;
+  numberField.placeholder=prefix||'Numéro du moteur';
+}
+function setupSmartClientSuggestions(old){
+  const clientField=document.querySelector('[name="client"]');
+  const list=document.getElementById('clientSuggestions');
+  if(!clientField||!list)return;
+  const clients=[...new Set((CHARIOTS||[]).map(c=>String(c?.client||'').trim().toUpperCase()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fr'));
+  list.innerHTML=clients.map(v=>`<option value="${esc(v)}"></option>`).join('');
+  clientField.title='Clients existants proposés automatiquement. La saisie reste libre.';
+}
+function showDuplicatePopup(duplicate, fields){
+  const existing=document.getElementById('sbiDuplicateModal');
+  if(existing) existing.remove();
+  const chassis=String(fields?.chassis?.value||duplicate?.chassis||'').trim();
+  const engine=String(fields?.engine?.value||duplicate?.engine||'').trim();
+  const capacity=String(fields?.capacity?.value||duplicate?.capacity||'').trim();
+  const qr=String(duplicate?.qr_id||'chariot').trim();
+  const backdrop=document.createElement('div');
+  backdrop.id='sbiDuplicateModal';
+  backdrop.className='sbi-duplicate-modal-backdrop';
+  backdrop.innerHTML=`<div class="sbi-duplicate-modal" role="dialog" aria-modal="true" aria-labelledby="sbiDuplicateTitle">
+    <div class="sbi-duplicate-modal-head">
+      <div class="sbi-duplicate-modal-icon" aria-hidden="true">⚠</div>
+      <div><h3 id="sbiDuplicateTitle">Doublon détecté</h3><p>Cette combinaison existe déjà dans le stock.</p></div>
+      <button type="button" class="sbi-duplicate-modal-close" aria-label="Fermer">×</button>
+    </div>
+    <div class="sbi-duplicate-modal-body">
+      <p>Le chariot avec le châssis <strong>${esc(chassis)}</strong>, le moteur <strong>${esc(engine)}</strong> et la capacité <strong>${esc(capacity)}</strong> existe déjà.</p>
+      <div class="sbi-duplicate-modal-ref">Référence existante : <strong>${esc(qr)}</strong></div>
+    </div>
+    <div class="sbi-duplicate-modal-actions"><button type="button" class="btn" data-duplicate-ok>OK</button></div>
+  </div>`;
+  document.body.appendChild(backdrop);
+  const close=()=>backdrop.remove();
+  backdrop.querySelector('.sbi-duplicate-modal-close')?.addEventListener('click',close);
+  backdrop.querySelector('[data-duplicate-ok]')?.addEventListener('click',close);
+  backdrop.addEventListener('click',e=>{if(e.target===backdrop)close()});
+}
+function setupLiveDuplicateGuard(old){
+  const form=document.getElementById('chariotForm'),box=document.getElementById('duplicateSmartWarning');
+  if(!form)return;
+  if(box){box.hidden=true;box.textContent='';}
+  const fields={chassis:form.querySelector('[name="chassis"]'),engine:form.querySelector('[name="engine"]'),capacity:form.querySelector('[name="capacity"]')};
+  let lastPopupKey='';
+  let lastDuplicate=false;
+  const check=()=>{
+    const chassis=norm(fields.chassis?.value),engine=norm(fields.engine?.value),capacity=norm(fields.capacity?.value);
+    const duplicate=!!chassis&&!!engine&&!!capacity&&(CHARIOTS||[]).find(c=>norm(c?.chassis)===chassis&&norm(c?.engine)===engine&&norm(c?.capacity)===capacity&&String(c?.qr_id)!==String(old?.qr_id||''));
+    if(duplicate){
+      const key=[chassis,engine,capacity,String(duplicate.qr_id||'')].join('|');
+      if(!lastDuplicate||key!==lastPopupKey){
+        showDuplicatePopup(duplicate,fields);
+        lastPopupKey=key;
+      }
+      lastDuplicate=true;
+    }else{
+      lastDuplicate=false;
+      lastPopupKey='';
+    }
+    $('#saveBtn')?.classList.toggle('save-ready',!duplicate && ['chassis','color','engine','capacity','fork_dimension','tire_type'].every(k=>String(form.querySelector(`[name="${k}"]`)?.value||'').trim()));
+  };
+  [fields.chassis,fields.engine,fields.capacity].forEach(el=>{if(!el)return;el.addEventListener(el.tagName==='SELECT'?'change':'input',check)});
+  check();
+}
+function setupLastUsedConfiguration(old){
+  const form=document.getElementById('chariotForm');
+  if(!form||old)return;
+  const keys=['engine','capacity','lifting_height','fork_dimension','mast_type','tire_type','color'];
+  let saved={};
+  try{saved=JSON.parse(localStorage.getItem('sbi:lastChariotConfig')||'{}')||{}}catch(e){saved={}};
+  keys.forEach(k=>{
+    const el=form.querySelector(`[name="${k}"]`);
+    if(el&&!String(el.value||'').trim()&&String(saved[k]||'').trim()&&[...el.options].some(o=>String(o.value)===String(saved[k])))el.value=saved[k];
+  });
+  const remember=()=>{
+    const next={};keys.forEach(k=>{const el=form.querySelector(`[name="${k}"]`);if(el&&String(el.value||'').trim())next[k]=el.value});
+    try{localStorage.setItem('sbi:lastChariotConfig',JSON.stringify(next))}catch(e){}
+  };
+  keys.forEach(k=>form.querySelector(`[name="${k}"]`)?.addEventListener('change',remember));
+  remember();
+}
+
 function updateSaveButtonState(){const ok=['chassis','color','engine','capacity','fork_dimension','tire_type'].every(k=>String(document.querySelector(`[name="${k}"]`)?.value||'').trim());$('#saveBtn')?.classList.toggle('save-ready',ok)}
 async function saveChariot(){
-  if(!requireValidLicense())return;if(!currentUser){alert('Connectez-vous pour gérer les chariots.');return}
+  if(!requireValidLicense()||!requireAdmin())return;
   const f=$('#chariotForm'),p=Object.fromEntries(new FormData(f).entries());
   for(const [k,label] of [['chassis','N° châssis'],['color','Couleur'],['engine','Type de moteur'],['capacity','Capacité'],['fork_dimension','Fourche'],['tire_type','Type de pneu']])if(!String(p[k]||'').trim()){alert(label+' obligatoire.');return}
   const oldId=new URLSearchParams(location.search).get('id')||'',old=CHARIOTS.find(c=>String(c.qr_id)===String(oldId));
   if(oldId&&!isAdmin()){alert('La modification d’un chariot est réservée à l’administrateur.');return}
-  if(!isAdmin()&&!oldId){p.client='';}
+  // Normalisation définitive : le nom du client est toujours stocké en MAJUSCULES.
+  p.client=String(p.client||'').trim().toUpperCase();
   const requestedStatus=String(p.status||'').trim();
   const displayStatus=String(p.status_display||'').trim();
-  p.status=(old&&isAdmin()&&displayStatus&&normalizeStatus(displayStatus)!==normalizeStatus(old.status))?displayStatus:automaticStatusForChariot(old,p);
+  // New chariot: the admin-selected status must be saved exactly as chosen.
+  // Existing chariots keep the workflow logic unless the admin explicitly changes the status.
+  if(isAdmin()&&displayStatus){
+    if(!old || normalizeStatus(displayStatus)!==normalizeStatus(old.status)) p.status=displayStatus;
+    else p.status=automaticStatusForChariot(old,p);
+  }else{
+    p.status=automaticStatusForChariot(old,p);
+  }
+  // Même lors d'une modification directe de la fiche, ces étapes imposent STOCK1.
+  if(['en fabrication','modification production'].includes(normalizeStatus(p.status)))p.stock='FABRICATION';
+  else if(['preparation livraison','pret a livrer'].includes(normalizeStatus(p.status)))p.stock='STOCK1';
+  // Règle hauteur de levage → type de mât : une suggestion automatique est appliquée,
+  // mais la valeur choisie manuellement reste prioritaire et peut être modifiée.
+  const heightRule=normalizeHeightValue(p.lifting_height);
+  if(!String(p.mast_type||'').trim())p.mast_type=String(old?.mast_type||'').trim();
+  if(!String(p.mast_type||'').trim()){
+    if(['3m','4m'].includes(heightRule))p.mast_type='DUPLEX';
+    else if(['4.3m','4.5m','6m'].includes(heightRule))p.mast_type='TRIPLEX';
+  }
   delete p.status_display;
   const duplicate=CHARIOTS.find(c=>norm(c.chassis)===norm(p.chassis)&&norm(c.engine)===norm(p.engine)&&String(c.qr_id)!==String(oldId));
-  if(duplicate){alert(`Le numéro de châssis « ${p.chassis} » existe déjà avec le même moteur (${p.engine}) — ${duplicate.qr_id}. La capacité ne participe plus au contrôle des doublons.`);return}
-  p.updated_at=new Date().toISOString();p.delivery_date=p.delivery_date||null;p.qr_id=p.qr_id||nextQr();
+  if(duplicate){showDuplicatePopup(duplicate,{chassis:{value:p.chassis},engine:{value:p.engine},capacity:{value:p.capacity}});return}
+  p.updated_at=new Date().toISOString();
+  // Keep the date when editing other fields, but clear it when a delivered
+  // forklift is moved back to any earlier workflow stage.
+  p.delivery_date=deliveryDateAfterStatusEdit(old,p.status,p.delivery_date);
+  p.qr_id=p.qr_id||nextQr();
   const {error}=oldId?await supabaseClient.from('chariots').update(p).eq('qr_id',oldId):await supabaseClient.from('chariots').insert(p);
   if(error){alert('Erreur : '+error.message);return}
   if(oldId&&old){
@@ -1405,6 +2047,10 @@ async function saveChariot(){
   }else{
     try{await supabaseClient.from('maintenance').insert({qr_id:p.qr_id,date:new Date().toISOString().slice(0,10),technicien:getUserDisplayName(),type:'Création chariot',travaux:`Chariot créé • Châssis : ${p.chassis||'—'} • Moteur : ${p.engine||'—'} • Statut initial : ${p.status||'—'}`,created_by:currentUser.id})}catch(e){console.warn('Historique création non enregistré',e)}
   }
+  try{
+    const cfg={};['engine','capacity','lifting_height','fork_dimension','mast_type','tire_type','color'].forEach(k=>{if(String(p[k]||'').trim())cfg[k]=p[k]});
+    localStorage.setItem('sbi:lastChariotConfig',JSON.stringify(cfg));
+  }catch(e){}
   location.href='chariot.html?id='+encodeURIComponent(p.qr_id)
 }
 async function markDelivered(qrId){
@@ -1461,155 +2107,6 @@ async function modificationProductionPage(){
   function render(){const q=els.search.value.trim().toLowerCase();const rows=CHARIOTS.filter(c=>['reserve','modification production'].includes(normalizeStatus(c.status))).filter(c=>(!q||[c.qr_id,c.chassis,c.client,c.engine,c.capacity].some(v=>String(v||'').toLowerCase().includes(q)))&&(!els.status.value||normalizeStatus(c.status)===els.status.value)&&(!els.engine.value||norm(c.engine)===norm(els.engine.value))&&(!els.capacity.value||norm(c.capacity)===norm(els.capacity.value))).sort((a,b)=>new Date(b.updated_at||0)-new Date(a.updated_at||0));els.count.textContent=rows.length+' chariot'+(rows.length!==1?'s':'')+' à traiter';els.list.innerHTML=rows.map(c=>{const st=normalizeStatus(c.status),action=st==='reserve'?`<button class="btn" type="button" data-mod-start="${esc(c.qr_id)}">Démarrer modification</button>`:`<button class="btn save-ready" type="button" data-mod-finish="${esc(c.qr_id)}">Modification terminée</button>`;return `<article class="card mod-item"><div class="mod-main"><div class="mod-title">${esc(c.chassis||c.qr_id||'—')}</div><div class="mod-meta"><strong>Client :</strong> ${esc(c.client||'—')}</div><div class="mod-meta">${esc(c.engine||'—')} · ${esc(fmtCapacity(c.capacity)||'—')} · ${esc(c.lifting_height||'—')} · ${esc(c.mast_type||'—')}</div><div class="mod-status">${esc(c.status||'—')}</div></div><div class="mod-actions">${action}<a class="btn light" href="chariot.html?id=${encodeURIComponent(c.qr_id)}&from=modification">Voir la fiche</a></div></article>`}).join('')||'<div class="empty">Aucun chariot en attente de modification production.</div>';els.list.querySelectorAll('[data-mod-start]').forEach(b=>b.onclick=async()=>{if(await performWorkflowAction(b.dataset.modStart,'start-modification')){await loadChariots();buildFilters();render()}});els.list.querySelectorAll('[data-mod-finish]').forEach(b=>b.onclick=async()=>{if(await performWorkflowAction(b.dataset.modFinish,'finish-modification')){await loadChariots();buildFilters();render()}})}
   buildFilters();els.search.addEventListener('input',render);[els.status,els.engine,els.capacity].forEach(el=>el.addEventListener('change',render));els.reset.onclick=()=>{els.search.value='';[els.status,els.engine,els.capacity].forEach(el=>el.value='');render()};render();
   startSbiRealtime(async()=>{if(document.visibilityState==='hidden')return;try{await loadChariots();buildFilters();render()}catch(e){console.warn('Actualisation production',e)}},['chariots','maintenance']);
-}
-
-async function retoursClientsPage(){
-  if(!await session())return;
-  await loadChariots();
-  const RETURN_EVENT_TYPES=['Retour client','Mise à jour retour client'];
-  const STATUS_OPTIONS=['Retour signalé','En attente diagnostic','Diagnostic effectué','Réparation en cours','En attente de pièces','Réparé / prêt à restituer','Restitué au client','Clôturé sans réparation'];
-  const $r=id=>document.getElementById(id);
-  const els={search:$r('returnSearch'),statusFilter:$r('returnStatusFilter'),from:$r('returnFrom'),to:$r('returnTo'),reset:$r('returnReset'),count:$r('returnCount'),cases:$r('returnCases'),newBtn:$r('newReturnBtn'),formCard:$r('returnFormCard'),form:$r('returnForm'),formTitle:$r('returnFormTitle'),chariot:$r('returnChariot'),chariotSearch:$r('returnChariotSearch'),chariotResults:$r('returnChariotResults'),client:$r('returnClient'),date:$r('returnDate'),category:$r('returnCategory'),condition:$r('returnCondition'),status:$r('returnStatus'),problem:$r('returnProblem'),diagnosis:$r('returnDiagnosis'),repair:$r('returnRepairAction'),parts:$r('returnParts'),technician:$r('returnTechnician'),decision:$r('returnDecision'),restitutedDate:$r('returnRestitutedDate'),observations:$r('returnObservations'),images:$r('returnImages'),imagesPreview:$r('returnImagesPreview'),error:$r('returnFormError'),notice:$r('returnFormNotice'),save:$r('saveReturnBtn'),cancel:$r('cancelReturnForm'),clearForm:$r('resetReturnForm')};
-  let records=[],editingCaseId=null,busy=false,localReturnFiles=[],removedReturnImages=new Set(),imageRenderSequence=0;
-  const RETURN_IMAGE_BUCKET='sbi-retours-clients',RETURN_IMAGE_MAX_BYTES=10*1024*1024,RETURN_IMAGE_MAX_COUNT=8;
-  const today=()=>localISODateGlobal(new Date());
-  const returnImageMime=file=>{const type=String(file?.type||'').toLowerCase();const allowed=['image/jpeg','image/png','image/webp','image/gif','image/heic','image/heif','image/heic-sequence','image/heif-sequence'];if(allowed.includes(type))return type;const ext=String(file?.name||'').split('.').pop().toLowerCase();return({jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',webp:'image/webp',gif:'image/gif',heic:'image/heic',heif:'image/heif'})[ext]||''};
-  const byQr=qr=>CHARIOTS.find(c=>String(c.qr_id)===String(qr));
-  const safeJson=value=>{try{return typeof value==='string'?JSON.parse(value):value}catch(_){return null}};
-  function statusClass(status){const s=normalizeStatus(status);if(['restitue au client','cloture sans reparation'].includes(s))return'is-closed';if(s==='repare / pret a restituer')return'is-done';return'is-active'}
-  function returnChariotLabel(c){const qr=String(c?.qr_id||'');return[c?.chassis||qr,c?.engine,fmtCapacity(c?.capacity),c?.client?'Client : '+c.client:''].filter(Boolean).join(' · ')}
-  function populateChariots(selected=''){
-    const previous=selected||els.chariot.value||'';
-    els.chariot.innerHTML='<option value="">Sélectionner un chariot…</option>'+CHARIOTS.map(c=>`<option value="${esc(String(c.qr_id||''))}">${esc(returnChariotLabel(c))}</option>`).join('');
-    if(previous&&!CHARIOTS.some(c=>String(c.qr_id)===String(previous)))els.chariot.insertAdjacentHTML('beforeend',`<option value="${esc(previous)}">${esc(previous)} · Chariot non trouvé dans la liste courante</option>`);
-    els.chariot.value=previous;
-    const machine=byQr(previous);els.chariotSearch.value=machine?returnChariotLabel(machine):(previous?previous:'');
-    els.chariotResults.hidden=true;els.chariotResults.innerHTML='';
-  }
-  function renderReturnChariotSearch(){
-    const q=norm(els.chariotSearch.value||'');
-    if(!q){els.chariotResults.hidden=true;els.chariotResults.innerHTML='';return}
-    const matches=CHARIOTS.filter(c=>norm([c.qr_id,c.chassis,c.engine,c.engine_number,c.capacity,c.lifting_height,c.mast_type,c.color,c.stock,c.client,c.status].filter(Boolean).join(' ')).includes(q)).slice(0,15);
-    if(!matches.length){els.chariotResults.innerHTML='<div class="return-no-chariot">Aucun chariot correspondant. Vérifie le numéro de châssis ou le QR ID.</div>';els.chariotResults.hidden=false;return}
-    els.chariotResults.innerHTML=matches.map(c=>`<button type="button" class="return-chariot-result" role="option" data-return-pick="${esc(String(c.qr_id||''))}"><strong>${esc(c.chassis||c.qr_id||'—')}</strong><span>${esc([c.qr_id,c.engine,fmtCapacity(c.capacity),c.client?'Client : '+c.client:'',c.stock?'Stock : '+c.stock:''].filter(Boolean).join(' · '))}</span></button>`).join('');
-    els.chariotResults.hidden=false;
-    els.chariotResults.querySelectorAll('[data-return-pick]').forEach(btn=>btn.addEventListener('click',()=>selectReturnChariot(btn.dataset.returnPick)));
-  }
-  function selectReturnChariot(qr){
-    const machine=byQr(qr);if(!machine)return;
-    els.chariot.value=String(machine.qr_id);els.chariotSearch.value=returnChariotLabel(machine);els.chariotResults.hidden=true;
-    if(machine.client)els.client.value=machine.client;
-  }
-  populateChariots();
-  els.statusFilter.innerHTML='<option value="">Tous les statuts</option>'+STATUS_OPTIONS.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
-  els.date.value=today();els.technician.value=getUserDisplayName();
-  els.chariot.addEventListener('change',()=>{const machine=byQr(els.chariot.value);if(machine){els.chariotSearch.value=returnChariotLabel(machine);els.chariotResults.hidden=true;if(machine.client)els.client.value=machine.client;}});
-  els.chariotSearch.addEventListener('input',()=>{const selected=byQr(els.chariot.value);if(selected&&els.chariotSearch.value!==returnChariotLabel(selected))els.chariot.value='';renderReturnChariotSearch()});
-  els.chariotSearch.addEventListener('keydown',e=>{if(e.key==='Escape'){els.chariotResults.hidden=true;return}if(e.key==='Enter'&&!els.chariotResults.hidden){const first=els.chariotResults.querySelector('[data-return-pick]');if(first){e.preventDefault();selectReturnChariot(first.dataset.returnPick)}}});
-  function parseReturnRow(row){const payload=safeJson(row?.travaux);if(!payload||typeof payload!=='object'||!(payload.sbi_return_case===true||payload.case_id))return null;return{caseId:String(payload.case_id||''),qrId:String(row.qr_id||payload.qr_id||''),payload,row};}
-  async function refreshReturnCases(quiet=false){
-    try{
-      const result=await withTimeout(supabaseClient.from('maintenance').select('id,qr_id,date,technicien,type,travaux,created_at,created_by').in('type',RETURN_EVENT_TYPES).order('created_at',{ascending:false}).limit(1500),10000);
-      if(result.error)throw result.error;
-      const seen=new Map();
-      (result.data||[]).forEach(row=>{const parsed=parseReturnRow(row);if(!parsed||!parsed.caseId||seen.has(parsed.caseId))return;seen.set(parsed.caseId,parsed)});
-      records=[...seen.values()].sort((a,b)=>String(b.payload.return_date||b.row.date||'').localeCompare(String(a.payload.return_date||a.row.date||''))||String(b.row.created_at||'').localeCompare(String(a.row.created_at||'')));
-      renderReturnCases();
-    }catch(error){
-      console.warn('Chargement des retours clients impossible',error);
-      if(!quiet){els.count.textContent='Erreur de chargement';els.cases.innerHTML=`<div class="return-empty">Impossible de charger les dossiers : ${esc(friendlySupabaseError(error))}<br><br>Vérifie les permissions de lecture de la table maintenance dans Supabase.</div>`;}
-    }
-  }
-  function renderReturnCases(){
-    const q=String(els.search.value||'').trim().toLowerCase();const status=els.statusFilter.value||'';const from=els.from.value||'';const to=els.to.value||'';
-    let rows=records.filter(rec=>{const p=rec.payload,c=byQr(rec.qrId);const hay=[rec.qrId,p.chassis,c?.chassis,p.client,c?.client,p.category,p.complaint,p.diagnosis,p.repair_action,p.parts_needed,p.technician,p.observations,p.status].map(v=>String(v||'').toLowerCase()).join(' ');const date=String(p.return_date||rec.row.date||'');return(!q||hay.includes(q))&&(!status||String(p.status||'')===status)&&(!from||date>=from)&&(!to||date<=to)});
-    const open=records.filter(r=>!['restitué au client','restitue au client','clôturé sans réparation','cloture sans reparation'].includes(normalizeStatus(r.payload.status)));
-    $r('returnTotal').textContent=String(open.length);
-    $r('returnRepair').textContent=String(records.filter(r=>normalizeStatus(r.payload.status)==='reparation en cours').length);
-    $r('returnWaiting').textContent=String(records.filter(r=>normalizeStatus(r.payload.status)==='en attente de pieces').length);
-    $r('returnReady').textContent=String(records.filter(r=>['repare / pret a restituer','restitue au client'].includes(normalizeStatus(r.payload.status))).length);
-    els.count.textContent=`${rows.length} dossier${rows.length!==1?'s':''} affiché${rows.length!==1?'s':''} sur ${records.length}`;
-    els.cases.innerHTML=rows.map(rec=>{
-      const p=rec.payload,c=byQr(rec.qrId),chassis=p.chassis||c?.chassis||rec.qrId||'Chariot non identifié',client=p.client||c?.client||'—',date=p.return_date||rec.row.date||'—',st=String(p.status||'Retour signalé');
-      const statusKind=statusClass(st);const updated=rec.row.created_at?new Date(rec.row.created_at).toLocaleString('fr-FR'):'—';
-      const issue=String(p.complaint||'—');const diagnosis=String(p.diagnosis||'').trim();const repair=String(p.repair_action||'').trim();const parts=String(p.parts_needed||'').trim();
-      const imageCount=Array.isArray(p.images)?p.images.filter(img=>img&&img.path).length:0;
-      return `<article class="return-case"><div class="return-case-head"><div><div class="return-case-title">${esc(chassis)}</div><div class="return-case-sub">${esc(client)} · Retour le ${esc(formatPlannedDate(date))}</div><div class="return-case-sub">${esc(p.category||'Problème non catégorisé')} · ${esc(c?.engine||'Moteur non renseigné')} · ${esc(fmtCapacity(c?.capacity)||'')}</div></div><span class="return-status ${statusKind}">${esc(st)}</span></div><div class="return-case-details"><div class="return-detail"><div class="return-detail-label">Problème signalé</div><div class="return-detail-value">${esc(issue)}</div></div><div class="return-detail"><div class="return-detail-label">État à réception</div><div class="return-detail-value">${esc(p.received_condition||'Non renseigné')}</div></div>${diagnosis?`<div class="return-detail"><div class="return-detail-label">Diagnostic</div><div class="return-detail-value">${esc(diagnosis)}</div></div>`:''}${repair?`<div class="return-detail"><div class="return-detail-label">Réparation / action</div><div class="return-detail-value">${esc(repair)}</div></div>`:''}${parts?`<div class="return-detail"><div class="return-detail-label">Pièces nécessaires</div><div class="return-detail-value">${esc(parts)}</div></div>`:''}<div class="return-detail"><div class="return-detail-label">Technicien</div><div class="return-detail-value">${esc(p.technician||rec.row.technicien||'—')}</div></div>${p.final_decision?`<div class="return-detail"><div class="return-detail-label">Décision</div><div class="return-detail-value">${esc(p.final_decision)}</div></div>`:''}${p.restituted_date?`<div class="return-detail"><div class="return-detail-label">Restitution</div><div class="return-detail-value">${esc(formatPlannedDate(p.restituted_date))}</div></div>`:''}</div>${p.observations?`<div class="return-case-notes"><strong>Observations :</strong> ${esc(p.observations)}</div>`:''}${imageCount?`<div class="return-photo-count">📷 ${imageCount} photo${imageCount!==1?'s':''} jointe${imageCount!==1?'s':''} · Ouvre le dossier pour consulter</div>`:''}<div class="return-case-sub">Dernière mise à jour : ${esc(updated)}</div><div class="return-case-actions"><button class="btn" type="button" data-return-edit="${esc(rec.caseId)}">Mettre à jour le dossier</button><a class="btn light" href="chariot.html?id=${encodeURIComponent(rec.qrId)}&from=retours">Voir la fiche du chariot</a></div></article>`;
-    }).join('')||'<div class="return-empty">Aucun dossier de retour ne correspond aux filtres.</div>';
-    els.cases.querySelectorAll('[data-return-edit]').forEach(button=>button.addEventListener('click',()=>{const rec=records.find(r=>r.caseId===button.dataset.returnEdit);if(rec)openReturnForm(rec)}));
-  }
-  function setReturnError(message=''){els.error.textContent=message;els.error.classList.toggle('show',!!message);}
-  function setReturnNotice(message=''){els.notice.textContent=message;els.notice.classList.toggle('show',!!message);}
-  function revokeLocalReturnPreviews(){localReturnFiles.forEach(item=>{try{URL.revokeObjectURL(item.previewUrl)}catch(_){}});localReturnFiles=[];}
-  function activeExistingReturnImages(){const rec=editingCaseId?records.find(r=>r.caseId===editingCaseId):null;return (Array.isArray(rec?.payload?.images)?rec.payload.images:[]).filter(img=>img&&img.path&&!removedReturnImages.has(img.path));}
-  async function renderReturnImagesPreview(){
-    const renderId=++imageRenderSequence;
-    const existing=activeExistingReturnImages();
-    const existingHtml=await Promise.all(existing.map(async img=>{
-      let url='';
-      try{const signed=await supabaseClient.storage.from(RETURN_IMAGE_BUCKET).createSignedUrl(img.path,3600);if(!signed.error)url=signed.data?.signedUrl||'';}catch(_){}
-      return `<div class="return-image-tile">${url?`<a href="${esc(url)}" target="_blank" rel="noopener"><img src="${esc(url)}" alt="${esc(img.name||'Photo du retour')}"></a>`:'<div class="return-image-unavailable">Photo enregistrée<br>aperçu indisponible</div>'}<div class="return-image-caption">${esc(img.name||'Photo enregistrée')}</div><button class="return-image-remove" type="button" data-return-remove-image="${esc(img.path)}">Retirer cette photo</button></div>`;
-    }));
-    const localHtml=localReturnFiles.map((item,index)=>`<div class="return-image-tile"><img src="${esc(item.previewUrl)}" alt="${esc(item.file.name)}"><div class="return-image-caption">${esc(item.file.name)}<br>${(item.file.size/1024/1024).toFixed(1)} Mo · À importer</div><button class="return-image-remove" type="button" data-return-remove-local="${index}">Retirer cette photo</button></div>`);
-    if(renderId!==imageRenderSequence)return;
-    els.imagesPreview.innerHTML=[...existingHtml,...localHtml].join('');
-    if(!existingHtml.length&&!localHtml.length)els.imagesPreview.innerHTML='<div class="return-image-help-empty">Aucune photo ajoutée.</div>';
-    els.imagesPreview.querySelectorAll('[data-return-remove-image]').forEach(btn=>btn.addEventListener('click',()=>{removedReturnImages.add(btn.dataset.returnRemoveImage);renderReturnImagesPreview()}));
-    els.imagesPreview.querySelectorAll('[data-return-remove-local]').forEach(btn=>btn.addEventListener('click',()=>{const item=localReturnFiles[Number(btn.dataset.returnRemoveLocal)];if(item){try{URL.revokeObjectURL(item.previewUrl)}catch(_){}localReturnFiles.splice(Number(btn.dataset.returnRemoveLocal),1);renderReturnImagesPreview()}}));
-  }
-  function resetReturnFields(){editingCaseId=null;removedReturnImages.clear();revokeLocalReturnPreviews();els.form.reset();els.form.dataset.editCaseId='';populateChariots('');els.date.value=today();els.technician.value=getUserDisplayName();els.formTitle.textContent='Nouveau retour client';els.save.textContent='Enregistrer le dossier';setReturnError('');setReturnNotice('');if(els.imagesPreview)els.imagesPreview.innerHTML='<div class="return-image-help-empty">Aucune photo ajoutée.</div>';}
-  function openReturnForm(rec=null){
-    resetReturnFields();
-    if(rec){const p=rec.payload;editingCaseId=rec.caseId;els.form.dataset.editCaseId=rec.caseId;populateChariots(rec.qrId);els.chariot.value=rec.qrId;const machine=byQr(rec.qrId);els.chariotSearch.value=machine?returnChariotLabel(machine):(p.chassis||rec.qrId);els.client.value=p.client||machine?.client||'';els.date.value=p.return_date||rec.row.date||today();els.category.value=p.category||'';els.condition.value=p.received_condition||'';els.status.value=p.status||'Retour signalé';els.problem.value=p.complaint||'';els.diagnosis.value=p.diagnosis||'';els.repair.value=p.repair_action||'';els.parts.value=p.parts_needed||'';els.technician.value=p.technician||rec.row.technicien||getUserDisplayName();els.decision.value=p.final_decision||'';els.restitutedDate.value=p.restituted_date||'';els.observations.value=p.observations||'';els.formTitle.textContent='Suivi du retour — '+(p.chassis||machine?.chassis||rec.qrId);els.save.textContent='Enregistrer la mise à jour';}
-    els.formCard.hidden=false;els.formCard.scrollIntoView({behavior:'smooth',block:'start'});renderReturnImagesPreview();
-  }
-  els.newBtn.addEventListener('click',()=>openReturnForm());
-  els.cancel.addEventListener('click',()=>{els.formCard.hidden=true;resetReturnFields()});
-  els.clearForm.addEventListener('click',()=>resetReturnFields());
-  els.images.addEventListener('change',()=>{
-    const incoming=Array.from(els.images.files||[]);els.images.value='';if(!incoming.length)return;
-    const existingCount=activeExistingReturnImages().length;
-    for(const file of incoming){
-      if(!returnImageMime(file)){setReturnError('Format non pris en charge. Utilise JPG, PNG, WEBP, GIF ou HEIC.');continue}
-      if(file.size>RETURN_IMAGE_MAX_BYTES){setReturnError(`L’image « ${file.name} » dépasse la limite de 10 Mo.`);continue}
-      if(existingCount+localReturnFiles.length>=RETURN_IMAGE_MAX_COUNT){setReturnError(`Maximum ${RETURN_IMAGE_MAX_COUNT} photos par dossier.`);break}
-      localReturnFiles.push({file,previewUrl:URL.createObjectURL(file)});
-    }
-    renderReturnImagesPreview();
-  });
-  els.reset.addEventListener('click',()=>{els.search.value='';els.statusFilter.value='';els.from.value='';els.to.value='';renderReturnCases()});
-  [els.search,els.statusFilter,els.from,els.to].forEach(el=>el.addEventListener(el===els.search?'input':'change',renderReturnCases));
-  els.form.addEventListener('submit',async e=>{
-    e.preventDefault();if(busy)return;if(!requireValidLicense())return;if(!currentUser){alert('Connexion requise.');return}
-    const qr=String(els.chariot.value||'');const machine=byQr(qr);if(!qr){setReturnError('Sélectionne un chariot.');return}
-    const client=String(els.client.value||'').trim();if(!client){setReturnError('Le nom du client est obligatoire.');return}
-    const complaint=String(els.problem.value||'').trim();if(!complaint){setReturnError('Décris le problème signalé par le client.');return}
-    const existing=editingCaseId?records.find(r=>r.caseId===editingCaseId):null;
-    const caseId=editingCaseId||('ret_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8));
-    const now=new Date().toISOString();const existingImages=(Array.isArray(existing?.payload?.images)?existing.payload.images:[]).filter(img=>img&&img.path&&!removedReturnImages.has(img.path)).map(img=>({path:img.path,name:img.name||'photo',type:img.type||'',size:Number(img.size||0),uploaded_at:img.uploaded_at||''}));
-    const payload={sbi_return_case:true,case_id:caseId,qr_id:qr,chassis:machine?.chassis||existing?.payload?.chassis||qr,client,return_date:els.date.value||today(),category:els.category.value,received_condition:els.condition.value,status:els.status.value,complaint,diagnosis:els.diagnosis.value.trim(),repair_action:els.repair.value.trim(),parts_needed:els.parts.value.trim(),technician:els.technician.value.trim()||getUserDisplayName(),final_decision:els.decision.value,restituted_date:els.restitutedDate.value,observations:els.observations.value.trim(),images:existingImages,created_at:existing?.payload?.created_at||now,updated_at:now,updated_by:currentUser.id};
-    const wasEditing=!!editingCaseId,uploadedPaths=[];
-    busy=true;els.save.disabled=true;els.save.textContent='Enregistrement…';setReturnError('');setReturnNotice('');
-    try{
-      for(const item of localReturnFiles){
-        const cleanName=String(item.file.name||'photo').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9._-]+/g,'_').slice(-100)||'photo';
-        const path=`${caseId}/${Date.now()}_${Math.random().toString(36).slice(2,8)}_${cleanName}`;
-        const upload=await withTimeout(supabaseClient.storage.from(RETURN_IMAGE_BUCKET).upload(path,item.file,{cacheControl:'3600',upsert:false,contentType:returnImageMime(item.file)}),20000);
-        if(upload.error)throw new Error(/bucket.*not found|not found.*bucket|does not exist/i.test(String(upload.error.message||''))?'Le stockage des photos n’est pas configuré. Exécute le fichier SUPABASE_RETURNS_STORAGE.sql dans Supabase → SQL Editor, puis réessaie.':friendlySupabaseError(upload.error));
-        uploadedPaths.push(path);payload.images.push({path,name:item.file.name||cleanName,type:returnImageMime(item.file),size:item.file.size||0,uploaded_at:now});
-      }
-      const result=await withTimeout(supabaseClient.from('maintenance').insert({qr_id:qr,date:payload.return_date,technicien:payload.technician,type:editingCaseId?'Mise à jour retour client':'Retour client',travaux:JSON.stringify(payload),created_by:currentUser.id}),12000);
-      if(result.error)throw result.error;
-      const removedPaths=Array.from(removedReturnImages);if(removedPaths.length){try{const removed=await supabaseClient.storage.from(RETURN_IMAGE_BUCKET).remove(removedPaths);if(removed.error)console.warn('Dossier enregistré, suppression de certaines anciennes photos impossible',removed.error)}catch(err){console.warn('Dossier enregistré, suppression de certaines anciennes photos impossible',err)}}
-      els.formCard.hidden=true;resetReturnFields();await refreshReturnCases();
-      const note=$r('returnCount');if(note)note.textContent+=' · Enregistrement effectué';
-      const global=document.getElementById('returnGlobalNotice');if(global){global.textContent=wasEditing?'Mise à jour du retour enregistrée.':'Dossier de retour enregistré.';global.classList.add('show');}
-    }catch(error){console.error('Enregistrement retour client',error);if(uploadedPaths.length){try{await supabaseClient.storage.from(RETURN_IMAGE_BUCKET).remove(uploadedPaths)}catch(cleanupError){console.warn('Nettoyage des photos importées impossible',cleanupError)}}let message=friendlySupabaseError(error);if(/row.level security|row-level security|violates row-level/i.test(message))message+=' — Supabase bloque l’écriture dans maintenance (policy INSERT pour authenticated requise).';setReturnError('Enregistrement impossible : '+message)}
-    finally{busy=false;els.save.disabled=false;els.save.textContent=editingCaseId?'Enregistrer la mise à jour':'Enregistrer le dossier'}
-  });
-  await refreshReturnCases();
-  startSbiRealtime(async evt=>{if(evt?.table==='maintenance'&&document.visibilityState!=='hidden'&&!busy)await refreshReturnCases(true)},['maintenance']);
-  window.__SBI_RETURNS_TIMER=window.__SBI_RETURNS_TIMER||setInterval(()=>{if(document.visibilityState!=='hidden'&&!busy)refreshReturnCases(true)},45000);
 }
 
 async function stockPage(){if(!await session())return;await loadChariots();const ids=['engineFilter','capacityFilter','mastFilter','heightFilter'];function fill(){const rows=CHARIOTS.filter(isStock);const defs=[['engineFilter','engine','Moteur : Tous'],['capacityFilter','capacity','Capacité : Toutes'],['mastFilter','mast_type','Mât : Tous'],['heightFilter','lifting_height','Hauteur : Toutes']];defs.forEach(([id,k,label])=>{const e=$('#'+id),old=e.value,vals=[...new Set(rows.map(c=>String(c[k]||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));e.innerHTML=`<option value="">${label}</option>`+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');if(vals.includes(old))e.value=old})}function render(){fill();let rows=CHARIOTS.filter(isStock);const q=$('#stockSearch')?.value.trim().toLowerCase()||'';const fs=[['engineFilter','engine'],['capacityFilter','capacity'],['mastFilter','mast_type'],['heightFilter','lifting_height']];rows=rows.filter(c=>(!q||[c.qr_id,c.chassis,c.engine,c.client,c.capacity].some(v=>String(v||'').toLowerCase().includes(q)))&&fs.every(([id,k])=>!$('#'+id).value||norm(c[k])===norm($('#'+id).value)));$('#stockCount').textContent=rows.length+' chariot'+(rows.length!==1?'s':'')+' en stock';$('#stockList').innerHTML=rows.map(c=>card(c,'stock')).join('')||'<div class="empty">Aucun chariot en stock.</div>'}$('#stockSearch').addEventListener('input',render);ids.forEach(id=>$('#'+id).addEventListener('change',render));$('#clearFilters').onclick=()=>{ids.forEach(id=>$('#'+id).value='');$('#stockSearch').value='';render()};render()
@@ -1744,7 +2241,24 @@ async function startSbiPresence(){
   return channel;
 }
 
-async function initPage(fn){if(!(await enforceMaintenance()))return;if(!(await getSession())){location.href=maintenanceEnabled()?'maintenance.html':'index.html';return}applyLicenseCache();await fn();if(currentUser&&typeof renderConnectedUser==='function')renderConnectedUser();try{await startSbiPresence()}catch(e){console.warn('Présence SBI indisponible',e)}verifyLicense()}
+function setupUppercaseTextInputs(){
+  if(window.__SBI_UPPERCASE_TEXT_INPUTS)return;
+  window.__SBI_UPPERCASE_TEXT_INPUTS=true;
+  const excluded=new Set(['email','password','url','tel','number','date','time','datetime-local','month','week','color','file','hidden']);
+  const apply=el=>{
+    if(!el||!(el.matches('input,textarea'))||el.disabled||el.readOnly)return;
+    const type=String(el.type||'text').toLowerCase();
+    if(excluded.has(type))return;
+    const start=el.selectionStart,end=el.selectionEnd;
+    const value=String(el.value||'');
+    const upper=value.toUpperCase();
+    if(value!==upper){el.value=upper;try{if(start!==null&&end!==null)el.setSelectionRange(start,end)}catch(e){}}
+  };
+  document.addEventListener('input',e=>apply(e.target),true);
+  document.addEventListener('change',e=>apply(e.target),true);
+  document.querySelectorAll('input,textarea').forEach(apply);
+}
+async function initPage(fn){if(!(await enforceMaintenance()))return;if(!(await getSession())){location.href=maintenanceEnabled()?'maintenance.html':'index.html';return}startSbiGlobalSync();applyLicenseCache();await fn();setupUppercaseTextInputs();if(currentUser&&typeof renderConnectedUser==='function')renderConnectedUser();try{await startSbiPresence()}catch(e){console.warn('Présence SBI indisponible',e)}verifyLicense()}
 
 
 async function deliveryPlanningPage(){
@@ -1769,7 +2283,7 @@ async function deliveryPlanningPage(){
   function getMachine(qr){return CHARIOTS.find(c=>String(c.qr_id)===String(qr))}
   function availableChariots(excludeQr=''){
     const excluded=plans.filter(p=>String(p.qr)!==String(excludeQr)).map(p=>String(p.qr));
-    return CHARIOTS.filter(c=>normalizeStatus(c.status)!=='livre'&&!c.delivery_date&&!excluded.includes(String(c.qr_id)));
+    return CHARIOTS.filter(c=>!isDelivered(c)&&!excluded.includes(String(c.qr_id)));
   }
   function chariotSearchText(c){return Object.values(c||{}).filter(v=>v!==null&&v!==undefined).map(v=>String(v)).join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase()}
   function searchTokens(s){return norm(s).split(/\s+/).filter(Boolean)}
@@ -2005,11 +2519,28 @@ function renderProfessionalDashboard(){
 // SBI V67.5 — Global search across forklift records and maintenance/planning history.
 async function globalSearchPage(){
   if(!await session())return;
-  const els={form:$('#globalSearchForm'),query:$('#globalQuery'),from:$('#globalFrom'),to:$('#globalTo'),status:$('#globalSearchStatus'),chariots:$('#globalChariotResults'),events:$('#globalEventResults'),chariotCount:$('#globalChariotCount'),eventCount:$('#globalEventCount'),reset:$('#globalSearchReset')};
+  const els={form:$('#globalSearchForm'),query:$('#globalQuery'),from:$('#globalFrom'),to:$('#globalTo'),statusFilter:$('#globalStatus'),stockFilter:$('#globalStock'),engineFilter:$('#globalEngine'),capacityFilter:$('#globalCapacity'),heightFilter:$('#globalHeight'),mastFilter:$('#globalMast'),clientFilter:$('#globalClient'),status:$('#globalSearchStatus'),chariots:$('#globalChariotResults'),events:$('#globalEventResults'),chariotCount:$('#globalChariotCount'),eventCount:$('#globalEventCount'),reset:$('#globalSearchReset')};
   if(!els.form||!els.query)return;
   await loadChariots();
   const params=new URLSearchParams(location.search);
-  els.query.value=params.get('q')||'';els.from.value=params.get('from')||'';els.to.value=params.get('to')||'';
+  els.query.value=params.get('q')||'';els.clientFilter.value=params.get('client')||'';els.from.value=params.get('from')||'';els.to.value=params.get('to')||'';
+  const fillSelect=(el,placeholder,key,formatter=v=>v)=>{
+    if(!el)return;
+    const current=params.get(key)||el.value||'';
+    const vals=[...new Set(CHARIOTS.map(c=>String(formatter(c?.[key]??'')||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fr',{numeric:true}));
+    el.innerHTML=`<option value="">${placeholder}</option>`+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
+    if(vals.includes(current))el.value=current;
+  };
+  const stockValue=c=>stockLabel(c?.stock);
+  const filterValues=()=>{
+    fillSelect(els.statusFilter,'Tous les statuts','status');
+    if(els.stockFilter){const vals=[...new Set(CHARIOTS.map(c=>stockValue(c)).filter(v=>v&&v!=='—'))].sort((a,b)=>a.localeCompare(b,'fr',{numeric:true}));const cur=params.get('stock')||'';els.stockFilter.innerHTML='<option value="">Tous les stocks</option>'+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');if(vals.includes(cur))els.stockFilter.value=cur;}
+    fillSelect(els.engineFilter,'Tous les moteurs','engine');
+    fillSelect(els.capacityFilter,'Toutes','capacity',fmtCapacity);
+    fillSelect(els.heightFilter,'Toutes','lifting_height');
+    fillSelect(els.mastFilter,'Tous','mast_type');
+  };
+  filterValues();
   let historyRows=[];let historyError='';
   try{
     const pageSize=1000,maxRows=5000;historyRows=[];
@@ -2030,18 +2561,30 @@ async function globalSearchPage(){
   const rowDatesEvent=r=>{const p=getPayload(r)||{};return [r.date,r.created_at,p.date,p.delivery_date,p.updated_at]};
   function render(){
     const q=els.query.value.trim(),from=els.from.value,to=els.to.value;
+    const filters={status:els.statusFilter?.value||'',stock:els.stockFilter?.value||'',engine:els.engineFilter?.value||'',capacity:els.capacityFilter?.value||'',height:els.heightFilter?.value||'',mast:els.mastFilter?.value||'',client:els.clientFilter?.value.trim()||''};
+    const anyFilter=Object.values(filters).some(Boolean);
     if(from&&to&&from>to){els.status.textContent='La date de début doit être antérieure ou égale à la date de fin.';els.chariots.innerHTML='';els.events.innerHTML='';els.chariotCount.textContent='0';els.eventCount.textContent='0';return}
-    if(!q&&!from&&!to){els.status.textContent='Saisissez un mot-clé ou choisissez une date pour lancer la recherche.';els.chariots.innerHTML='<div class="global-search-empty">Exemples : numéro de châssis, client, moteur, statut ou période.</div>';els.events.innerHTML='<div class="global-search-empty">Les interventions, changements de statut et planifications apparaîtront ici.</div>';els.chariotCount.textContent='0';els.eventCount.textContent='0';return}
-    const machines=CHARIOTS.filter(c=>hasTerms(chariotText(c),q)&&dateInRange(rowDates(c),from,to)).sort((a,b)=>new Date(b.updated_at||b.created_at||0)-new Date(a.updated_at||a.created_at||0));
-    const events=historyRows.filter(r=>hasTerms(eventText(r),q)&&dateInRange(rowDatesEvent(r),from,to)).sort((a,b)=>new Date(b.created_at||b.date||0)-new Date(a.created_at||a.date||0));
+    if(!q&&!from&&!to&&!anyFilter){els.status.textContent='Saisissez un mot-clé, choisissez une date ou activez un filtre pour lancer la recherche.';els.chariots.innerHTML='<div class="global-search-empty">Exemples : numéro de châssis, client, moteur, statut ou période.</div>';els.events.innerHTML='<div class="global-search-empty">Les interventions, changements de statut et planifications apparaîtront ici.</div>';els.chariotCount.textContent='0';els.eventCount.textContent='0';return}
+    const machines=CHARIOTS.filter(c=>{
+      if(!hasTerms(chariotText(c),q)||!dateInRange(rowDates(c),from,to))return false;
+      if(filters.client&&!norm(c.client).includes(norm(filters.client)))return false;
+      if(filters.status&&norm(c.status)!==norm(filters.status))return false;
+      if(filters.stock&&stockValue(c)!==filters.stock)return false;
+      if(filters.engine&&norm(c.engine)!==norm(filters.engine))return false;
+      if(filters.capacity&&String(fmtCapacity(c.capacity)||'')!==String(filters.capacity))return false;
+      if(filters.height&&norm(c.lifting_height)!==norm(filters.height))return false;
+      if(filters.mast&&norm(c.mast_type)!==norm(filters.mast))return false;
+      return true;
+    }).sort((a,b)=>new Date(b.updated_at||b.created_at||0)-new Date(a.updated_at||a.created_at||0));
+    const events=historyRows.filter(r=>{const c=CHARIOTS.find(x=>String(x.qr_id||'')===String(r.qr_id||''));if(filters.client&&!norm(c?.client).includes(norm(filters.client)))return false;return hasTerms(eventText(r),q)&&dateInRange(rowDatesEvent(r),from,to)}).sort((a,b)=>new Date(b.created_at||b.date||0)-new Date(a.created_at||a.date||0));
     els.chariotCount.textContent=String(machines.length);els.eventCount.textContent=String(events.length);
-    els.chariots.innerHTML=machines.map(c=>{const label=c.chassis||c.qr_id||'Chariot';const meta=[c.qr_id?'QR '+c.qr_id:'',c.engine,c.engine_number?'Moteur N° '+c.engine_number:'',fmtCapacity(c.capacity),c.status,c.stock?'Emplacement : '+stockLabel(c.stock):'',c.client?'Client : '+c.client:''].filter(Boolean).join(' · ');const machineDate=rowDates(c).map(dateOnly).filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x)).sort().at(-1);return `<a class="global-search-result-card" href="chariot.html?id=${encodeURIComponent(c.qr_id||'')}"><span class="global-result-icon">▰</span><span class="global-result-content"><strong>${esc(label)}</strong><small>${esc(meta||'Fiche chariot')}${machineDate?' · Date : '+esc(machineDate):''}</small></span><span class="global-result-arrow">›</span></a>`}).join('')||'<div class="global-search-empty">Aucun chariot trouvé pour ces critères.</div>';
-    els.events.innerHTML=events.map(r=>{const c=CHARIOTS.find(x=>String(x.qr_id||'')===String(r.qr_id||''));const p=getPayload(r)||{};const day=dateOnly(p.date||r.date||r.created_at);const title=String(r.type||'Événement');const detail=typeof r.travaux==='string'?r.travaux:JSON.stringify(r.travaux||'');const href=r.qr_id?'chariot.html?id='+encodeURIComponent(r.qr_id):'historique.html';return `<a class="global-search-result-card" href="${href}"><span class="global-result-icon event">◷</span><span class="global-result-content"><strong>${esc(title)} · ${esc(c?.chassis||r.qr_id||'Événement')}</strong><small>${esc(day)}${r.technicien?' · '+esc(r.technicien):''}${c?.client?' · '+esc(c.client):''}${detail?' · '+esc(detail.slice(0,240)):''}</small></span><span class="global-result-arrow">›</span></a>`}).join('')||'<div class="global-search-empty">Aucun historique trouvé pour ces critères.</div>';
+    els.chariots.innerHTML=machines.length?'<div class="global-simple-list"><div class="global-simple-row global-simple-head"><span>Châssis</span><span>Client</span><span>Statut</span><span>Stock</span></div>'+machines.map(c=>{const label=c.chassis||c.qr_id||'Chariot';return `<a class="global-simple-row" href="chariot.html?id=${encodeURIComponent(c.qr_id||'')}"><strong>${esc(label)}</strong><small>${esc(c.client||'—')}</small><small>${esc(c.status||'—')}</small><small>${esc(stockLabel(c.stock)||'—')}</small></a>`}).join('')+'</div>':'<div class="global-search-empty">Aucun chariot trouvé pour ces critères.</div>';
+    els.events.innerHTML=events.length?'<div class="global-simple-list"><div class="global-simple-row global-simple-head"><span>Date</span><span>Châssis</span><span>Client</span><span>Type</span></div>'+events.map(r=>{const c=CHARIOTS.find(x=>String(x.qr_id||'')===String(r.qr_id||''));const p=getPayload(r)||{};const day=dateOnly(p.date||r.date||r.created_at);const title=String(r.type||'Événement');const href=r.qr_id?'chariot.html?id='+encodeURIComponent(r.qr_id):'historique.html';return `<a class="global-simple-row" href="${href}"><small>${esc(day||'—')}</small><strong>${esc(c?.chassis||r.qr_id||'—')}</strong><small>${esc(c?.client||'—')}</small><small>${esc(title)}</small></a>`}).join('')+'</div>':'<div class="global-search-empty">Aucun historique trouvé pour ces critères.</div>';
     els.status.textContent=`Recherche terminée : ${machines.length} chariot(s), ${events.length} événement(s).`+(historyError?' L’historique est partiellement indisponible : '+historyError:'');
   }
   els.form.addEventListener('submit',e=>{e.preventDefault();render()});
-  [els.query,els.from,els.to].forEach(el=>{el?.addEventListener('input',render);el?.addEventListener('change',render)});
-  els.reset?.addEventListener('click',()=>{els.query.value='';els.from.value='';els.to.value='';render();els.query.focus()});
+  [els.query,els.from,els.to,els.statusFilter,els.stockFilter,els.engineFilter,els.capacityFilter,els.heightFilter,els.mastFilter,els.clientFilter].forEach(el=>{el?.addEventListener('input',render);el?.addEventListener('change',render)});
+  els.reset?.addEventListener('click',()=>{els.query.value='';els.from.value='';els.to.value='';if(els.clientFilter)els.clientFilter.value='';[els.statusFilter,els.stockFilter,els.engineFilter,els.capacityFilter,els.heightFilter,els.mastFilter].forEach(el=>{if(el)el.value=''});render();els.query.focus()});
   if(params.get('focusDate')==='1')setTimeout(()=>els.from.focus(),80);
   render();
 }

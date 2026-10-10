@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="css/style.css?v=67.18">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<title>SBI — Pannes & retours clients</title>
+<style>
+.return-page-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.return-stat{border:1px solid var(--pro-border,#dce5ef);background:#fff;border-radius:13px;padding:13px 15px;min-width:0}
+.return-stat strong{display:block;font-size:25px;line-height:1.2;color:#123e63}.return-stat span{display:block;margin-top:5px;color:#637c91;font-size:13px;font-weight:650}
+.return-toolbar{display:grid;grid-template-columns:minmax(220px,2fr) repeat(3,minmax(150px,1fr)) auto;gap:9px;align-items:center}
+.return-toolbar>*{min-width:0;width:100%;box-sizing:border-box}
+.return-count{margin-top:10px;font-size:14px;color:#627b90}
+.return-cases{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px;align-items:start}
+.return-case{margin:0;min-width:0;padding:16px;border:1px solid #dce5ee;border-radius:14px;background:#fff;box-shadow:0 7px 22px rgba(21,51,77,.045)}
+.return-case-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding-bottom:11px;border-bottom:1px solid #edf1f5}
+.return-case-title{font-size:19px;font-weight:850;line-height:1.25;color:#103d63;overflow-wrap:anywhere}
+.return-case-sub{font-size:14px;color:#5c7388;line-height:1.45;margin-top:4px;overflow-wrap:anywhere}
+.return-status{display:inline-flex;align-items:center;justify-content:center;white-space:normal;text-align:center;border-radius:20px;padding:6px 10px;font-size:12px;font-weight:850;background:#fff3d9;color:#8a5600;border:1px solid #f3d9a5;max-width:48%}
+.return-status.is-done{background:#e8f7ed;border-color:#c6ead1;color:#17683a}.return-status.is-active{background:#e7f2ff;border-color:#c9e0ff;color:#155ea8}.return-status.is-closed{background:#f0f2f5;border-color:#dce1e7;color:#586575}
+.return-case-details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0}
+.return-detail{background:#f7f9fc;border:1px solid #edf1f5;border-radius:9px;padding:10px;min-width:0}
+.return-detail-label{font-size:12px;color:#61788d;font-weight:800;margin-bottom:4px;text-transform:uppercase;letter-spacing:.03em}
+.return-detail-value{font-size:14px;color:#173b59;line-height:1.45;overflow-wrap:anywhere;white-space:pre-wrap}
+.return-case-notes{font-size:14px;line-height:1.5;color:#3f5c74;overflow-wrap:anywhere;margin-top:9px}
+.return-case-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;padding-top:11px;border-top:1px solid #edf1f5}.return-case-actions .btn{min-height:42px;font-size:14px}
+.return-form{margin-top:12px}.return-form[hidden]{display:none!important}.return-form-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:15px}.return-form-head h2{font-size:21px;margin:0;color:#103d63}.return-form-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}.return-field{min-width:0}.return-field.full{grid-column:1/-1}.return-field label{display:block;font-size:14px;font-weight:800;color:#294c68;margin-bottom:6px}.return-field input,.return-field select,.return-field textarea{width:100%;min-width:0;box-sizing:border-box;border:1px solid #cdd9e5;border-radius:9px;background:#fff;color:#153750;padding:10px 11px;font-size:15px;line-height:1.35}.return-field input,.return-field select{height:44px}.return-field textarea{min-height:82px;resize:vertical}.return-form-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:15px}.return-form-actions .btn{min-height:45px}.return-error{display:none;background:#fff1f0;border:1px solid #ffc9c4;color:#a4261d;border-radius:9px;padding:10px 12px;margin-top:12px;font-size:14px}.return-error.show{display:block}.return-notice{display:none;background:#eaf7ee;border:1px solid #c4e8cf;color:#17683a;border-radius:9px;padding:10px 12px;margin-top:12px;font-size:14px}.return-notice.show{display:block}.return-empty{grid-column:1/-1;text-align:center;color:#688096;background:#fff;border:1px dashed #cdd8e4;border-radius:13px;padding:28px 16px;font-size:15px}
+@media(max-width:1100px){.return-toolbar{grid-template-columns:repeat(3,minmax(0,1fr))}.return-toolbar .search{grid-column:span 2}.return-toolbar #returnReset{grid-column:auto}.return-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.return-cases{grid-template-columns:1fr}}
+@media(max-width:650px){.return-page-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.return-stat{padding:11px}.return-stat strong{font-size:23px}.return-stat span{font-size:12px}.return-toolbar{grid-template-columns:1fr 1fr;gap:8px}.return-toolbar .search{grid-column:1/-1}.return-toolbar #returnReset{grid-column:1/-1}.return-form-grid{grid-template-columns:1fr;gap:11px}.return-field.full{grid-column:1}.return-case{padding:13px}.return-case-title{font-size:18px}.return-case-sub{font-size:13px}.return-case-details{grid-template-columns:1fr 1fr;gap:8px}.return-detail{padding:9px}.return-detail-value{font-size:14px}.return-case-actions{display:grid;grid-template-columns:1fr}.return-case-actions .btn{width:100%;min-height:46px}.return-form-head h2{font-size:19px}}
+</style>
+</head>
+<body>
+<div id="licenseGate" class="license-gate"><div class="license-inner"><img src="assets/logo-sbi-hangcha.png" alt="SBI"><div class="license-loader"></div><h2>Vérification de la licence...</h2><div id="licenseInfo" class="license-info">Vérification en cours...</div></div></div>
+<header class="top"><button class="menu-btn mobile-only" onclick="toggleMenu()" aria-label="Ouvrir le menu">☰</button><div class="brand">SBI</div><div class="avatar">H</div></header>
+<div class="layout"><aside class="side desktop" data-nav></aside><main class="content">
+  <div class="page-head"><div><h1 class="page-title">Pannes & retours clients</h1><div class="sub">Enregistrer un retour client, suivre le diagnostic et tracer la réparation jusqu’à la clôture.</div></div><div class="actions"><button id="newReturnBtn" class="btn" type="button">＋ Nouveau retour</button></div></div>
+  <div id="returnGlobalNotice" class="return-notice" role="status" style="margin-bottom:12px"></div>
+  <section class="return-page-grid" aria-label="Résumé des retours"><div class="return-stat"><strong id="returnTotal">0</strong><span>Dossiers ouverts</span></div><div class="return-stat"><strong id="returnRepair">0</strong><span>En réparation</span></div><div class="return-stat"><strong id="returnWaiting">0</strong><span>En attente de pièces</span></div><div class="return-stat"><strong id="returnReady">0</strong><span>Prêts / restitués</span></div></section>
+  <section class="card"><div class="return-toolbar"><input id="returnSearch" class="search" type="search" placeholder="Rechercher châssis, client, problème…" autocomplete="off" aria-label="Rechercher un dossier de retour"><select id="returnStatusFilter" aria-label="Filtrer par statut"><option value="">Tous les statuts</option></select><input id="returnFrom" type="date" aria-label="Date retour du"><input id="returnTo" type="date" aria-label="Date retour au"><button id="returnReset" class="btn light" type="button">Réinitialiser</button></div><div id="returnCount" class="return-count">Chargement des dossiers…</div></section>
+  <section id="returnFormCard" class="card return-form" hidden><div class="return-form-head"><div><h2 id="returnFormTitle">Nouveau retour client</h2><div class="sub">Complète les informations disponibles ; tu pourras ajouter le diagnostic et la réparation plus tard.</div></div><button id="cancelReturnForm" class="btn light" type="button">Fermer</button></div><form id="returnForm"><div class="return-form-grid">
+    <div class="return-field"><label for="returnChariot">Chariot / N° de châssis *</label><select id="returnChariot" required><option value="">Sélectionner un chariot…</option></select></div>
+    <div class="return-field"><label for="returnClient">Client *</label><input id="returnClient" required maxlength="180" placeholder="Nom du client"></div>
+    <div class="return-field"><label for="returnDate">Date du retour *</label><input id="returnDate" type="date" required></div>
+    <div class="return-field"><label for="returnCategory">Type de problème *</label><select id="returnCategory" required><option value="">Choisir…</option><option>Moteur</option><option>Transmission</option><option>Hydraulique</option><option>Électricité</option><option>Mât / fourches</option><option>Freinage / direction</option><option>Pneus / roues</option><option>Batterie / charge</option><option>Fuite</option><option>Autre</option></select></div>
+    <div class="return-field"><label for="returnCondition">État à la réception</label><select id="returnCondition"><option value="">Non renseigné</option><option>Fonctionnel avec défaut</option><option>Immobilisé</option><option>Endommagé</option><option>À expertiser</option></select></div>
+    <div class="return-field"><label for="returnStatus">Statut du dossier *</label><select id="returnStatus" required><option>Retour signalé</option><option>En attente diagnostic</option><option>Diagnostic effectué</option><option>Réparation en cours</option><option>En attente de pièces</option><option>Réparé / prêt à restituer</option><option>Restitué au client</option><option>Clôturé sans réparation</option></select></div>
+    <div class="return-field full"><label for="returnProblem">Problème signalé par le client *</label><textarea id="returnProblem" required maxlength="4000" placeholder="Symptômes, circonstances, message du client…"></textarea></div>
+    <div class="return-field"><label for="returnDiagnosis">Diagnostic</label><textarea id="returnDiagnosis" maxlength="4000" placeholder="Cause identifiée, contrôles réalisés…"></textarea></div>
+    <div class="return-field"><label for="returnRepairAction">Réparation / action réalisée</label><textarea id="returnRepairAction" maxlength="4000" placeholder="Intervention, réglages, essais…"></textarea></div>
+    <div class="return-field"><label for="returnParts">Pièces nécessaires</label><textarea id="returnParts" maxlength="2000" placeholder="Référence, quantité, commande…"></textarea></div>
+    <div class="return-field"><label for="returnTechnician">Technicien responsable</label><input id="returnTechnician" maxlength="180" placeholder="Nom du technicien"></div>
+    <div class="return-field"><label for="returnDecision">Décision finale</label><select id="returnDecision"><option value="">À déterminer</option><option>Réparer puis restituer</option><option>Remplacement du chariot</option><option>Restitution sans réparation</option><option>Non réparable</option><option>Clôturé</option></select></div>
+    <div class="return-field"><label for="returnRestitutedDate">Date de restitution au client</label><input id="returnRestitutedDate" type="date"></div>
+    <div class="return-field full"><label for="returnObservations">Observations complémentaires</label><textarea id="returnObservations" maxlength="4000" placeholder="Réserves, garantie, échanges avec le client…"></textarea></div>
+  </div><div id="returnFormError" class="return-error" role="alert"></div><div id="returnFormNotice" class="return-notice" role="status"></div><div class="return-form-actions"><button id="saveReturnBtn" class="btn" type="submit">Enregistrer le dossier</button><button id="resetReturnForm" class="btn light" type="button">Vider le formulaire</button></div></form></section>
+  <div id="returnCases" class="return-cases"><div class="return-empty">Chargement des dossiers de retour…</div></div>
+</main></div><div class="overlay"><aside class="side" data-nav></aside></div>
+<footer>Suivi SAV • Retours clients et réparations enregistrés dans Supabase<br>© 2026 · Developed by <strong>BaCkDoooR</strong></footer>
+<script src="js/shell.js?v=67.18"></script><script src="maintenance-config.js?v=7"></script><script src="js/app.js?v=67.18"></script><script>initPage(retoursClientsPage())</script>
+</body></html>

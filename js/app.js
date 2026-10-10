@@ -1463,6 +1463,101 @@ async function modificationProductionPage(){
   startSbiRealtime(async()=>{if(document.visibilityState==='hidden')return;try{await loadChariots();buildFilters();render()}catch(e){console.warn('Actualisation production',e)}},['chariots','maintenance']);
 }
 
+async function retoursClientsPage(){
+  if(!await session())return;
+  await loadChariots();
+  const RETURN_EVENT_TYPES=['Retour client','Mise à jour retour client'];
+  const STATUS_OPTIONS=['Retour signalé','En attente diagnostic','Diagnostic effectué','Réparation en cours','En attente de pièces','Réparé / prêt à restituer','Restitué au client','Clôturé sans réparation'];
+  const $r=id=>document.getElementById(id);
+  const els={search:$r('returnSearch'),statusFilter:$r('returnStatusFilter'),from:$r('returnFrom'),to:$r('returnTo'),reset:$r('returnReset'),count:$r('returnCount'),cases:$r('returnCases'),newBtn:$r('newReturnBtn'),formCard:$r('returnFormCard'),form:$r('returnForm'),formTitle:$r('returnFormTitle'),chariot:$r('returnChariot'),client:$r('returnClient'),date:$r('returnDate'),category:$r('returnCategory'),condition:$r('returnCondition'),status:$r('returnStatus'),problem:$r('returnProblem'),diagnosis:$r('returnDiagnosis'),repair:$r('returnRepairAction'),parts:$r('returnParts'),technician:$r('returnTechnician'),decision:$r('returnDecision'),restitutedDate:$r('returnRestitutedDate'),observations:$r('returnObservations'),error:$r('returnFormError'),notice:$r('returnFormNotice'),save:$r('saveReturnBtn'),cancel:$r('cancelReturnForm'),clearForm:$r('resetReturnForm')};
+  let records=[],editingCaseId=null,busy=false;
+  const today=()=>localISODateGlobal(new Date());
+  const byQr=qr=>CHARIOTS.find(c=>String(c.qr_id)===String(qr));
+  const safeJson=value=>{try{return typeof value==='string'?JSON.parse(value):value}catch(_){return null}};
+  function statusClass(status){const s=normalizeStatus(status);if(['restitue au client','cloture sans reparation'].includes(s))return'is-closed';if(s==='repare / pret a restituer')return'is-done';return'is-active'}
+  function populateChariots(selected=''){
+    const previous=selected||els.chariot.value||'';
+    els.chariot.innerHTML='<option value="">Sélectionner un chariot…</option>'+CHARIOTS.map(c=>{
+      const qr=String(c.qr_id||'');const label=[c.chassis||qr,c.engine,fmtCapacity(c.capacity),c.client?'Client : '+c.client:''].filter(Boolean).join(' · ');
+      return `<option value="${esc(qr)}">${esc(label)}</option>`;
+    }).join('');
+    if(previous&&!CHARIOTS.some(c=>String(c.qr_id)===String(previous))){
+      els.chariot.insertAdjacentHTML('beforeend',`<option value="${esc(previous)}">${esc(previous)} · Chariot non trouvé dans la liste courante</option>`);
+    }
+    els.chariot.value=previous;
+  }
+  populateChariots();
+  els.statusFilter.innerHTML='<option value="">Tous les statuts</option>'+STATUS_OPTIONS.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
+  els.date.value=today();els.technician.value=getUserDisplayName();
+  els.chariot.addEventListener('change',()=>{const machine=byQr(els.chariot.value);if(machine){els.client.value=machine.client||els.client.value||'';}});
+  function parseReturnRow(row){const payload=safeJson(row?.travaux);if(!payload||typeof payload!=='object'||!(payload.sbi_return_case===true||payload.case_id))return null;return{caseId:String(payload.case_id||''),qrId:String(row.qr_id||payload.qr_id||''),payload,row};}
+  async function refreshReturnCases(quiet=false){
+    try{
+      const result=await withTimeout(supabaseClient.from('maintenance').select('id,qr_id,date,technicien,type,travaux,created_at,created_by').in('type',RETURN_EVENT_TYPES).order('created_at',{ascending:false}).limit(1500),10000);
+      if(result.error)throw result.error;
+      const seen=new Map();
+      (result.data||[]).forEach(row=>{const parsed=parseReturnRow(row);if(!parsed||!parsed.caseId||seen.has(parsed.caseId))return;seen.set(parsed.caseId,parsed)});
+      records=[...seen.values()].sort((a,b)=>String(b.payload.return_date||b.row.date||'').localeCompare(String(a.payload.return_date||a.row.date||''))||String(b.row.created_at||'').localeCompare(String(a.row.created_at||'')));
+      renderReturnCases();
+    }catch(error){
+      console.warn('Chargement des retours clients impossible',error);
+      if(!quiet){els.count.textContent='Erreur de chargement';els.cases.innerHTML=`<div class="return-empty">Impossible de charger les dossiers : ${esc(friendlySupabaseError(error))}<br><br>Vérifie les permissions de lecture de la table maintenance dans Supabase.</div>`;}
+    }
+  }
+  function renderReturnCases(){
+    const q=String(els.search.value||'').trim().toLowerCase();const status=els.statusFilter.value||'';const from=els.from.value||'';const to=els.to.value||'';
+    let rows=records.filter(rec=>{const p=rec.payload,c=byQr(rec.qrId);const hay=[rec.qrId,p.chassis,c?.chassis,p.client,c?.client,p.category,p.complaint,p.diagnosis,p.repair_action,p.parts_needed,p.technician,p.observations,p.status].map(v=>String(v||'').toLowerCase()).join(' ');const date=String(p.return_date||rec.row.date||'');return(!q||hay.includes(q))&&(!status||String(p.status||'')===status)&&(!from||date>=from)&&(!to||date<=to)});
+    const open=records.filter(r=>!['restitué au client','restitue au client','clôturé sans réparation','cloture sans reparation'].includes(normalizeStatus(r.payload.status)));
+    $r('returnTotal').textContent=String(open.length);
+    $r('returnRepair').textContent=String(records.filter(r=>normalizeStatus(r.payload.status)==='reparation en cours').length);
+    $r('returnWaiting').textContent=String(records.filter(r=>normalizeStatus(r.payload.status)==='en attente de pieces').length);
+    $r('returnReady').textContent=String(records.filter(r=>['repare / pret a restituer','restitue au client'].includes(normalizeStatus(r.payload.status))).length);
+    els.count.textContent=`${rows.length} dossier${rows.length!==1?'s':''} affiché${rows.length!==1?'s':''} sur ${records.length}`;
+    els.cases.innerHTML=rows.map(rec=>{
+      const p=rec.payload,c=byQr(rec.qrId),chassis=p.chassis||c?.chassis||rec.qrId||'Chariot non identifié',client=p.client||c?.client||'—',date=p.return_date||rec.row.date||'—',st=String(p.status||'Retour signalé');
+      const statusKind=statusClass(st);const updated=rec.row.created_at?new Date(rec.row.created_at).toLocaleString('fr-FR'):'—';
+      const issue=String(p.complaint||'—');const diagnosis=String(p.diagnosis||'').trim();const repair=String(p.repair_action||'').trim();const parts=String(p.parts_needed||'').trim();
+      return `<article class="return-case"><div class="return-case-head"><div><div class="return-case-title">${esc(chassis)}</div><div class="return-case-sub">${esc(client)} · Retour le ${esc(formatPlannedDate(date))}</div><div class="return-case-sub">${esc(p.category||'Problème non catégorisé')} · ${esc(c?.engine||'Moteur non renseigné')} · ${esc(fmtCapacity(c?.capacity)||'')}</div></div><span class="return-status ${statusKind}">${esc(st)}</span></div><div class="return-case-details"><div class="return-detail"><div class="return-detail-label">Problème signalé</div><div class="return-detail-value">${esc(issue)}</div></div><div class="return-detail"><div class="return-detail-label">État à réception</div><div class="return-detail-value">${esc(p.received_condition||'Non renseigné')}</div></div>${diagnosis?`<div class="return-detail"><div class="return-detail-label">Diagnostic</div><div class="return-detail-value">${esc(diagnosis)}</div></div>`:''}${repair?`<div class="return-detail"><div class="return-detail-label">Réparation / action</div><div class="return-detail-value">${esc(repair)}</div></div>`:''}${parts?`<div class="return-detail"><div class="return-detail-label">Pièces nécessaires</div><div class="return-detail-value">${esc(parts)}</div></div>`:''}<div class="return-detail"><div class="return-detail-label">Technicien</div><div class="return-detail-value">${esc(p.technician||rec.row.technicien||'—')}</div></div>${p.final_decision?`<div class="return-detail"><div class="return-detail-label">Décision</div><div class="return-detail-value">${esc(p.final_decision)}</div></div>`:''}${p.restituted_date?`<div class="return-detail"><div class="return-detail-label">Restitution</div><div class="return-detail-value">${esc(formatPlannedDate(p.restituted_date))}</div></div>`:''}</div>${p.observations?`<div class="return-case-notes"><strong>Observations :</strong> ${esc(p.observations)}</div>`:''}<div class="return-case-sub">Dernière mise à jour : ${esc(updated)}</div><div class="return-case-actions"><button class="btn" type="button" data-return-edit="${esc(rec.caseId)}">Mettre à jour le dossier</button><a class="btn light" href="chariot.html?id=${encodeURIComponent(rec.qrId)}&from=retours">Voir la fiche du chariot</a></div></article>`;
+    }).join('')||'<div class="return-empty">Aucun dossier de retour ne correspond aux filtres.</div>';
+    els.cases.querySelectorAll('[data-return-edit]').forEach(button=>button.addEventListener('click',()=>{const rec=records.find(r=>r.caseId===button.dataset.returnEdit);if(rec)openReturnForm(rec)}));
+  }
+  function setReturnError(message=''){els.error.textContent=message;els.error.classList.toggle('show',!!message);}
+  function setReturnNotice(message=''){els.notice.textContent=message;els.notice.classList.toggle('show',!!message);}
+  function resetReturnFields(){editingCaseId=null;els.form.reset();els.form.dataset.editCaseId='';populateChariots('');els.date.value=today();els.technician.value=getUserDisplayName();els.formTitle.textContent='Nouveau retour client';els.save.textContent='Enregistrer le dossier';setReturnError('');setReturnNotice('');}
+  function openReturnForm(rec=null){
+    resetReturnFields();
+    if(rec){const p=rec.payload;editingCaseId=rec.caseId;els.form.dataset.editCaseId=rec.caseId;populateChariots(rec.qrId);els.chariot.value=rec.qrId;els.client.value=p.client||byQr(rec.qrId)?.client||'';els.date.value=p.return_date||rec.row.date||today();els.category.value=p.category||'';els.condition.value=p.received_condition||'';els.status.value=p.status||'Retour signalé';els.problem.value=p.complaint||'';els.diagnosis.value=p.diagnosis||'';els.repair.value=p.repair_action||'';els.parts.value=p.parts_needed||'';els.technician.value=p.technician||rec.row.technicien||getUserDisplayName();els.decision.value=p.final_decision||'';els.restitutedDate.value=p.restituted_date||'';els.observations.value=p.observations||'';els.formTitle.textContent='Suivi du retour — '+(p.chassis||byQr(rec.qrId)?.chassis||rec.qrId);els.save.textContent='Enregistrer la mise à jour';}
+    els.formCard.hidden=false;els.formCard.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+  els.newBtn.addEventListener('click',()=>openReturnForm());
+  els.cancel.addEventListener('click',()=>{els.formCard.hidden=true;resetReturnFields()});
+  els.clearForm.addEventListener('click',()=>resetReturnFields());
+  els.reset.addEventListener('click',()=>{els.search.value='';els.statusFilter.value='';els.from.value='';els.to.value='';renderReturnCases()});
+  [els.search,els.statusFilter,els.from,els.to].forEach(el=>el.addEventListener(el===els.search?'input':'change',renderReturnCases));
+  els.form.addEventListener('submit',async e=>{
+    e.preventDefault();if(busy)return;if(!requireValidLicense())return;if(!currentUser){alert('Connexion requise.');return}
+    const qr=String(els.chariot.value||'');const machine=byQr(qr);if(!qr){setReturnError('Sélectionne un chariot.');return}
+    const client=String(els.client.value||'').trim();if(!client){setReturnError('Le nom du client est obligatoire.');return}
+    const complaint=String(els.problem.value||'').trim();if(!complaint){setReturnError('Décris le problème signalé par le client.');return}
+    const existing=editingCaseId?records.find(r=>r.caseId===editingCaseId):null;
+    const caseId=editingCaseId||('ret_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8));
+    const now=new Date().toISOString();const payload={sbi_return_case:true,case_id:caseId,qr_id:qr,chassis:machine?.chassis||existing?.payload?.chassis||qr,client,return_date:els.date.value||today(),category:els.category.value,received_condition:els.condition.value,status:els.status.value,complaint,diagnosis:els.diagnosis.value.trim(),repair_action:els.repair.value.trim(),parts_needed:els.parts.value.trim(),technician:els.technician.value.trim()||getUserDisplayName(),final_decision:els.decision.value,restituted_date:els.restitutedDate.value,observations:els.observations.value.trim(),created_at:existing?.payload?.created_at||now,updated_at:now,updated_by:currentUser.id};
+    const wasEditing=!!editingCaseId;
+    busy=true;els.save.disabled=true;els.save.textContent='Enregistrement…';setReturnError('');setReturnNotice('');
+    try{
+      const result=await withTimeout(supabaseClient.from('maintenance').insert({qr_id:qr,date:payload.return_date,technicien:payload.technician,type:editingCaseId?'Mise à jour retour client':'Retour client',travaux:JSON.stringify(payload),created_by:currentUser.id}),12000);
+      if(result.error)throw result.error;
+      els.formCard.hidden=true;resetReturnFields();await refreshReturnCases();
+      const note=$r('returnCount');if(note)note.textContent+=' · Enregistrement effectué';
+      const global=document.getElementById('returnGlobalNotice');if(global){global.textContent=wasEditing?'Mise à jour du retour enregistrée.':'Dossier de retour enregistré.';global.classList.add('show');}
+    }catch(error){console.error('Enregistrement retour client',error);let message=friendlySupabaseError(error);if(/row.level security|row-level security|violates row-level/i.test(message))message+=' — Supabase bloque l’écriture dans maintenance (policy INSERT pour authenticated requise).';setReturnError('Enregistrement impossible : '+message)}
+    finally{busy=false;els.save.disabled=false;els.save.textContent=editingCaseId?'Enregistrer la mise à jour':'Enregistrer le dossier'}
+  });
+  await refreshReturnCases();
+  startSbiRealtime(async evt=>{if(evt?.table==='maintenance'&&document.visibilityState!=='hidden'&&!busy)await refreshReturnCases(true)},['maintenance']);
+  window.__SBI_RETURNS_TIMER=window.__SBI_RETURNS_TIMER||setInterval(()=>{if(document.visibilityState!=='hidden'&&!busy)refreshReturnCases(true)},45000);
+}
+
 async function stockPage(){if(!await session())return;await loadChariots();const ids=['engineFilter','capacityFilter','mastFilter','heightFilter'];function fill(){const rows=CHARIOTS.filter(isStock);const defs=[['engineFilter','engine','Moteur : Tous'],['capacityFilter','capacity','Capacité : Toutes'],['mastFilter','mast_type','Mât : Tous'],['heightFilter','lifting_height','Hauteur : Toutes']];defs.forEach(([id,k,label])=>{const e=$('#'+id),old=e.value,vals=[...new Set(rows.map(c=>String(c[k]||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));e.innerHTML=`<option value="">${label}</option>`+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');if(vals.includes(old))e.value=old})}function render(){fill();let rows=CHARIOTS.filter(isStock);const q=$('#stockSearch')?.value.trim().toLowerCase()||'';const fs=[['engineFilter','engine'],['capacityFilter','capacity'],['mastFilter','mast_type'],['heightFilter','lifting_height']];rows=rows.filter(c=>(!q||[c.qr_id,c.chassis,c.engine,c.client,c.capacity].some(v=>String(v||'').toLowerCase().includes(q)))&&fs.every(([id,k])=>!$('#'+id).value||norm(c[k])===norm($('#'+id).value)));$('#stockCount').textContent=rows.length+' chariot'+(rows.length!==1?'s':'')+' en stock';$('#stockList').innerHTML=rows.map(c=>card(c,'stock')).join('')||'<div class="empty">Aucun chariot en stock.</div>'}$('#stockSearch').addEventListener('input',render);ids.forEach(id=>$('#'+id).addEventListener('change',render));$('#clearFilters').onclick=()=>{ids.forEach(id=>$('#'+id).value='');$('#stockSearch').value='';render()};render()
   startSbiRealtime(async evt=>{
     if(document.visibilityState==='hidden')return;
@@ -1856,28 +1951,11 @@ function renderProfessionalDashboard(){
 // SBI V67.5 — Global search across forklift records and maintenance/planning history.
 async function globalSearchPage(){
   if(!await session())return;
-  const els={form:$('#globalSearchForm'),query:$('#globalQuery'),from:$('#globalFrom'),to:$('#globalTo'),statusFilter:$('#globalStatus'),stockFilter:$('#globalStock'),engineFilter:$('#globalEngine'),capacityFilter:$('#globalCapacity'),heightFilter:$('#globalHeight'),mastFilter:$('#globalMast'),clientFilter:$('#globalClient'),status:$('#globalSearchStatus'),chariots:$('#globalChariotResults'),events:$('#globalEventResults'),chariotCount:$('#globalChariotCount'),eventCount:$('#globalEventCount'),reset:$('#globalSearchReset')};
+  const els={form:$('#globalSearchForm'),query:$('#globalQuery'),from:$('#globalFrom'),to:$('#globalTo'),status:$('#globalSearchStatus'),chariots:$('#globalChariotResults'),events:$('#globalEventResults'),chariotCount:$('#globalChariotCount'),eventCount:$('#globalEventCount'),reset:$('#globalSearchReset')};
   if(!els.form||!els.query)return;
   await loadChariots();
   const params=new URLSearchParams(location.search);
-  els.query.value=params.get('q')||'';els.clientFilter.value=params.get('client')||'';els.from.value=params.get('from')||'';els.to.value=params.get('to')||'';
-  const fillSelect=(el,placeholder,key,formatter=v=>v)=>{
-    if(!el)return;
-    const current=params.get(key)||el.value||'';
-    const vals=[...new Set(CHARIOTS.map(c=>String(formatter(c?.[key]??'')||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fr',{numeric:true}));
-    el.innerHTML=`<option value="">${placeholder}</option>`+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
-    if(vals.includes(current))el.value=current;
-  };
-  const stockValue=c=>stockLabel(c?.stock);
-  const filterValues=()=>{
-    fillSelect(els.statusFilter,'Tous les statuts','status');
-    if(els.stockFilter){const vals=[...new Set(CHARIOTS.map(c=>stockValue(c)).filter(v=>v&&v!=='—'))].sort((a,b)=>a.localeCompare(b,'fr',{numeric:true}));const cur=params.get('stock')||'';els.stockFilter.innerHTML='<option value="">Tous les stocks</option>'+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');if(vals.includes(cur))els.stockFilter.value=cur;}
-    fillSelect(els.engineFilter,'Tous les moteurs','engine');
-    fillSelect(els.capacityFilter,'Toutes','capacity',fmtCapacity);
-    fillSelect(els.heightFilter,'Toutes','lifting_height');
-    fillSelect(els.mastFilter,'Tous','mast_type');
-  };
-  filterValues();
+  els.query.value=params.get('q')||'';els.from.value=params.get('from')||'';els.to.value=params.get('to')||'';
   let historyRows=[];let historyError='';
   try{
     const pageSize=1000,maxRows=5000;historyRows=[];
@@ -1898,30 +1976,18 @@ async function globalSearchPage(){
   const rowDatesEvent=r=>{const p=getPayload(r)||{};return [r.date,r.created_at,p.date,p.delivery_date,p.updated_at]};
   function render(){
     const q=els.query.value.trim(),from=els.from.value,to=els.to.value;
-    const filters={status:els.statusFilter?.value||'',stock:els.stockFilter?.value||'',engine:els.engineFilter?.value||'',capacity:els.capacityFilter?.value||'',height:els.heightFilter?.value||'',mast:els.mastFilter?.value||'',client:els.clientFilter?.value.trim()||''};
-    const anyFilter=Object.values(filters).some(Boolean);
     if(from&&to&&from>to){els.status.textContent='La date de début doit être antérieure ou égale à la date de fin.';els.chariots.innerHTML='';els.events.innerHTML='';els.chariotCount.textContent='0';els.eventCount.textContent='0';return}
-    if(!q&&!from&&!to&&!anyFilter){els.status.textContent='Saisissez un mot-clé, choisissez une date ou activez un filtre pour lancer la recherche.';els.chariots.innerHTML='<div class="global-search-empty">Exemples : numéro de châssis, client, moteur, statut ou période.</div>';els.events.innerHTML='<div class="global-search-empty">Les interventions, changements de statut et planifications apparaîtront ici.</div>';els.chariotCount.textContent='0';els.eventCount.textContent='0';return}
-    const machines=CHARIOTS.filter(c=>{
-      if(!hasTerms(chariotText(c),q)||!dateInRange(rowDates(c),from,to))return false;
-      if(filters.client&&!norm(c.client).includes(norm(filters.client)))return false;
-      if(filters.status&&norm(c.status)!==norm(filters.status))return false;
-      if(filters.stock&&stockValue(c)!==filters.stock)return false;
-      if(filters.engine&&norm(c.engine)!==norm(filters.engine))return false;
-      if(filters.capacity&&String(fmtCapacity(c.capacity)||'')!==String(filters.capacity))return false;
-      if(filters.height&&norm(c.lifting_height)!==norm(filters.height))return false;
-      if(filters.mast&&norm(c.mast_type)!==norm(filters.mast))return false;
-      return true;
-    }).sort((a,b)=>new Date(b.updated_at||b.created_at||0)-new Date(a.updated_at||a.created_at||0));
-    const events=historyRows.filter(r=>{const c=CHARIOTS.find(x=>String(x.qr_id||'')===String(r.qr_id||''));if(filters.client&&!norm(c?.client).includes(norm(filters.client)))return false;return hasTerms(eventText(r),q)&&dateInRange(rowDatesEvent(r),from,to)}).sort((a,b)=>new Date(b.created_at||b.date||0)-new Date(a.created_at||a.date||0));
+    if(!q&&!from&&!to){els.status.textContent='Saisissez un mot-clé ou choisissez une date pour lancer la recherche.';els.chariots.innerHTML='<div class="global-search-empty">Exemples : numéro de châssis, client, moteur, statut ou période.</div>';els.events.innerHTML='<div class="global-search-empty">Les interventions, changements de statut et planifications apparaîtront ici.</div>';els.chariotCount.textContent='0';els.eventCount.textContent='0';return}
+    const machines=CHARIOTS.filter(c=>hasTerms(chariotText(c),q)&&dateInRange(rowDates(c),from,to)).sort((a,b)=>new Date(b.updated_at||b.created_at||0)-new Date(a.updated_at||a.created_at||0));
+    const events=historyRows.filter(r=>hasTerms(eventText(r),q)&&dateInRange(rowDatesEvent(r),from,to)).sort((a,b)=>new Date(b.created_at||b.date||0)-new Date(a.created_at||a.date||0));
     els.chariotCount.textContent=String(machines.length);els.eventCount.textContent=String(events.length);
-    els.chariots.innerHTML=machines.length?'<div class="global-simple-list"><div class="global-simple-row global-simple-head"><span>Châssis</span><span>Client</span><span>Statut</span><span>Stock</span></div>'+machines.map(c=>{const label=c.chassis||c.qr_id||'Chariot';return `<a class="global-simple-row" href="chariot.html?id=${encodeURIComponent(c.qr_id||'')}"><strong>${esc(label)}</strong><small>${esc(c.client||'—')}</small><small>${esc(c.status||'—')}</small><small>${esc(stockLabel(c.stock)||'—')}</small></a>`}).join('')+'</div>':'<div class="global-search-empty">Aucun chariot trouvé pour ces critères.</div>';
-    els.events.innerHTML=events.length?'<div class="global-simple-list"><div class="global-simple-row global-simple-head"><span>Date</span><span>Châssis</span><span>Client</span><span>Type</span></div>'+events.map(r=>{const c=CHARIOTS.find(x=>String(x.qr_id||'')===String(r.qr_id||''));const p=getPayload(r)||{};const day=dateOnly(p.date||r.date||r.created_at);const title=String(r.type||'Événement');const href=r.qr_id?'chariot.html?id='+encodeURIComponent(r.qr_id):'historique.html';return `<a class="global-simple-row" href="${href}"><small>${esc(day||'—')}</small><strong>${esc(c?.chassis||r.qr_id||'—')}</strong><small>${esc(c?.client||'—')}</small><small>${esc(title)}</small></a>`}).join('')+'</div>':'<div class="global-search-empty">Aucun historique trouvé pour ces critères.</div>';
+    els.chariots.innerHTML=machines.map(c=>{const label=c.chassis||c.qr_id||'Chariot';const meta=[c.qr_id?'QR '+c.qr_id:'',c.engine,c.engine_number?'Moteur N° '+c.engine_number:'',fmtCapacity(c.capacity),c.status,c.stock?'Emplacement : '+stockLabel(c.stock):'',c.client?'Client : '+c.client:''].filter(Boolean).join(' · ');const machineDate=rowDates(c).map(dateOnly).filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x)).sort().at(-1);return `<a class="global-search-result-card" href="chariot.html?id=${encodeURIComponent(c.qr_id||'')}"><span class="global-result-icon">▰</span><span class="global-result-content"><strong>${esc(label)}</strong><small>${esc(meta||'Fiche chariot')}${machineDate?' · Date : '+esc(machineDate):''}</small></span><span class="global-result-arrow">›</span></a>`}).join('')||'<div class="global-search-empty">Aucun chariot trouvé pour ces critères.</div>';
+    els.events.innerHTML=events.map(r=>{const c=CHARIOTS.find(x=>String(x.qr_id||'')===String(r.qr_id||''));const p=getPayload(r)||{};const day=dateOnly(p.date||r.date||r.created_at);const title=String(r.type||'Événement');const detail=typeof r.travaux==='string'?r.travaux:JSON.stringify(r.travaux||'');const href=r.qr_id?'chariot.html?id='+encodeURIComponent(r.qr_id):'historique.html';return `<a class="global-search-result-card" href="${href}"><span class="global-result-icon event">◷</span><span class="global-result-content"><strong>${esc(title)} · ${esc(c?.chassis||r.qr_id||'Événement')}</strong><small>${esc(day)}${r.technicien?' · '+esc(r.technicien):''}${c?.client?' · '+esc(c.client):''}${detail?' · '+esc(detail.slice(0,240)):''}</small></span><span class="global-result-arrow">›</span></a>`}).join('')||'<div class="global-search-empty">Aucun historique trouvé pour ces critères.</div>';
     els.status.textContent=`Recherche terminée : ${machines.length} chariot(s), ${events.length} événement(s).`+(historyError?' L’historique est partiellement indisponible : '+historyError:'');
   }
   els.form.addEventListener('submit',e=>{e.preventDefault();render()});
-  [els.query,els.from,els.to,els.statusFilter,els.stockFilter,els.engineFilter,els.capacityFilter,els.heightFilter,els.mastFilter,els.clientFilter].forEach(el=>{el?.addEventListener('input',render);el?.addEventListener('change',render)});
-  els.reset?.addEventListener('click',()=>{els.query.value='';els.from.value='';els.to.value='';if(els.clientFilter)els.clientFilter.value='';[els.statusFilter,els.stockFilter,els.engineFilter,els.capacityFilter,els.heightFilter,els.mastFilter].forEach(el=>{if(el)el.value=''});render();els.query.focus()});
+  [els.query,els.from,els.to].forEach(el=>{el?.addEventListener('input',render);el?.addEventListener('change',render)});
+  els.reset?.addEventListener('click',()=>{els.query.value='';els.from.value='';els.to.value='';render();els.query.focus()});
   if(params.get('focusDate')==='1')setTimeout(()=>els.from.focus(),80);
   render();
 }

@@ -1469,27 +1469,43 @@ async function retoursClientsPage(){
   const RETURN_EVENT_TYPES=['Retour client','Mise à jour retour client'];
   const STATUS_OPTIONS=['Retour signalé','En attente diagnostic','Diagnostic effectué','Réparation en cours','En attente de pièces','Réparé / prêt à restituer','Restitué au client','Clôturé sans réparation'];
   const $r=id=>document.getElementById(id);
-  const els={search:$r('returnSearch'),statusFilter:$r('returnStatusFilter'),from:$r('returnFrom'),to:$r('returnTo'),reset:$r('returnReset'),count:$r('returnCount'),cases:$r('returnCases'),newBtn:$r('newReturnBtn'),formCard:$r('returnFormCard'),form:$r('returnForm'),formTitle:$r('returnFormTitle'),chariot:$r('returnChariot'),client:$r('returnClient'),date:$r('returnDate'),category:$r('returnCategory'),condition:$r('returnCondition'),status:$r('returnStatus'),problem:$r('returnProblem'),diagnosis:$r('returnDiagnosis'),repair:$r('returnRepairAction'),parts:$r('returnParts'),technician:$r('returnTechnician'),decision:$r('returnDecision'),restitutedDate:$r('returnRestitutedDate'),observations:$r('returnObservations'),error:$r('returnFormError'),notice:$r('returnFormNotice'),save:$r('saveReturnBtn'),cancel:$r('cancelReturnForm'),clearForm:$r('resetReturnForm')};
-  let records=[],editingCaseId=null,busy=false;
+  const els={search:$r('returnSearch'),statusFilter:$r('returnStatusFilter'),from:$r('returnFrom'),to:$r('returnTo'),reset:$r('returnReset'),count:$r('returnCount'),cases:$r('returnCases'),newBtn:$r('newReturnBtn'),formCard:$r('returnFormCard'),form:$r('returnForm'),formTitle:$r('returnFormTitle'),chariot:$r('returnChariot'),chariotSearch:$r('returnChariotSearch'),chariotResults:$r('returnChariotResults'),client:$r('returnClient'),date:$r('returnDate'),category:$r('returnCategory'),condition:$r('returnCondition'),status:$r('returnStatus'),problem:$r('returnProblem'),diagnosis:$r('returnDiagnosis'),repair:$r('returnRepairAction'),parts:$r('returnParts'),technician:$r('returnTechnician'),decision:$r('returnDecision'),restitutedDate:$r('returnRestitutedDate'),observations:$r('returnObservations'),images:$r('returnImages'),imagesPreview:$r('returnImagesPreview'),error:$r('returnFormError'),notice:$r('returnFormNotice'),save:$r('saveReturnBtn'),cancel:$r('cancelReturnForm'),clearForm:$r('resetReturnForm')};
+  let records=[],editingCaseId=null,busy=false,localReturnFiles=[],removedReturnImages=new Set(),imageRenderSequence=0;
+  const RETURN_IMAGE_BUCKET='sbi-retours-clients',RETURN_IMAGE_MAX_BYTES=10*1024*1024,RETURN_IMAGE_MAX_COUNT=8;
   const today=()=>localISODateGlobal(new Date());
+  const returnImageMime=file=>{const type=String(file?.type||'').toLowerCase();const allowed=['image/jpeg','image/png','image/webp','image/gif','image/heic','image/heif','image/heic-sequence','image/heif-sequence'];if(allowed.includes(type))return type;const ext=String(file?.name||'').split('.').pop().toLowerCase();return({jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',webp:'image/webp',gif:'image/gif',heic:'image/heic',heif:'image/heif'})[ext]||''};
   const byQr=qr=>CHARIOTS.find(c=>String(c.qr_id)===String(qr));
   const safeJson=value=>{try{return typeof value==='string'?JSON.parse(value):value}catch(_){return null}};
   function statusClass(status){const s=normalizeStatus(status);if(['restitue au client','cloture sans reparation'].includes(s))return'is-closed';if(s==='repare / pret a restituer')return'is-done';return'is-active'}
+  function returnChariotLabel(c){const qr=String(c?.qr_id||'');return[c?.chassis||qr,c?.engine,fmtCapacity(c?.capacity),c?.client?'Client : '+c.client:''].filter(Boolean).join(' · ')}
   function populateChariots(selected=''){
     const previous=selected||els.chariot.value||'';
-    els.chariot.innerHTML='<option value="">Sélectionner un chariot…</option>'+CHARIOTS.map(c=>{
-      const qr=String(c.qr_id||'');const label=[c.chassis||qr,c.engine,fmtCapacity(c.capacity),c.client?'Client : '+c.client:''].filter(Boolean).join(' · ');
-      return `<option value="${esc(qr)}">${esc(label)}</option>`;
-    }).join('');
-    if(previous&&!CHARIOTS.some(c=>String(c.qr_id)===String(previous))){
-      els.chariot.insertAdjacentHTML('beforeend',`<option value="${esc(previous)}">${esc(previous)} · Chariot non trouvé dans la liste courante</option>`);
-    }
+    els.chariot.innerHTML='<option value="">Sélectionner un chariot…</option>'+CHARIOTS.map(c=>`<option value="${esc(String(c.qr_id||''))}">${esc(returnChariotLabel(c))}</option>`).join('');
+    if(previous&&!CHARIOTS.some(c=>String(c.qr_id)===String(previous)))els.chariot.insertAdjacentHTML('beforeend',`<option value="${esc(previous)}">${esc(previous)} · Chariot non trouvé dans la liste courante</option>`);
     els.chariot.value=previous;
+    const machine=byQr(previous);els.chariotSearch.value=machine?returnChariotLabel(machine):(previous?previous:'');
+    els.chariotResults.hidden=true;els.chariotResults.innerHTML='';
+  }
+  function renderReturnChariotSearch(){
+    const q=norm(els.chariotSearch.value||'');
+    if(!q){els.chariotResults.hidden=true;els.chariotResults.innerHTML='';return}
+    const matches=CHARIOTS.filter(c=>norm([c.qr_id,c.chassis,c.engine,c.engine_number,c.capacity,c.lifting_height,c.mast_type,c.color,c.stock,c.client,c.status].filter(Boolean).join(' ')).includes(q)).slice(0,15);
+    if(!matches.length){els.chariotResults.innerHTML='<div class="return-no-chariot">Aucun chariot correspondant. Vérifie le numéro de châssis ou le QR ID.</div>';els.chariotResults.hidden=false;return}
+    els.chariotResults.innerHTML=matches.map(c=>`<button type="button" class="return-chariot-result" role="option" data-return-pick="${esc(String(c.qr_id||''))}"><strong>${esc(c.chassis||c.qr_id||'—')}</strong><span>${esc([c.qr_id,c.engine,fmtCapacity(c.capacity),c.client?'Client : '+c.client:'',c.stock?'Stock : '+c.stock:''].filter(Boolean).join(' · '))}</span></button>`).join('');
+    els.chariotResults.hidden=false;
+    els.chariotResults.querySelectorAll('[data-return-pick]').forEach(btn=>btn.addEventListener('click',()=>selectReturnChariot(btn.dataset.returnPick)));
+  }
+  function selectReturnChariot(qr){
+    const machine=byQr(qr);if(!machine)return;
+    els.chariot.value=String(machine.qr_id);els.chariotSearch.value=returnChariotLabel(machine);els.chariotResults.hidden=true;
+    if(machine.client)els.client.value=machine.client;
   }
   populateChariots();
   els.statusFilter.innerHTML='<option value="">Tous les statuts</option>'+STATUS_OPTIONS.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
   els.date.value=today();els.technician.value=getUserDisplayName();
-  els.chariot.addEventListener('change',()=>{const machine=byQr(els.chariot.value);if(machine){els.client.value=machine.client||els.client.value||'';}});
+  els.chariot.addEventListener('change',()=>{const machine=byQr(els.chariot.value);if(machine){els.chariotSearch.value=returnChariotLabel(machine);els.chariotResults.hidden=true;if(machine.client)els.client.value=machine.client;}});
+  els.chariotSearch.addEventListener('input',()=>{const selected=byQr(els.chariot.value);if(selected&&els.chariotSearch.value!==returnChariotLabel(selected))els.chariot.value='';renderReturnChariotSearch()});
+  els.chariotSearch.addEventListener('keydown',e=>{if(e.key==='Escape'){els.chariotResults.hidden=true;return}if(e.key==='Enter'&&!els.chariotResults.hidden){const first=els.chariotResults.querySelector('[data-return-pick]');if(first){e.preventDefault();selectReturnChariot(first.dataset.returnPick)}}});
   function parseReturnRow(row){const payload=safeJson(row?.travaux);if(!payload||typeof payload!=='object'||!(payload.sbi_return_case===true||payload.case_id))return null;return{caseId:String(payload.case_id||''),qrId:String(row.qr_id||payload.qr_id||''),payload,row};}
   async function refreshReturnCases(quiet=false){
     try{
@@ -1517,21 +1533,50 @@ async function retoursClientsPage(){
       const p=rec.payload,c=byQr(rec.qrId),chassis=p.chassis||c?.chassis||rec.qrId||'Chariot non identifié',client=p.client||c?.client||'—',date=p.return_date||rec.row.date||'—',st=String(p.status||'Retour signalé');
       const statusKind=statusClass(st);const updated=rec.row.created_at?new Date(rec.row.created_at).toLocaleString('fr-FR'):'—';
       const issue=String(p.complaint||'—');const diagnosis=String(p.diagnosis||'').trim();const repair=String(p.repair_action||'').trim();const parts=String(p.parts_needed||'').trim();
-      return `<article class="return-case"><div class="return-case-head"><div><div class="return-case-title">${esc(chassis)}</div><div class="return-case-sub">${esc(client)} · Retour le ${esc(formatPlannedDate(date))}</div><div class="return-case-sub">${esc(p.category||'Problème non catégorisé')} · ${esc(c?.engine||'Moteur non renseigné')} · ${esc(fmtCapacity(c?.capacity)||'')}</div></div><span class="return-status ${statusKind}">${esc(st)}</span></div><div class="return-case-details"><div class="return-detail"><div class="return-detail-label">Problème signalé</div><div class="return-detail-value">${esc(issue)}</div></div><div class="return-detail"><div class="return-detail-label">État à réception</div><div class="return-detail-value">${esc(p.received_condition||'Non renseigné')}</div></div>${diagnosis?`<div class="return-detail"><div class="return-detail-label">Diagnostic</div><div class="return-detail-value">${esc(diagnosis)}</div></div>`:''}${repair?`<div class="return-detail"><div class="return-detail-label">Réparation / action</div><div class="return-detail-value">${esc(repair)}</div></div>`:''}${parts?`<div class="return-detail"><div class="return-detail-label">Pièces nécessaires</div><div class="return-detail-value">${esc(parts)}</div></div>`:''}<div class="return-detail"><div class="return-detail-label">Technicien</div><div class="return-detail-value">${esc(p.technician||rec.row.technicien||'—')}</div></div>${p.final_decision?`<div class="return-detail"><div class="return-detail-label">Décision</div><div class="return-detail-value">${esc(p.final_decision)}</div></div>`:''}${p.restituted_date?`<div class="return-detail"><div class="return-detail-label">Restitution</div><div class="return-detail-value">${esc(formatPlannedDate(p.restituted_date))}</div></div>`:''}</div>${p.observations?`<div class="return-case-notes"><strong>Observations :</strong> ${esc(p.observations)}</div>`:''}<div class="return-case-sub">Dernière mise à jour : ${esc(updated)}</div><div class="return-case-actions"><button class="btn" type="button" data-return-edit="${esc(rec.caseId)}">Mettre à jour le dossier</button><a class="btn light" href="chariot.html?id=${encodeURIComponent(rec.qrId)}&from=retours">Voir la fiche du chariot</a></div></article>`;
+      const imageCount=Array.isArray(p.images)?p.images.filter(img=>img&&img.path).length:0;
+      return `<article class="return-case"><div class="return-case-head"><div><div class="return-case-title">${esc(chassis)}</div><div class="return-case-sub">${esc(client)} · Retour le ${esc(formatPlannedDate(date))}</div><div class="return-case-sub">${esc(p.category||'Problème non catégorisé')} · ${esc(c?.engine||'Moteur non renseigné')} · ${esc(fmtCapacity(c?.capacity)||'')}</div></div><span class="return-status ${statusKind}">${esc(st)}</span></div><div class="return-case-details"><div class="return-detail"><div class="return-detail-label">Problème signalé</div><div class="return-detail-value">${esc(issue)}</div></div><div class="return-detail"><div class="return-detail-label">État à réception</div><div class="return-detail-value">${esc(p.received_condition||'Non renseigné')}</div></div>${diagnosis?`<div class="return-detail"><div class="return-detail-label">Diagnostic</div><div class="return-detail-value">${esc(diagnosis)}</div></div>`:''}${repair?`<div class="return-detail"><div class="return-detail-label">Réparation / action</div><div class="return-detail-value">${esc(repair)}</div></div>`:''}${parts?`<div class="return-detail"><div class="return-detail-label">Pièces nécessaires</div><div class="return-detail-value">${esc(parts)}</div></div>`:''}<div class="return-detail"><div class="return-detail-label">Technicien</div><div class="return-detail-value">${esc(p.technician||rec.row.technicien||'—')}</div></div>${p.final_decision?`<div class="return-detail"><div class="return-detail-label">Décision</div><div class="return-detail-value">${esc(p.final_decision)}</div></div>`:''}${p.restituted_date?`<div class="return-detail"><div class="return-detail-label">Restitution</div><div class="return-detail-value">${esc(formatPlannedDate(p.restituted_date))}</div></div>`:''}</div>${p.observations?`<div class="return-case-notes"><strong>Observations :</strong> ${esc(p.observations)}</div>`:''}${imageCount?`<div class="return-photo-count">📷 ${imageCount} photo${imageCount!==1?'s':''} jointe${imageCount!==1?'s':''} · Ouvre le dossier pour consulter</div>`:''}<div class="return-case-sub">Dernière mise à jour : ${esc(updated)}</div><div class="return-case-actions"><button class="btn" type="button" data-return-edit="${esc(rec.caseId)}">Mettre à jour le dossier</button><a class="btn light" href="chariot.html?id=${encodeURIComponent(rec.qrId)}&from=retours">Voir la fiche du chariot</a></div></article>`;
     }).join('')||'<div class="return-empty">Aucun dossier de retour ne correspond aux filtres.</div>';
     els.cases.querySelectorAll('[data-return-edit]').forEach(button=>button.addEventListener('click',()=>{const rec=records.find(r=>r.caseId===button.dataset.returnEdit);if(rec)openReturnForm(rec)}));
   }
   function setReturnError(message=''){els.error.textContent=message;els.error.classList.toggle('show',!!message);}
   function setReturnNotice(message=''){els.notice.textContent=message;els.notice.classList.toggle('show',!!message);}
-  function resetReturnFields(){editingCaseId=null;els.form.reset();els.form.dataset.editCaseId='';populateChariots('');els.date.value=today();els.technician.value=getUserDisplayName();els.formTitle.textContent='Nouveau retour client';els.save.textContent='Enregistrer le dossier';setReturnError('');setReturnNotice('');}
+  function revokeLocalReturnPreviews(){localReturnFiles.forEach(item=>{try{URL.revokeObjectURL(item.previewUrl)}catch(_){}});localReturnFiles=[];}
+  function activeExistingReturnImages(){const rec=editingCaseId?records.find(r=>r.caseId===editingCaseId):null;return (Array.isArray(rec?.payload?.images)?rec.payload.images:[]).filter(img=>img&&img.path&&!removedReturnImages.has(img.path));}
+  async function renderReturnImagesPreview(){
+    const renderId=++imageRenderSequence;
+    const existing=activeExistingReturnImages();
+    const existingHtml=await Promise.all(existing.map(async img=>{
+      let url='';
+      try{const signed=await supabaseClient.storage.from(RETURN_IMAGE_BUCKET).createSignedUrl(img.path,3600);if(!signed.error)url=signed.data?.signedUrl||'';}catch(_){}
+      return `<div class="return-image-tile">${url?`<a href="${esc(url)}" target="_blank" rel="noopener"><img src="${esc(url)}" alt="${esc(img.name||'Photo du retour')}"></a>`:'<div class="return-image-unavailable">Photo enregistrée<br>aperçu indisponible</div>'}<div class="return-image-caption">${esc(img.name||'Photo enregistrée')}</div><button class="return-image-remove" type="button" data-return-remove-image="${esc(img.path)}">Retirer cette photo</button></div>`;
+    }));
+    const localHtml=localReturnFiles.map((item,index)=>`<div class="return-image-tile"><img src="${esc(item.previewUrl)}" alt="${esc(item.file.name)}"><div class="return-image-caption">${esc(item.file.name)}<br>${(item.file.size/1024/1024).toFixed(1)} Mo · À importer</div><button class="return-image-remove" type="button" data-return-remove-local="${index}">Retirer cette photo</button></div>`);
+    if(renderId!==imageRenderSequence)return;
+    els.imagesPreview.innerHTML=[...existingHtml,...localHtml].join('');
+    if(!existingHtml.length&&!localHtml.length)els.imagesPreview.innerHTML='<div class="return-image-help-empty">Aucune photo ajoutée.</div>';
+    els.imagesPreview.querySelectorAll('[data-return-remove-image]').forEach(btn=>btn.addEventListener('click',()=>{removedReturnImages.add(btn.dataset.returnRemoveImage);renderReturnImagesPreview()}));
+    els.imagesPreview.querySelectorAll('[data-return-remove-local]').forEach(btn=>btn.addEventListener('click',()=>{const item=localReturnFiles[Number(btn.dataset.returnRemoveLocal)];if(item){try{URL.revokeObjectURL(item.previewUrl)}catch(_){}localReturnFiles.splice(Number(btn.dataset.returnRemoveLocal),1);renderReturnImagesPreview()}}));
+  }
+  function resetReturnFields(){editingCaseId=null;removedReturnImages.clear();revokeLocalReturnPreviews();els.form.reset();els.form.dataset.editCaseId='';populateChariots('');els.date.value=today();els.technician.value=getUserDisplayName();els.formTitle.textContent='Nouveau retour client';els.save.textContent='Enregistrer le dossier';setReturnError('');setReturnNotice('');if(els.imagesPreview)els.imagesPreview.innerHTML='<div class="return-image-help-empty">Aucune photo ajoutée.</div>';}
   function openReturnForm(rec=null){
     resetReturnFields();
-    if(rec){const p=rec.payload;editingCaseId=rec.caseId;els.form.dataset.editCaseId=rec.caseId;populateChariots(rec.qrId);els.chariot.value=rec.qrId;els.client.value=p.client||byQr(rec.qrId)?.client||'';els.date.value=p.return_date||rec.row.date||today();els.category.value=p.category||'';els.condition.value=p.received_condition||'';els.status.value=p.status||'Retour signalé';els.problem.value=p.complaint||'';els.diagnosis.value=p.diagnosis||'';els.repair.value=p.repair_action||'';els.parts.value=p.parts_needed||'';els.technician.value=p.technician||rec.row.technicien||getUserDisplayName();els.decision.value=p.final_decision||'';els.restitutedDate.value=p.restituted_date||'';els.observations.value=p.observations||'';els.formTitle.textContent='Suivi du retour — '+(p.chassis||byQr(rec.qrId)?.chassis||rec.qrId);els.save.textContent='Enregistrer la mise à jour';}
-    els.formCard.hidden=false;els.formCard.scrollIntoView({behavior:'smooth',block:'start'});
+    if(rec){const p=rec.payload;editingCaseId=rec.caseId;els.form.dataset.editCaseId=rec.caseId;populateChariots(rec.qrId);els.chariot.value=rec.qrId;const machine=byQr(rec.qrId);els.chariotSearch.value=machine?returnChariotLabel(machine):(p.chassis||rec.qrId);els.client.value=p.client||machine?.client||'';els.date.value=p.return_date||rec.row.date||today();els.category.value=p.category||'';els.condition.value=p.received_condition||'';els.status.value=p.status||'Retour signalé';els.problem.value=p.complaint||'';els.diagnosis.value=p.diagnosis||'';els.repair.value=p.repair_action||'';els.parts.value=p.parts_needed||'';els.technician.value=p.technician||rec.row.technicien||getUserDisplayName();els.decision.value=p.final_decision||'';els.restitutedDate.value=p.restituted_date||'';els.observations.value=p.observations||'';els.formTitle.textContent='Suivi du retour — '+(p.chassis||machine?.chassis||rec.qrId);els.save.textContent='Enregistrer la mise à jour';}
+    els.formCard.hidden=false;els.formCard.scrollIntoView({behavior:'smooth',block:'start'});renderReturnImagesPreview();
   }
   els.newBtn.addEventListener('click',()=>openReturnForm());
   els.cancel.addEventListener('click',()=>{els.formCard.hidden=true;resetReturnFields()});
   els.clearForm.addEventListener('click',()=>resetReturnFields());
+  els.images.addEventListener('change',()=>{
+    const incoming=Array.from(els.images.files||[]);els.images.value='';if(!incoming.length)return;
+    const existingCount=activeExistingReturnImages().length;
+    for(const file of incoming){
+      if(!returnImageMime(file)){setReturnError('Format non pris en charge. Utilise JPG, PNG, WEBP, GIF ou HEIC.');continue}
+      if(file.size>RETURN_IMAGE_MAX_BYTES){setReturnError(`L’image « ${file.name} » dépasse la limite de 10 Mo.`);continue}
+      if(existingCount+localReturnFiles.length>=RETURN_IMAGE_MAX_COUNT){setReturnError(`Maximum ${RETURN_IMAGE_MAX_COUNT} photos par dossier.`);break}
+      localReturnFiles.push({file,previewUrl:URL.createObjectURL(file)});
+    }
+    renderReturnImagesPreview();
+  });
   els.reset.addEventListener('click',()=>{els.search.value='';els.statusFilter.value='';els.from.value='';els.to.value='';renderReturnCases()});
   [els.search,els.statusFilter,els.from,els.to].forEach(el=>el.addEventListener(el===els.search?'input':'change',renderReturnCases));
   els.form.addEventListener('submit',async e=>{
@@ -1541,16 +1586,25 @@ async function retoursClientsPage(){
     const complaint=String(els.problem.value||'').trim();if(!complaint){setReturnError('Décris le problème signalé par le client.');return}
     const existing=editingCaseId?records.find(r=>r.caseId===editingCaseId):null;
     const caseId=editingCaseId||('ret_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8));
-    const now=new Date().toISOString();const payload={sbi_return_case:true,case_id:caseId,qr_id:qr,chassis:machine?.chassis||existing?.payload?.chassis||qr,client,return_date:els.date.value||today(),category:els.category.value,received_condition:els.condition.value,status:els.status.value,complaint,diagnosis:els.diagnosis.value.trim(),repair_action:els.repair.value.trim(),parts_needed:els.parts.value.trim(),technician:els.technician.value.trim()||getUserDisplayName(),final_decision:els.decision.value,restituted_date:els.restitutedDate.value,observations:els.observations.value.trim(),created_at:existing?.payload?.created_at||now,updated_at:now,updated_by:currentUser.id};
-    const wasEditing=!!editingCaseId;
+    const now=new Date().toISOString();const existingImages=(Array.isArray(existing?.payload?.images)?existing.payload.images:[]).filter(img=>img&&img.path&&!removedReturnImages.has(img.path)).map(img=>({path:img.path,name:img.name||'photo',type:img.type||'',size:Number(img.size||0),uploaded_at:img.uploaded_at||''}));
+    const payload={sbi_return_case:true,case_id:caseId,qr_id:qr,chassis:machine?.chassis||existing?.payload?.chassis||qr,client,return_date:els.date.value||today(),category:els.category.value,received_condition:els.condition.value,status:els.status.value,complaint,diagnosis:els.diagnosis.value.trim(),repair_action:els.repair.value.trim(),parts_needed:els.parts.value.trim(),technician:els.technician.value.trim()||getUserDisplayName(),final_decision:els.decision.value,restituted_date:els.restitutedDate.value,observations:els.observations.value.trim(),images:existingImages,created_at:existing?.payload?.created_at||now,updated_at:now,updated_by:currentUser.id};
+    const wasEditing=!!editingCaseId,uploadedPaths=[];
     busy=true;els.save.disabled=true;els.save.textContent='Enregistrement…';setReturnError('');setReturnNotice('');
     try{
+      for(const item of localReturnFiles){
+        const cleanName=String(item.file.name||'photo').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9._-]+/g,'_').slice(-100)||'photo';
+        const path=`${caseId}/${Date.now()}_${Math.random().toString(36).slice(2,8)}_${cleanName}`;
+        const upload=await withTimeout(supabaseClient.storage.from(RETURN_IMAGE_BUCKET).upload(path,item.file,{cacheControl:'3600',upsert:false,contentType:returnImageMime(item.file)}),20000);
+        if(upload.error)throw new Error(/bucket.*not found|not found.*bucket|does not exist/i.test(String(upload.error.message||''))?'Le stockage des photos n’est pas configuré. Exécute le fichier SUPABASE_RETURNS_STORAGE.sql dans Supabase → SQL Editor, puis réessaie.':friendlySupabaseError(upload.error));
+        uploadedPaths.push(path);payload.images.push({path,name:item.file.name||cleanName,type:returnImageMime(item.file),size:item.file.size||0,uploaded_at:now});
+      }
       const result=await withTimeout(supabaseClient.from('maintenance').insert({qr_id:qr,date:payload.return_date,technicien:payload.technician,type:editingCaseId?'Mise à jour retour client':'Retour client',travaux:JSON.stringify(payload),created_by:currentUser.id}),12000);
       if(result.error)throw result.error;
+      const removedPaths=Array.from(removedReturnImages);if(removedPaths.length){try{const removed=await supabaseClient.storage.from(RETURN_IMAGE_BUCKET).remove(removedPaths);if(removed.error)console.warn('Dossier enregistré, suppression de certaines anciennes photos impossible',removed.error)}catch(err){console.warn('Dossier enregistré, suppression de certaines anciennes photos impossible',err)}}
       els.formCard.hidden=true;resetReturnFields();await refreshReturnCases();
       const note=$r('returnCount');if(note)note.textContent+=' · Enregistrement effectué';
       const global=document.getElementById('returnGlobalNotice');if(global){global.textContent=wasEditing?'Mise à jour du retour enregistrée.':'Dossier de retour enregistré.';global.classList.add('show');}
-    }catch(error){console.error('Enregistrement retour client',error);let message=friendlySupabaseError(error);if(/row.level security|row-level security|violates row-level/i.test(message))message+=' — Supabase bloque l’écriture dans maintenance (policy INSERT pour authenticated requise).';setReturnError('Enregistrement impossible : '+message)}
+    }catch(error){console.error('Enregistrement retour client',error);if(uploadedPaths.length){try{await supabaseClient.storage.from(RETURN_IMAGE_BUCKET).remove(uploadedPaths)}catch(cleanupError){console.warn('Nettoyage des photos importées impossible',cleanupError)}}let message=friendlySupabaseError(error);if(/row.level security|row-level security|violates row-level/i.test(message))message+=' — Supabase bloque l’écriture dans maintenance (policy INSERT pour authenticated requise).';setReturnError('Enregistrement impossible : '+message)}
     finally{busy=false;els.save.disabled=false;els.save.textContent=editingCaseId?'Enregistrer la mise à jour':'Enregistrer le dossier'}
   });
   await refreshReturnCases();

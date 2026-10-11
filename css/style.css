@@ -1434,6 +1434,9 @@ button.menu-btn, button.notification-bell, button.user-admin-top, .text-link, .v
 
 .card-action{position:relative;z-index:3;min-height:32px;padding:5px 9px;font-size:10px;white-space:nowrap}
 .card-action:disabled{opacity:.6;cursor:wait}
+.desktop-card-action{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap;position:relative;z-index:3;max-width:360px}
+.plan-delivery-action{background:#0b75d1!important;color:#fff!important;box-shadow:0 3px 9px rgba(11,117,209,.16)}
+.planned-delivery-action:disabled,.planned-delivery-detail:disabled{background:#edf8f1!important;border:1px solid #ccead7!important;color:#23764b!important;opacity:1!important;cursor:default!important;box-shadow:none!important}
 .card-action-toast{position:fixed;right:18px;bottom:18px;z-index:10000;background:#173f63;color:#fff;padding:11px 15px;border-radius:9px;box-shadow:0 5px 18px rgba(0,0,0,.18);font-size:12px;font-weight:700;opacity:0;transform:translateY(8px);pointer-events:none;transition:.2s}
 .card-action-toast.show{opacity:1;transform:translateY(0)}
 
@@ -1705,7 +1708,7 @@ button.menu-btn, button.notification-bell, button.user-admin-top, .text-link, .v
   .mobile-workflow-step.complete{color:#1f7b4b}.mobile-workflow-step.complete .mobile-workflow-dot{border-color:#63b28a;background:#eef8f2;color:#1f7b4b}
   .mobile-workflow-step.current{color:#176fae}.mobile-workflow-step.current .mobile-workflow-dot{border-color:#2d83c5;background:#edf5fb;color:#176fae}
   .mobile-chariot-buttons{display:flex;grid-area:buttons;gap:8px;position:relative;z-index:4;width:100%}
-  .mobile-chariot-buttons .btn,.mobile-chariot-buttons button{flex:1 1 0;min-height:44px;font-size:12px;padding:8px 10px;text-align:center}
+  .mobile-chariot-buttons .btn,.mobile-chariot-buttons button{flex:1 1 0;min-width:0;min-height:44px;font-size:11.5px;line-height:1.2;padding:8px 6px;text-align:center;white-space:normal}
   .mobile-chariot-no-action{display:flex;align-items:center;justify-content:center;flex:1 1 0;min-height:44px;border:1px dashed #d6e0e8;border-radius:8px;color:#81909d;font-size:11px;font-weight:700}
   .mobile-chariot-action{display:none}
 }

@@ -912,15 +912,25 @@ function card(c,from=''){
   const href='chariot.html?id='+encodeURIComponent(id)+(from?'&from='+encodeURIComponent(from):'');
   const st=normalizeStatus(c.status);
   const planned=!!getDeliveryPlan(id);
-  let action='';
+  let action='',planAction='',planActionMobile='';
   if(isAdmin()){
     if(st==='en stock') action=`<button class="btn light card-action" type="button" data-card-action="assign" data-qr="${esc(id)}">Affecter client</button>`;
     else if(st==='reserve') action=`<button class="btn light card-action" type="button" data-card-action="start-modification" data-qr="${esc(id)}">Envoyer en modification</button>`;
     else if(st==='modification production') action=`<button class="btn light card-action" type="button" data-card-action="finish-modification" data-qr="${esc(id)}">Modification terminée</button>`;
     else if(st==='preparation livraison') action=`<button class="btn light card-action" type="button" data-card-action="ready" data-qr="${esc(id)}">Prêt à livrer</button>`;
     else if(st==='pret a livrer' && canDeliver) action=`<button class="btn delivered-action card-action" type="button" data-card-action="deliver" data-qr="${esc(id)}">Livrer</button>`;
+    if(!delivered){
+      if(planned){
+        planAction=`<button class="btn light card-action planned-delivery-action" type="button" disabled aria-label="${esc(id)} a déjà une livraison planifiée">✓ Livraison planifiée</button>`;
+        planActionMobile=`<button class="btn light card-action planned-delivery-action" type="button" disabled aria-label="${esc(id)} a déjà une livraison planifiée">✓ Planifiée</button>`;
+      }else{
+        planAction=`<button class="btn card-action plan-delivery-action" type="button" data-card-action="plan" data-qr="${esc(id)}">▦ Planifier la livraison</button>`;
+        planActionMobile=`<button class="btn card-action plan-delivery-action" type="button" data-card-action="plan" data-qr="${esc(id)}">▦ Planifier</button>`;
+      }
+    }
   }
-  return `<div class="item interactive-card chariot-list-card" data-card-id="${esc(id)}"><a class="item-open-link" href="${href}" aria-label="Ouvrir le chariot ${esc(id)}"></a><div class="item-main"><div class="item-title chariot-list-id">${esc(id)}</div><div class="mobile-chariot-tech"><span><small>Châssis</small><strong>${esc(c.chassis||'—')}</strong></span><span><small>Moteur</small><strong>${esc(c.engine||'—')}</strong></span><span><small>Capacité</small><strong>${esc(fmtCapacity(c.capacity)||'—')}</strong></span></div><div class="meta chariot-desktop-meta">${esc(c.chassis||'—')} • ${esc(c.engine||'—')} • ${esc(fmtCapacity(c.capacity))}</div>${c.client?`<div class="client-line"><strong>Client :</strong> ${esc(c.client)}</div>`:''}<div class="mobile-chariot-client">${c.client?`<span><small>Client</small><strong>${esc(c.client)}</strong></span>`:'<span><small>Client</small><strong>—</strong></span>'}</div><div class="recent-time">${c.updated_at?'Mis à jour : '+new Date(c.updated_at).toLocaleString('fr-FR'):''}</div></div><span class="badge ${statusClass(c.status)} chariot-status-badge">${esc(c.status||c.stock||'—')}</span><div class="desktop-card-action">${action}</div><div class="mobile-chariot-workflow-wrap">${compactWorkflowHtml(c)}</div><div class="mobile-chariot-buttons"><a class="btn light mobile-fiche-popup-link" data-popup-qr="${esc(id)}" href="${href}">Voir la fiche</a>${action||'<span class="mobile-chariot-no-action">Aucune action</span>'}</div></div>`;
+  const mobileActions=action||planActionMobile?`${action}${planActionMobile}`:'<span class="mobile-chariot-no-action">Aucune action</span>';
+  return `<div class="item interactive-card chariot-list-card" data-card-id="${esc(id)}"><a class="item-open-link" href="${href}" aria-label="Ouvrir le chariot ${esc(id)}"></a><div class="item-main"><div class="item-title chariot-list-id">${esc(id)}</div><div class="mobile-chariot-tech"><span><small>Châssis</small><strong>${esc(c.chassis||'—')}</strong></span><span><small>Moteur</small><strong>${esc(c.engine||'—')}</strong></span><span><small>Capacité</small><strong>${esc(fmtCapacity(c.capacity)||'—')}</strong></span></div><div class="meta chariot-desktop-meta">${esc(c.chassis||'—')} • ${esc(c.engine||'—')} • ${esc(fmtCapacity(c.capacity))}</div>${c.client?`<div class="client-line"><strong>Client :</strong> ${esc(c.client)}</div>`:''}<div class="mobile-chariot-client">${c.client?`<span><small>Client</small><strong>${esc(c.client)}</strong></span>`:'<span><small>Client</small><strong>—</strong></span>'}</div><div class="recent-time">${c.updated_at?'Mis à jour : '+new Date(c.updated_at).toLocaleString('fr-FR'):''}</div></div><span class="badge ${statusClass(c.status)} chariot-status-badge">${esc(c.status||c.stock||'—')}</span><div class="desktop-card-action">${action}${planAction}</div><div class="mobile-chariot-workflow-wrap">${compactWorkflowHtml(c)}</div><div class="mobile-chariot-buttons"><a class="btn light mobile-fiche-popup-link" data-popup-qr="${esc(id)}" href="${href}">Voir la fiche</a>${mobileActions}</div></div>`;
 }
 function initInteractiveCards(){
   if(window.__sbiInteractiveCardsBound)return;
@@ -1364,6 +1374,7 @@ function highlightLiveListItem(listId,qr,message=''){
 async function chariotsPage(){
   if(!await session())return;
   await loadChariots();
+  try{await loadDeliveryPlans()}catch(e){DELIVERY_PLANS=readCachedDeliveryPlans()}
   const initialSearch=new URLSearchParams(window.location.search).get('search')||'';
   const searchEl=$('#search');
   if(searchEl&&initialSearch)searchEl.value=initialSearch;
@@ -1430,15 +1441,16 @@ async function chariotsPage(){
     const before=new Map(CHARIOTS.map(c=>[String(c.qr_id),String(c.updated_at||'')]));
     try{
       await loadChariots();
+      try{await loadDeliveryPlans()}catch(e){DELIVERY_PLANS=readCachedDeliveryPlans()}
       render();
       const qr=evt?.payload?.new?.qr_id||evt?.payload?.old?.qr_id||'';
       const changed=qr?String(before.get(String(qr))||'')!==String(CHARIOTS.find(c=>String(c.qr_id)===String(qr))?.updated_at||''):true;
-      highlightCard(qr,changed?'Mise à jour':'');
-    }catch(e){console.warn('Actualisation temps réel chariots',e)}
-  },['chariots']);
+      if(evt?.table==='chariots')highlightCard(qr,changed?'Mise à jour':'');
+    }catch(e){console.warn('Actualisation temps réel chariots/planning',e)}
+  },['chariots','maintenance']);
   window.__SBI_CHARIOTS_LIVE_TIMER=window.__SBI_CHARIOTS_LIVE_TIMER||setInterval(async()=>{
     if(document.visibilityState==='hidden')return;
-    try{await loadChariots();render()}catch(e){}
+    try{await loadChariots();await loadDeliveryPlans();render()}catch(e){try{DELIVERY_PLANS=readCachedDeliveryPlans();render()}catch(_){}}
   },30000);
 }
 function workflowStepState(c,stepIndex,planned){
@@ -1684,6 +1696,14 @@ async function detailPage(){
   if(!current){$('#detail').innerHTML='<div class="empty">Chariot introuvable.</div>';return}
   $('#title').textContent=current.chassis||current.qr_id;$('#status').textContent=current.status||'—';
   const planned=getDeliveryPlan(current.qr_id),plannedDate=planned?.date?formatPlannedDate(planned.date):'—',plannedTime=planned?.time||'—',plannedDriver=planned?.driver||'—',plannedDestination=planned?.destination||'—';
+  const planDeliveryButton=$('#planDeliveryAction');
+  if(planDeliveryButton){
+    if(isAdmin()&&!isDelivered(current)){
+      planDeliveryButton.style.display='inline-flex';
+      if(planned){planDeliveryButton.disabled=true;planDeliveryButton.className='btn light planned-delivery-detail';planDeliveryButton.textContent='✓ Livraison planifiée';planDeliveryButton.title='Ce chariot a déjà une livraison planifiée.';planDeliveryButton.onclick=null}
+      else{planDeliveryButton.disabled=false;planDeliveryButton.className='btn light';planDeliveryButton.textContent='▦ Planifier livraison';planDeliveryButton.title='Ouvrir le planning avec ce chariot sélectionné.';planDeliveryButton.onclick=()=>location.href='planning-livraisons.html?qr='+encodeURIComponent(current.qr_id)}
+    }else{planDeliveryButton.style.display='none';planDeliveryButton.onclick=null}
+  }
   renderWorkflowSteps(current,!!planned);
 
   const normalizedColor=String(current.color||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
@@ -2425,6 +2445,8 @@ async function deliveryPlanningPage(){
       weekStart=startOfWeek(parseDate(selectedDate));
       renderWeek();renderList();
       setTimeout(()=>openEdit(target.id),40);
+    }else if(getMachine(requestedQr)&&!isDelivered(getMachine(requestedQr))){
+      setTimeout(()=>openModal(selectedDate,requestedQr),40);
     }
   }
 }

@@ -12,7 +12,7 @@
   </div>
   <div id="prepCount" class="sub" style="margin-top:10px"></div>
 </div>
-<div id="prepList" class="prep-list"></div></main></div><div class="overlay"><aside class="side" data-nav></aside></div><footer>QR ID permanent • Données techniques et modifications stockées dans Supabase<br>© 2026 · Developed by <strong>BaCkDoooR</strong></footer><script src="js/shell.js?v=67.69"></script><script src="maintenance-config.js?v=7"></script><script src="js/app.js?v=67.72"></script><script>
+<div id="prepList" class="prep-list"></div></main></div><div class="overlay"><aside class="side" data-nav></aside></div><footer>QR ID permanent • Données techniques et modifications stockées dans Supabase<br>© 2026 · Developed by <strong>BaCkDoooR</strong></footer><script src="js/shell.js?v=67.69"></script><script src="maintenance-config.js?v=7"></script><script src="js/app.js?v=67.74"></script><script>
 async function preparationLivraisonPage(){
   if(!await session())return;
   await loadChariots();
@@ -29,7 +29,7 @@ async function preparationLivraisonPage(){
   }
   function match(c){
     const q=els.search.value.trim().toLowerCase();
-    const text=[c.qr_id,c.chassis,c.engine,c.client].map(v=>String(v||'').toLowerCase());
+    const text=[c.qr_id,c.chassis,c.engine,c.client,c.color].map(v=>String(v||'').toLowerCase());
     return (!q||text.some(v=>v.includes(q)))
       &&(!els.status.value||String(c.status||'')===els.status.value)
       &&(!els.engine.value||String(c.engine||'')===els.engine.value)
@@ -45,7 +45,7 @@ async function preparationLivraisonPage(){
       return `<div class="card prep-item" role="link" tabindex="0" aria-label="Ouvrir la fiche du chariot ${esc(c.chassis||c.qr_id||'')}" data-chariot-row="${esc(c.qr_id||'')}">
         <div class="prep-item-main">
           <div class="prep-item-title">${esc(c.chassis||c.qr_id||'—')}</div>
-          <div class="prep-item-meta">${esc(c.engine||'—')} · ${esc(fmtCapacity(c.capacity)||'—')} · ${esc(c.client||'—')}</div>
+          <div class="prep-item-meta">${esc(c.engine||'—')} · ${esc(fmtCapacity(c.capacity)||'—')} · ${esc(c.client||'—')}</div><div class="prep-item-meta"><strong>Couleur :</strong> ${esc(c.color||'—')}</div>
           <div class="prep-item-meta">Statut : <strong>${esc(c.status||'—')}</strong></div>
         </div>
         <div class="prep-item-actions">

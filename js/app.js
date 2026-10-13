@@ -2595,11 +2595,11 @@ function renderProfessionalDashboard(){
 // SBI V67.5 — Global search across forklift records and maintenance/planning history.
 async function globalSearchPage(){
   if(!await session())return;
-  const els={form:$('#globalSearchForm'),query:$('#globalQuery'),from:$('#globalFrom'),to:$('#globalTo'),statusFilter:$('#globalStatus'),stockFilter:$('#globalStock'),engineFilter:$('#globalEngine'),capacityFilter:$('#globalCapacity'),heightFilter:$('#globalHeight'),mastFilter:$('#globalMast'),clientFilter:$('#globalClient'),status:$('#globalSearchStatus'),chariots:$('#globalChariotResults'),chariotCount:$('#globalChariotCount'),reset:$('#globalSearchReset'),exportBtn:$('#globalSearchExport')};
+  const els={form:$('#globalSearchForm'),query:$('#globalQuery'),from:$('#globalFrom'),to:$('#globalTo'),statusFilter:$('#globalStatus'),stockFilter:$('#globalStock'),engineFilter:$('#globalEngine'),capacityFilter:$('#globalCapacity'),heightFilter:$('#globalHeight'),mastFilter:$('#globalMast'),clientFilter:$('#globalClient'),sortBy:$('#globalSortBy'),sortOrder:$('#globalSortOrder'),status:$('#globalSearchStatus'),chariots:$('#globalChariotResults'),chariotCount:$('#globalChariotCount'),reset:$('#globalSearchReset'),exportBtn:$('#globalSearchExport')};
   if(!els.form||!els.query)return;
   await loadChariots();
   const params=new URLSearchParams(location.search);
-  els.query.value=params.get('q')||'';els.clientFilter.value=params.get('client')||'';els.from.value=params.get('from')||'';els.to.value=params.get('to')||'';
+  els.query.value=params.get('q')||'';els.clientFilter.value=params.get('client')||'';els.from.value=params.get('from')||'';els.to.value=params.get('to')||'';if(els.sortBy&&['updated_at','chassis','engine','client','status','stock','capacity'].includes(params.get('sortBy')))els.sortBy.value=params.get('sortBy');if(els.sortOrder&&['asc','desc'].includes(params.get('sortOrder')))els.sortOrder.value=params.get('sortOrder');
   let latestMachines=[];
   const fillSelect=(el,placeholder,key,formatter=v=>v)=>{
     if(!el)return;
@@ -2635,6 +2635,25 @@ async function globalSearchPage(){
     const now=new Date(),stamp=now.getFullYear()+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+'_'+String(now.getHours()).padStart(2,'0')+String(now.getMinutes()).padStart(2,'0');
     exportDownloadBlob(new Blob([csv],{type:'text/csv;charset=utf-8'}),`SBI_recherche_globale_${stamp}.csv`);
   }
+  const sortText=(a,b)=>String(a??'').localeCompare(String(b??''),'fr',{numeric:true,sensitivity:'base'});
+  const sortDate=c=>{const v=c?.updated_at||c?.created_at||0;const t=Date.parse(v);return Number.isFinite(t)?t:0};
+  const sortCapacity=c=>{const raw=String(fmtCapacity(c?.capacity)||c?.capacity||'');const n=parseFloat(raw.replace(',','.'));return Number.isFinite(n)?n:Number.MAX_SAFE_INTEGER};
+  function sortMachines(rows){
+    const key=els.sortBy?.value||'updated_at';
+    const direction=els.sortOrder?.value==='asc'?1:-1;
+    return rows.sort((a,b)=>{
+      let result=0;
+      if(key==='updated_at') result=sortDate(a)-sortDate(b);
+      else if(key==='chassis') result=sortText(a.chassis||a.qr_id,b.chassis||b.qr_id);
+      else if(key==='engine') result=sortText(a.engine,b.engine);
+      else if(key==='client') result=sortText(a.client,b.client);
+      else if(key==='status') result=sortText(a.status,b.status);
+      else if(key==='stock') result=sortText(stockValue(a),stockValue(b));
+      else if(key==='capacity') result=sortCapacity(a)-sortCapacity(b);
+      if(result===0) result=sortText(a.chassis||a.qr_id,b.chassis||b.qr_id);
+      return result*direction;
+    });
+  }
   function render(){
     const q=els.query.value.trim(),from=els.from.value,to=els.to.value;
     const filters={status:els.statusFilter?.value||'',stock:els.stockFilter?.value||'',engine:els.engineFilter?.value||'',capacity:els.capacityFilter?.value||'',height:els.heightFilter?.value||'',mast:els.mastFilter?.value||'',client:els.clientFilter?.value.trim()||''};
@@ -2651,7 +2670,8 @@ async function globalSearchPage(){
       if(filters.height&&norm(c.lifting_height)!==norm(filters.height))return false;
       if(filters.mast&&norm(c.mast_type)!==norm(filters.mast))return false;
       return true;
-    }).sort((a,b)=>new Date(b.updated_at||b.created_at||0)-new Date(a.updated_at||a.created_at||0));
+    });
+    sortMachines(machines);
     setLatest(machines);
     els.chariotCount.textContent=String(machines.length);
     els.chariots.innerHTML=machines.length?'<div class="global-simple-list"><div class="global-simple-row global-chariot-row global-simple-head"><span>Châssis</span><span>Moteur</span><span>Client</span><span>Statut</span><span>Stock</span></div>'+machines.map(c=>{const label=c.chassis||c.qr_id||'Chariot';return `<a class="global-simple-row global-chariot-row" href="chariot.html?id=${encodeURIComponent(c.qr_id||'')}"><span class="global-chariot-label"><strong>${esc(label)}</strong><small>Couleur : ${esc(c.color||'—')}</small></span><span class="global-chariot-cell" data-label="Moteur"><small>${esc(c.engine||'—')}</small></span><span class="global-chariot-cell" data-label="Client"><small>${esc(c.client||'—')}</small></span><span class="global-chariot-cell" data-label="Statut"><small>${esc(c.status||'—')}</small></span><span class="global-chariot-cell" data-label="Stock"><small>${esc(stockLabel(c.stock)||'—')}</small></span></a>`}).join('')+'</div>':'<div class="global-search-empty">Aucun chariot trouvé pour ces critères.</div>';
@@ -2659,8 +2679,8 @@ async function globalSearchPage(){
   }
   els.form.addEventListener('submit',e=>{e.preventDefault();render()});
   els.exportBtn?.addEventListener('click',exportCurrentResults);
-  [els.query,els.from,els.to,els.statusFilter,els.stockFilter,els.engineFilter,els.capacityFilter,els.heightFilter,els.mastFilter,els.clientFilter].forEach(el=>{el?.addEventListener('input',render);el?.addEventListener('change',render)});
-  els.reset?.addEventListener('click',()=>{els.query.value='';els.from.value='';els.to.value='';if(els.clientFilter)els.clientFilter.value='';[els.statusFilter,els.stockFilter,els.engineFilter,els.capacityFilter,els.heightFilter,els.mastFilter].forEach(el=>{if(el)el.value=''});render();els.query.focus()});
+  [els.query,els.from,els.to,els.statusFilter,els.stockFilter,els.engineFilter,els.capacityFilter,els.heightFilter,els.mastFilter,els.clientFilter,els.sortBy,els.sortOrder].forEach(el=>{el?.addEventListener('input',render);el?.addEventListener('change',render)});
+  els.reset?.addEventListener('click',()=>{els.query.value='';els.from.value='';els.to.value='';if(els.clientFilter)els.clientFilter.value='';if(els.sortBy)els.sortBy.value='updated_at';if(els.sortOrder)els.sortOrder.value='desc';[els.statusFilter,els.stockFilter,els.engineFilter,els.capacityFilter,els.heightFilter,els.mastFilter].forEach(el=>{if(el)el.value=''});render();els.query.focus()});
   if(params.get('focusDate')==='1')setTimeout(()=>els.from.focus(),80);
   render();
 }

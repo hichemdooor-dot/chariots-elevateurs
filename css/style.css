@@ -3190,12 +3190,14 @@ button.btn:disabled,
   }
 }
 
-/* v67.76 — Gestion des chauffeurs depuis le formulaire de livraison */
-.delivery-driver-control{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;min-width:0}
+/* v67.79 — Chauffeur management button visible beside the dropdown */
+.delivery-driver-control{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;min-width:0}
 .delivery-driver-control select{width:100%;min-width:0}
-.delivery-driver-manage{min-height:44px!important;padding:0 13px!important;white-space:nowrap;font-weight:800}
-.delivery-driver-manage-prominent{display:flex!important;align-items:center;justify-content:center;gap:8px;width:100%;border:1px solid #b7cfe7!important;background:#fff!important;color:#174f84!important;border-radius:12px!important;font-size:14px!important;box-shadow:0 1px 2px rgba(20,55,85,.06)}
-.delivery-driver-manage-prominent span{font-size:18px;line-height:1}
+.delivery-driver-manage{min-height:44px!important;min-width:86px;padding:0 10px!important;white-space:nowrap;font-weight:800}
+.delivery-driver-manage-prominent{display:flex!important;align-items:center;justify-content:center;gap:6px;width:auto;border:1px solid #8fbce3!important;background:#fff!important;color:#174f84!important;border-radius:11px!important;font-size:13px!important;box-shadow:0 2px 5px rgba(20,55,85,.12)}
+.delivery-driver-manage-prominent:hover{background:#edf6ff!important;border-color:#3987cd!important}
+.delivery-driver-manage-prominent span{font-size:16px;line-height:1}
+.delivery-driver-manage-prominent .driver-manage-label{font-size:13px;font-weight:850}
 .driver-manager-dialog{width:min(590px,100%);padding:0!important}
 .driver-manager-body{padding:22px 26px 24px}
 .driver-add-form{display:grid;gap:8px;padding:14px;border:1px solid #dce7f1;border-radius:14px;background:#f3f8fc}
@@ -3215,4 +3217,4 @@ button.btn:disabled,
 .driver-manager-empty{padding:16px;border:1px dashed #c9d6e2;border-radius:12px;text-align:center;color:#64788b;background:#f8fafc}
 .driver-manager-footer{display:flex;justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid #e4ebf2}
 .driver-manager-footer .btn{min-height:42px}
-@media(max-width:700px){.delivery-driver-control{gap:10px}.delivery-driver-manage{padding:0 10px!important;min-height:42px!important}.driver-manager-body{padding:14px}.driver-manager-row{align-items:flex-start;flex-direction:column}.driver-manager-row.editing{flex-direction:column}.driver-manager-actions{width:100%;justify-content:flex-end}.driver-manager-actions .btn{flex:1}.driver-add-row{grid-template-columns:minmax(0,1fr) auto;gap:6px}.driver-add-row input{font-size:14px}.driver-add-row .btn{padding:0 10px}.driver-manager-footer .btn{width:100%}}
+@media(max-width:700px){.delivery-driver-control{grid-template-columns:minmax(0,1fr) auto;gap:7px}.delivery-driver-manage{padding:0 9px!important;min-width:78px;min-height:42px!important}.delivery-driver-manage-prominent{font-size:12px!important}.driver-manage-label{font-size:12px!important}.driver-manager-body{padding:14px}.driver-manager-row{align-items:flex-start;flex-direction:column}.driver-manager-row.editing{flex-direction:column}.driver-manager-actions{width:100%;justify-content:flex-end}.driver-manager-actions .btn{flex:1}.driver-add-row{grid-template-columns:minmax(0,1fr) auto;gap:6px}.driver-add-row input{font-size:14px}.driver-add-row .btn{padding:0 10px}.driver-manager-footer .btn{width:100%}}

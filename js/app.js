@@ -2595,11 +2595,12 @@ function renderProfessionalDashboard(){
 // SBI V67.5 — Global search across forklift records and maintenance/planning history.
 async function globalSearchPage(){
   if(!await session())return;
-  const els={form:$('#globalSearchForm'),query:$('#globalQuery'),from:$('#globalFrom'),to:$('#globalTo'),statusFilter:$('#globalStatus'),stockFilter:$('#globalStock'),engineFilter:$('#globalEngine'),capacityFilter:$('#globalCapacity'),heightFilter:$('#globalHeight'),mastFilter:$('#globalMast'),clientFilter:$('#globalClient'),status:$('#globalSearchStatus'),chariots:$('#globalChariotResults'),events:$('#globalEventResults'),chariotCount:$('#globalChariotCount'),eventCount:$('#globalEventCount'),reset:$('#globalSearchReset')};
+  const els={form:$('#globalSearchForm'),query:$('#globalQuery'),from:$('#globalFrom'),to:$('#globalTo'),statusFilter:$('#globalStatus'),stockFilter:$('#globalStock'),engineFilter:$('#globalEngine'),capacityFilter:$('#globalCapacity'),heightFilter:$('#globalHeight'),mastFilter:$('#globalMast'),clientFilter:$('#globalClient'),status:$('#globalSearchStatus'),chariots:$('#globalChariotResults'),chariotCount:$('#globalChariotCount'),reset:$('#globalSearchReset'),exportBtn:$('#globalSearchExport')};
   if(!els.form||!els.query)return;
   await loadChariots();
   const params=new URLSearchParams(location.search);
   els.query.value=params.get('q')||'';els.clientFilter.value=params.get('client')||'';els.from.value=params.get('from')||'';els.to.value=params.get('to')||'';
+  let latestMachines=[];
   const fillSelect=(el,placeholder,key,formatter=v=>v)=>{
     if(!el)return;
     const current=params.get(key)||el.value||'';
@@ -2617,30 +2618,29 @@ async function globalSearchPage(){
     fillSelect(els.mastFilter,'Tous','mast_type');
   };
   filterValues();
-  let historyRows=[];let historyError='';
-  try{
-    const pageSize=1000,maxRows=5000;historyRows=[];
-    for(let offset=0;offset<maxRows;offset+=pageSize){
-      const r=await withTimeout(supabaseClient.from('maintenance').select('id,qr_id,date,technicien,type,travaux,created_at,created_by').order('created_at',{ascending:false}).range(offset,offset+pageSize-1),12000);
-      if(r.error)throw r.error;
-      const rows=Array.isArray(r.data)?r.data:[];historyRows.push(...rows);
-      if(rows.length<pageSize)break;
-    }
-  }catch(e){historyError=friendlySupabaseError(e);console.warn('Recherche globale: historique non chargé',e)}
   const dateOnly=v=>String(v||'').slice(0,10);
-  const getPayload=row=>{if(row?.travaux&&typeof row.travaux==='object')return row.travaux;if(typeof row?.travaux==='string'){const t=row.travaux.trim();if(t.startsWith('{')){try{return JSON.parse(t)}catch(_){}}}return null};
   const chariotText=c=>Object.entries(c||{}).map(([k,v])=>typeof v==='string'||typeof v==='number'?String(v):'').join(' ');
-  const eventText=r=>{const c=CHARIOTS.find(x=>String(x.qr_id||'')===String(r.qr_id||''));return [r.qr_id,r.technicien,r.type,r.travaux,c?.chassis,c?.engine,c?.engine_number,c?.client,c?.capacity,c?.color,c?.status,c?.stock].map(v=>String(v||'')).join(' ')};
   const hasTerms=(text,q)=>{const terms=norm(q).split(/\s+/).filter(Boolean);if(!terms.length)return true;const t=norm(text);return terms.every(term=>t.includes(term))};
   const dateInRange=(dates,from,to)=>{const valid=dates.map(dateOnly).filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x));if(!from&&!to)return true;if(!valid.length)return false;return valid.some(d=>(!from||d>=from)&&(!to||d<=to))};
   const rowDates=c=>Object.entries(c||{}).filter(([k,v])=>/(date|_at|timestamp|time)$/i.test(k)&&v).map(([,v])=>v);
-  const rowDatesEvent=r=>{const p=getPayload(r)||{};return [r.date,r.created_at,p.date,p.delivery_date,p.updated_at]};
+  const setLatest=rows=>{latestMachines=rows; if(els.exportBtn)els.exportBtn.disabled=!rows.length};
+  function exportCurrentResults(){
+    if(!latestMachines.length){alert('Aucun résultat à exporter. Lancez une recherche avec au moins un critère.');return;}
+    const headers=['QR ID','N° châssis','N° de série','Couleur','Type de moteur','N° moteur','Capacité','Hauteur de levage','Type de mât','Dimension de fourche','Statut','Stock','Client','Date de livraison','Observations','Créé le','Modifié le'];
+    const rows=latestMachines.map(c=>[
+      c.qr_id,c.chassis,c.serial_number,c.color,c.engine,c.engine_number,fmtCapacity(c.capacity),c.lifting_height,c.mast_type,c.fork_dimension,c.status,stockLabel(c.stock),c.client,c.delivery_date,c.observations,c.created_at,c.updated_at
+    ]);
+    const cell=value=>{let text=exportSafeText(value).replace(/\r?\n/g,' ');if(/^[=+@\-]/.test(text))text="'"+text;return '"'+text.replace(/"/g,'""')+'"'};
+    const csv='\uFEFF'+headers.map(cell).join(';')+'\r\n'+rows.map(row=>row.map(cell).join(';')).join('\r\n');
+    const now=new Date(),stamp=now.getFullYear()+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+'_'+String(now.getHours()).padStart(2,'0')+String(now.getMinutes()).padStart(2,'0');
+    exportDownloadBlob(new Blob([csv],{type:'text/csv;charset=utf-8'}),`SBI_recherche_globale_${stamp}.csv`);
+  }
   function render(){
     const q=els.query.value.trim(),from=els.from.value,to=els.to.value;
     const filters={status:els.statusFilter?.value||'',stock:els.stockFilter?.value||'',engine:els.engineFilter?.value||'',capacity:els.capacityFilter?.value||'',height:els.heightFilter?.value||'',mast:els.mastFilter?.value||'',client:els.clientFilter?.value.trim()||''};
     const anyFilter=Object.values(filters).some(Boolean);
-    if(from&&to&&from>to){els.status.textContent='La date de début doit être antérieure ou égale à la date de fin.';els.chariots.innerHTML='';els.events.innerHTML='';els.chariotCount.textContent='0';els.eventCount.textContent='0';return}
-    if(!q&&!from&&!to&&!anyFilter){els.status.textContent='Saisissez un mot-clé, choisissez une date ou activez un filtre pour lancer la recherche.';els.chariots.innerHTML='<div class="global-search-empty">Exemples : numéro de châssis, client, moteur, statut ou période.</div>';els.events.innerHTML='<div class="global-search-empty">Les interventions, changements de statut et planifications apparaîtront ici.</div>';els.chariotCount.textContent='0';els.eventCount.textContent='0';return}
+    if(from&&to&&from>to){setLatest([]);els.status.textContent='La date de début doit être antérieure ou égale à la date de fin.';els.chariots.innerHTML='';els.chariotCount.textContent='0';return}
+    if(!q&&!from&&!to&&!anyFilter){setLatest([]);els.status.textContent='Saisissez un mot-clé, choisissez une date ou activez un filtre pour lancer la recherche.';els.chariots.innerHTML='<div class="global-search-empty">Exemples : numéro de châssis, client, moteur, statut ou période.</div>';els.chariotCount.textContent='0';return}
     const machines=CHARIOTS.filter(c=>{
       if(!hasTerms(chariotText(c),q)||!dateInRange(rowDates(c),from,to))return false;
       if(filters.client&&!norm(c.client).includes(norm(filters.client)))return false;
@@ -2652,13 +2652,13 @@ async function globalSearchPage(){
       if(filters.mast&&norm(c.mast_type)!==norm(filters.mast))return false;
       return true;
     }).sort((a,b)=>new Date(b.updated_at||b.created_at||0)-new Date(a.updated_at||a.created_at||0));
-    const events=historyRows.filter(r=>{const c=CHARIOTS.find(x=>String(x.qr_id||'')===String(r.qr_id||''));if(filters.client&&!norm(c?.client).includes(norm(filters.client)))return false;return hasTerms(eventText(r),q)&&dateInRange(rowDatesEvent(r),from,to)}).sort((a,b)=>new Date(b.created_at||b.date||0)-new Date(a.created_at||a.date||0));
-    els.chariotCount.textContent=String(machines.length);els.eventCount.textContent=String(events.length);
-    els.chariots.innerHTML=machines.length?'<div class="global-simple-list"><div class="global-simple-row global-simple-head"><span>Châssis</span><span>Client</span><span>Statut</span><span>Stock</span></div>'+machines.map(c=>{const label=c.chassis||c.qr_id||'Chariot';return `<a class="global-simple-row" href="chariot.html?id=${encodeURIComponent(c.qr_id||'')}"><span class="global-chariot-label"><strong>${esc(label)}</strong><small>Moteur : ${esc(c.engine||'—')}</small><small>Couleur : ${esc(c.color||'—')}</small></span><small>${esc(c.client||'—')}</small><small>${esc(c.status||'—')}</small><small>${esc(stockLabel(c.stock)||'—')}</small></a>`}).join('')+'</div>':'<div class="global-search-empty">Aucun chariot trouvé pour ces critères.</div>';
-    els.events.innerHTML=events.length?'<div class="global-simple-list"><div class="global-simple-row global-simple-head"><span>Date</span><span>Châssis</span><span>Client</span><span>Type</span></div>'+events.map(r=>{const c=CHARIOTS.find(x=>String(x.qr_id||'')===String(r.qr_id||''));const p=getPayload(r)||{};const day=dateOnly(p.date||r.date||r.created_at);const title=String(r.type||'Événement');const href=r.qr_id?'chariot.html?id='+encodeURIComponent(r.qr_id):'historique.html';return `<a class="global-simple-row" href="${href}"><small>${esc(day||'—')}</small><strong>${esc(c?.chassis||r.qr_id||'—')}</strong><small>${esc(c?.client||'—')}</small><small>${esc(title)}</small></a>`}).join('')+'</div>':'<div class="global-search-empty">Aucun historique trouvé pour ces critères.</div>';
-    els.status.textContent=`Recherche terminée : ${machines.length} chariot(s), ${events.length} événement(s).`+(historyError?' L’historique est partiellement indisponible : '+historyError:'');
+    setLatest(machines);
+    els.chariotCount.textContent=String(machines.length);
+    els.chariots.innerHTML=machines.length?'<div class="global-simple-list"><div class="global-simple-row global-chariot-row global-simple-head"><span>Châssis</span><span>Moteur</span><span>Client</span><span>Statut</span><span>Stock</span></div>'+machines.map(c=>{const label=c.chassis||c.qr_id||'Chariot';return `<a class="global-simple-row global-chariot-row" href="chariot.html?id=${encodeURIComponent(c.qr_id||'')}"><span class="global-chariot-label"><strong>${esc(label)}</strong><small>Couleur : ${esc(c.color||'—')}</small></span><span class="global-chariot-cell" data-label="Moteur"><small>${esc(c.engine||'—')}</small></span><span class="global-chariot-cell" data-label="Client"><small>${esc(c.client||'—')}</small></span><span class="global-chariot-cell" data-label="Statut"><small>${esc(c.status||'—')}</small></span><span class="global-chariot-cell" data-label="Stock"><small>${esc(stockLabel(c.stock)||'—')}</small></span></a>`}).join('')+'</div>':'<div class="global-search-empty">Aucun chariot trouvé pour ces critères.</div>';
+    els.status.textContent=`Recherche terminée : ${machines.length} chariot(s).`;
   }
   els.form.addEventListener('submit',e=>{e.preventDefault();render()});
+  els.exportBtn?.addEventListener('click',exportCurrentResults);
   [els.query,els.from,els.to,els.statusFilter,els.stockFilter,els.engineFilter,els.capacityFilter,els.heightFilter,els.mastFilter,els.clientFilter].forEach(el=>{el?.addEventListener('input',render);el?.addEventListener('change',render)});
   els.reset?.addEventListener('click',()=>{els.query.value='';els.from.value='';els.to.value='';if(els.clientFilter)els.clientFilter.value='';[els.statusFilter,els.stockFilter,els.engineFilter,els.capacityFilter,els.heightFilter,els.mastFilter].forEach(el=>{if(el)el.value=''});render();els.query.focus()});
   if(params.get('focusDate')==='1')setTimeout(()=>els.from.focus(),80);

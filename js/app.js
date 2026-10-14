@@ -1684,6 +1684,44 @@ async function performWorkflowAction(qrId,action){
   return false;
 }
 
+function showChariotObservationPopup(chariot){
+  const observation=String(chariot?.observations||'').trim();
+  if(!observation)return;
+  const rootId='sbiChariotObservationPopup';
+  document.getElementById(rootId)?.remove();
+  const styleId=rootId+'Style';
+  if(!document.getElementById(styleId)){
+    const style=document.createElement('style');
+    style.id=styleId;
+    style.textContent=`
+      #${rootId}{position:fixed;inset:0;z-index:2147482000;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(12,28,45,.38);box-sizing:border-box}
+      #${rootId} .sbi-observation-dialog{width:min(440px,100%);max-height:min(72vh,560px);display:flex;flex-direction:column;overflow:hidden;background:#fff;border:1px solid #dce6ef;border-radius:14px;box-shadow:0 18px 55px rgba(13,35,57,.28);font-family:Arial,Helvetica,sans-serif;animation:sbiObservationIn .16s ease-out}
+      #${rootId} .sbi-observation-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 16px;background:#f3f8fc;border-bottom:1px solid #e0e9f1}
+      #${rootId} .sbi-observation-heading{min-width:0;color:#173d60;font-size:15px;font-weight:800;line-height:1.3}
+      #${rootId} .sbi-observation-close{width:34px;height:34px;flex:0 0 34px;border:1px solid #cbd9e5;border-radius:9px;background:#fff;color:#24425d;font-size:24px;line-height:1;cursor:pointer}
+      #${rootId} .sbi-observation-content{padding:15px 16px;overflow:auto;color:#344b60}
+      #${rootId} .sbi-observation-machine{margin:0 0 9px;color:#668097;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
+      #${rootId} .sbi-observation-text{margin:0;color:#253b50;font-size:14px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+      #${rootId} .sbi-observation-actions{display:flex;justify-content:flex-end;padding:10px 16px 14px;border-top:1px solid #edf1f5}
+      #${rootId} .sbi-observation-confirm{min-height:38px;padding:0 16px;border:0;border-radius:9px;background:#1e5b88;color:#fff;font-weight:700;cursor:pointer}
+      @keyframes sbiObservationIn{from{opacity:.5;transform:translateY(5px) scale(.99)}to{opacity:1;transform:translateY(0) scale(1)}}
+      @media(prefers-reduced-motion:reduce){#${rootId} .sbi-observation-dialog{animation:none}}
+    `;
+    (document.head||document.documentElement).appendChild(style);
+  }
+  const root=document.createElement('div');
+  root.id=rootId;
+  root.setAttribute('aria-hidden','false');
+  root.innerHTML=`<section class="sbi-observation-dialog" role="dialog" aria-modal="true" aria-labelledby="sbiObservationTitle"><header class="sbi-observation-head"><div id="sbiObservationTitle" class="sbi-observation-heading">Observation du chariot</div><button type="button" class="sbi-observation-close" data-sbi-observation-close aria-label="Fermer">×</button></header><div class="sbi-observation-content"><p class="sbi-observation-machine">${esc(chariot.chassis||chariot.qr_id||'Chariot')}</p><p class="sbi-observation-text">${esc(observation)}</p></div><footer class="sbi-observation-actions"><button type="button" class="sbi-observation-confirm" data-sbi-observation-close>Fermer</button></footer></section>`;
+  document.body.appendChild(root);
+  const onKeyDown=event=>{if(event.key==='Escape')closePopup()};
+  const closePopup=()=>{root.remove();document.removeEventListener('keydown',onKeyDown)};
+  root.querySelectorAll('[data-sbi-observation-close]').forEach(button=>button.addEventListener('click',closePopup));
+  root.addEventListener('click',event=>{if(event.target===root)closePopup()});
+  document.addEventListener('keydown',onKeyDown);
+  setTimeout(()=>{const button=root.querySelector('.sbi-observation-confirm');if(button)try{button.focus({preventScroll:true})}catch(e){button.focus()}},50);
+}
+
 async function detailPage(){
   if(!await session())return;
   await loadChariots();
@@ -1748,6 +1786,7 @@ async function detailPage(){
 
   const [identificationGroup,characteristicsGroup,stockGroup,deliveryGroup]=groups;
   $('#detail').innerHTML=`<div class="detail-dashboard-layout detail-layout-compact"><div class="detail-information-grid"><div class="detail-info-column detail-info-column--left">${identificationGroup}${stockGroup}</div><div class="detail-info-column detail-info-column--right">${characteristicsGroup}${deliveryGroup}</div></div><section class="detail-panel detail-panel--observations"><header class="detail-panel-head"><span class="detail-panel-icon">${icon('observations')}</span><h2>Observations</h2></header><div class="detail-observation-text">${esc(current.observations||'Aucune observation enregistrée.')}</div></section></div>`;
+  showChariotObservationPopup(current);
 
   const historyToggle=document.getElementById('historyToggle');
   const historyBox=$('#history');

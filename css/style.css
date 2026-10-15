@@ -3291,11 +3291,17 @@ button.btn:disabled,
 }
 
 
-/* V67.89 — Pagination for the all-chariots table */
-.chariot-pagination{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:10px;padding:10px 12px;border:1px solid #dbe6f2;border-radius:8px;background:#f8fbff;color:#47627d;font-size:11px}
-.chariot-pagination-range{font-weight:700}
-.chariot-pagination-controls{display:flex;align-items:center;gap:9px}
-.chariot-pagination-controls .chariot-page-btn{min-height:30px;padding:6px 10px;font-size:11px;white-space:nowrap}
+/* V67.90 — Compact, balanced pagination toolbar */
+.chariot-pagination{box-sizing:border-box;width:100%;display:flex;align-items:center;justify-content:center;gap:22px;flex-wrap:wrap;margin-top:10px;padding:10px 14px;min-height:58px;border:1px solid #dbe6f2;border-radius:8px;background:#f8fbff;color:#47627d;font-size:11px}
+.chariot-pagination-range{font-weight:700;text-align:right}
+.chariot-pagination-controls{display:flex;align-items:center;justify-content:center;gap:9px;flex-wrap:wrap}
+.chariot-pagination-controls .chariot-page-btn{min-height:34px;padding:7px 12px;font-size:11px;white-space:nowrap}
 .chariot-pagination-controls .chariot-page-btn:disabled{opacity:.42;cursor:not-allowed;box-shadow:none}
-.chariot-page-number{font-weight:800;color:#173f63;white-space:nowrap;font-variant-numeric:tabular-nums}
-@media(max-width:520px){.chariot-pagination{align-items:stretch}.chariot-pagination-range{text-align:center;width:100%}.chariot-pagination-controls{justify-content:space-between;width:100%;gap:6px}.chariot-pagination-controls .chariot-page-btn{flex:1}.chariot-page-number{min-width:78px;text-align:center}}
+.chariot-page-number{font-weight:800;color:#173f63;white-space:nowrap;font-variant-numeric:tabular-nums;padding:0 2px}
+@media(max-width:650px){
+  .chariot-pagination{align-items:center;gap:8px;padding:10px 9px}
+  .chariot-pagination-range{text-align:center;width:100%;overflow-wrap:anywhere}
+  .chariot-pagination-controls{justify-content:center;width:100%;gap:6px}
+  .chariot-pagination-controls .chariot-page-btn{flex:1;min-width:0;padding:7px 6px}
+  .chariot-page-number{min-width:80px;text-align:center}
+}

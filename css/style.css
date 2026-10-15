@@ -3314,10 +3314,10 @@ button.btn:disabled,
 .chariot-data-table tbody tr.chariot-table-empty-row td{height:27px;box-sizing:border-box}
 
 
-/* V67.92 — Uniform row height in the technical chariot table */
-.chariot-data-table tbody>tr{height:42px!important}
+/* V67.93 — Larger uniform row height in the technical chariot table */
+.chariot-data-table tbody>tr{height:54px!important}
 .chariot-data-table tbody>tr>td{
-  box-sizing:border-box!important;height:42px!important;max-height:42px;
+  box-sizing:border-box!important;height:54px!important;max-height:54px;
   padding:0 8px!important;vertical-align:middle!important;
 }
 .chariot-data-table tbody>tr>.chariot-table-actions-cell{
@@ -3335,7 +3335,7 @@ button.btn:disabled,
 .chariot-data-table .chariot-table-actions-cell .sbi-button-icon{width:13px!important;height:13px!important;flex-basis:13px!important}
 .chariot-data-table .chariot-table-actions-cell .sbi-button-icon svg{width:13px!important;height:13px!important}
 @media(max-width:800px){
-  .chariot-data-table tbody>tr>td{height:42px!important;padding:0 7px!important}
+  .chariot-data-table tbody>tr>td{height:54px!important;padding:0 7px!important}
   .chariot-data-table .chariot-table-actions-cell .btn,
   .chariot-data-table .chariot-table-actions-cell a.btn,
   .chariot-data-table .chariot-table-actions-cell button.btn{height:28px!important;min-height:28px!important;max-height:28px!important;padding:0 6px!important;font-size:8.5px!important}

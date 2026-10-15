@@ -1781,13 +1781,13 @@ async function detailPage(){
   const group=(key,title,rows)=>`<section class="detail-panel detail-panel--${key}"><header class="detail-panel-head"><span class="detail-panel-icon">${icon(key)}</span><h2>${esc(title)}</h2></header><div class="detail-panel-values">${rows.map(([label,value,kind])=>field(label,value,kind||'')).join('')}</div></section>`;
   const groups=[
     group('identification','Identification',[
-      ['N° châssis',current.chassis],['N° de série',current.serial_number],['N° moteur',current.engine_number],['Moteur',current.engine],['Client',current.client]
+      ['Client',current.client],['N° châssis',current.chassis],['N° de série',current.serial_number],['Moteur',current.engine],['N° moteur',current.engine_number]
     ]),
     group('characteristics','Caractéristiques du chariot',[
       ['Capacité',fmtCapacity(current.capacity)],['Hauteur de levage',current.lifting_height],['Type de mât',String(current.mast_type||'').toUpperCase()],['Dimensions des fourches',current.fork_dimension],['Type de pneu',current.tire_type],['Couleur',current.color],['Statut',current.status,normalizeStatus(current.status).replace(/\s+/g,'-')]
     ]),
     group('stock','Informations stock',[
-      ['Emplacement',current.stock],['QR ID',current.qr_id],['Date d’ajout',current.created_at?String(current.created_at).slice(0,10):'—']
+      ['Emplacement',current.stock],['Date d’ajout',current.created_at?String(current.created_at).slice(0,10):'—']
     ]),
     group('delivery','Planning de livraison',[
       ['Date prévue',plannedDate],['Heure prévue',plannedTime],['Chauffeur',plannedDriver],['Destination',plannedDestination],['Date de livraison effective',current.delivery_date]

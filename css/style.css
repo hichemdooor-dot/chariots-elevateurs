@@ -3314,11 +3314,11 @@ button.btn:disabled,
 .chariot-data-table tbody tr.chariot-table-empty-row td{height:27px;box-sizing:border-box}
 
 
-/* V67.93 — Larger uniform row height in the technical chariot table */
-.chariot-data-table tbody>tr{height:54px!important}
+/* V67.94 — Extra-large uniform row height in the technical chariot table */
+.chariot-data-table tbody>tr{height:70px!important}
 .chariot-data-table tbody>tr>td{
-  box-sizing:border-box!important;height:54px!important;max-height:54px;
-  padding:0 8px!important;vertical-align:middle!important;
+  box-sizing:border-box!important;height:70px!important;max-height:70px;
+  padding:0 10px!important;vertical-align:middle!important;
 }
 .chariot-data-table tbody>tr>.chariot-table-actions-cell{
   padding:0 6px!important;white-space:nowrap!important;
@@ -3327,16 +3327,16 @@ button.btn:disabled,
 .chariot-data-table .chariot-table-actions-cell a.btn,
 .chariot-data-table .chariot-table-actions-cell button.btn{
   box-sizing:border-box!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;
-  height:28px!important;min-height:28px!important;max-height:28px!important;
-  margin:0 2px!important;padding:0 8px!important;
-  line-height:1!important;font-size:9px!important;white-space:nowrap!important;
+  height:36px!important;min-height:36px!important;max-height:36px!important;
+  margin:0 2px!important;padding:0 10px!important;
+  line-height:1!important;font-size:10px!important;white-space:nowrap!important;
   vertical-align:middle!important;flex:0 0 auto!important;
 }
-.chariot-data-table .chariot-table-actions-cell .sbi-button-icon{width:13px!important;height:13px!important;flex-basis:13px!important}
-.chariot-data-table .chariot-table-actions-cell .sbi-button-icon svg{width:13px!important;height:13px!important}
+.chariot-data-table .chariot-table-actions-cell .sbi-button-icon{width:15px!important;height:15px!important;flex-basis:15px!important}
+.chariot-data-table .chariot-table-actions-cell .sbi-button-icon svg{width:15px!important;height:15px!important}
 @media(max-width:800px){
-  .chariot-data-table tbody>tr>td{height:54px!important;padding:0 7px!important}
+  .chariot-data-table tbody>tr>td{height:70px!important;padding:0 7px!important}
   .chariot-data-table .chariot-table-actions-cell .btn,
   .chariot-data-table .chariot-table-actions-cell a.btn,
-  .chariot-data-table .chariot-table-actions-cell button.btn{height:28px!important;min-height:28px!important;max-height:28px!important;padding:0 6px!important;font-size:8.5px!important}
+  .chariot-data-table .chariot-table-actions-cell button.btn{height:36px!important;min-height:36px!important;max-height:36px!important;padding:0 8px!important;font-size:9.5px!important}
 }

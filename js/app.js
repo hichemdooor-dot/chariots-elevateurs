@@ -1255,7 +1255,7 @@ async function loadDashboardNotifications(){
     return true;
   }).slice(0,6);
   window.__SBI_DASHBOARD_NOTIFICATIONS=rows;
-  const unread=rows.filter(x=>!localStorage.getItem('sbi_notif_read_'+x.id)).length;
+  const unread=rows.filter(x=>!isNotificationRead(x.id)).length;
   const bell=$('#notificationCount'); if(bell) bell.textContent=unread>99?'99+':String(unread);
   const titleCount=$('#notificationCountTitle'); if(titleCount) titleCount.textContent=String(unread);
   const notificationsList=$('#notificationsList');
@@ -1297,24 +1297,48 @@ function initDashboardInteractivity(){
     list.innerHTML=rows.slice(0,5).map(x=>{
       const c=CHARIOTS.find(v=>String(v.qr_id)===String(x.qr_id));
       const ev=formatMaintenanceEvent(x,c);
-      const read=localStorage.getItem('sbi_notif_read_'+x.id)==='1';
+      const read=isNotificationRead(x.id);
       const href=x.qr_id?'chariot.html?id='+encodeURIComponent(x.qr_id):'historique.html';
       const actor=String(x.technicien||x.created_by||'Utilisateur').trim()||'Utilisateur';
       return `<a class="dashboard-notification-item ${read?'read':''}" href="${href}" data-notification-id="${esc(x.id)}"><span class="dashboard-notification-dot"></span><span><div class="dashboard-notification-title">${esc(ev.title)}</div><div class="dashboard-notification-meta">${esc(actor)} · ${esc(x.created_at?relativeTime(x.created_at):'Récemment')}</div></span></a>`;
     }).join('')+'<button class="dashboard-notification-close" type="button">Fermer</button>';
-    list.querySelectorAll('.dashboard-notification-item').forEach(a=>a.addEventListener('click',()=>{const id=a.dataset.notificationId;if(id)localStorage.setItem('sbi_notif_read_'+id,'1')}));
+    list.querySelectorAll('.dashboard-notification-item').forEach(a=>a.addEventListener('click',()=>{const id=a.dataset.notificationId;if(id)markNotificationRead(id)}));
     list.querySelector('.dashboard-notification-close')?.addEventListener('click',close);
   };
   const close=()=>{panel.classList.add('hidden');bell.setAttribute('aria-expanded','false')};
   bell.addEventListener('click',e=>{e.stopPropagation();if(panel.classList.contains('hidden')){render();panel.classList.remove('hidden');bell.setAttribute('aria-expanded','true')}else close()});
   document.addEventListener('click',e=>{if(!panel.contains(e.target)&&e.target!==bell&&!bell.contains(e.target))close()});
 }
-function markDashboardNotificationsRead(){document.querySelectorAll('.notification-row').forEach(row=>row.classList.remove('notification-new'));document.querySelectorAll('#notificationsList [data-notification-id]').forEach(b=>{const id=b.getAttribute('data-notification-id');if(id)localStorage.setItem('sbi_notif_read_'+id,'1')});const bell=$('#notificationCount');if(bell)bell.textContent='0';const titleCount=$('#notificationCountTitle');if(titleCount)titleCount.textContent='0'}
+function markDashboardNotificationsRead(){document.querySelectorAll('.notification-row').forEach(row=>row.classList.remove('notification-new'));document.querySelectorAll('#notificationsList [data-notification-id]').forEach(b=>{const id=b.getAttribute('data-notification-id');if(id)markNotificationRead(id)});const bell=$('#notificationCount');if(bell)bell.textContent='0';const titleCount=$('#notificationCountTitle');if(titleCount)titleCount.textContent='0'}
 
 let NOTIFICATIONS_PAGE_ROWS=[];
-function notificationReadKey(id){return 'sbi_notif_read_'+String(id)}
-function isNotificationRead(id){return localStorage.getItem(notificationReadKey(id))==='1'}
-function markNotificationRead(id){if(id!=null)localStorage.setItem(notificationReadKey(id),'1')}
+function migrateLegacyNotificationReadState(userId){
+  if(!userId)return;
+  const doneKey='sbi_notif_read_migrated_'+String(userId)+'_v1';
+  const legacyPrefix='sbi_notif_read_',userPrefix='sbi_notif_read_user_';
+  try{
+    if(localStorage.getItem(doneKey)==='1')return;
+    const removeKeys=[];
+    for(let i=0;i<localStorage.length;i++){
+      const key=localStorage.key(i);
+      if(!key||!key.startsWith(legacyPrefix)||key.startsWith(userPrefix)||key.startsWith('sbi_notif_read_migrated_'))continue;
+      if(localStorage.getItem(key)==='1'){
+        const id=key.slice(legacyPrefix.length);
+        localStorage.setItem(userPrefix+String(userId)+'_'+id,'1');
+      }
+      removeKeys.push(key);
+    }
+    removeKeys.forEach(key=>localStorage.removeItem(key));
+    localStorage.setItem(doneKey,'1');
+  }catch(error){console.warn('Migration du statut de lecture des notifications impossible.',error)}
+}
+function notificationReadKey(id){
+  const userId=String(currentUser?.id||'guest');
+  if(userId!=='guest')migrateLegacyNotificationReadState(userId);
+  return 'sbi_notif_read_user_'+userId+'_'+String(id);
+}
+function isNotificationRead(id){try{return localStorage.getItem(notificationReadKey(id))==='1'}catch(_){return false}}
+function markNotificationRead(id){if(id==null)return;try{localStorage.setItem(notificationReadKey(id),'1')}catch(error){console.warn('Enregistrement du statut de lecture impossible.',error)}}
 function notificationActorName(x){
   const raw=String(x?.technicien||'').trim();
   if(raw) return raw;

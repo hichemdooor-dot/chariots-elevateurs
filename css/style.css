@@ -3229,3 +3229,63 @@ button.btn:disabled,
 .sbi-chassis-create-plus{display:grid;place-items:center;width:34px;height:34px;flex:0 0 34px;border-radius:9px;background:#16803e;color:#fff;font-size:24px;font-weight:600;line-height:1}
 .sbi-chassis-create-copy{display:block;flex:1;min-width:0}.sbi-chassis-create-copy strong{display:block;color:#117239;font-size:13px;font-weight:800;line-height:1.4}.sbi-chassis-create-copy small{display:block;margin-top:3px;color:#687d8f;font-size:10px;line-height:1.4;white-space:normal}.sbi-chassis-create-arrow{font-size:22px;color:#16803e}.sbi-chassis-create-note{padding:12px 14px;color:#697b8c;font-size:12px;background:#fff}
 @media(max-width:800px){.sbi-global-search-wrap{flex:1 1 120px;max-width:none;margin:0 7px 0 10px}.sbi-global-search-wrap .sbi-global-searchbar{margin:0;flex:1 1 auto}.sbi-chassis-create-panel{min-width:260px;left:auto;right:0;width:min(360px,calc(100vw - 22px))}.sbi-chassis-create-action{padding:10px 11px}}
+
+
+/* V67.87 — Compact technical table for chariot lists */
+.chariot-table-wrap{
+  width:100%;max-width:100%;min-width:0;overflow-x:auto;overflow-y:hidden;
+  border:1px solid #d8e5f3;border-radius:9px;background:#fff;
+  -webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;
+}
+.chariot-data-table{
+  width:100%;min-width:980px;border:0;border-collapse:separate;border-spacing:0;
+  table-layout:auto;font-size:10px;color:#143553;background:#fff;
+}
+.chariot-data-table thead th{
+  position:sticky;top:0;z-index:2;padding:9px 8px;white-space:nowrap;text-align:left;
+  font-size:9.5px;font-weight:800;color:#183d62;
+  background:linear-gradient(180deg,#f8fbff 0%,#eaf2fc 100%);
+  border-bottom:1px solid #cfdeef;border-right:1px solid #e1eaf5;
+}
+.chariot-data-table thead th:first-child{
+  position:sticky;left:0;z-index:4;background:linear-gradient(180deg,#f8fbff 0%,#eaf2fc 100%);
+}
+.chariot-data-table tbody td{
+  padding:8px 8px;max-width:180px;white-space:nowrap;vertical-align:middle;
+  color:#1b344c;border-bottom:1px solid #e4edf7;border-right:1px solid #edf2f8;
+  background:#fff;
+}
+.chariot-data-table tbody tr:nth-child(even) td{background:#fbfdff}
+.chariot-data-table tbody tr:hover td{background:#f0f7ff}
+.chariot-data-table tbody td:first-child{
+  position:sticky;left:0;z-index:1;font-weight:800;background:#fff;
+}
+.chariot-data-table tbody tr:nth-child(even) td:first-child{background:#fbfdff}
+.chariot-data-table tbody tr:hover td:first-child{background:#f0f7ff}
+.chariot-data-table th:last-child,.chariot-data-table td:last-child{border-right:0}
+.chariot-data-table tbody tr:last-child td{border-bottom:0}
+.chariot-data-table .chariot-table-chassis a{
+  display:inline-block;color:#1852d1;font-weight:800;text-decoration:none;
+  border-radius:4px;padding:2px 1px;
+}
+.chariot-data-table .chariot-table-chassis a:hover{text-decoration:underline;color:#103d9b}
+.chariot-table-color-cell{text-align:center;min-width:34px}
+.chariot-color-dot{
+  display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:middle;
+  border:1px solid rgba(15,35,55,.13);box-shadow:0 0 0 2px rgba(20,50,80,.035);
+}
+.chariot-data-table .chariot-table-status{font-size:9px;padding:4px 7px;line-height:1.2}
+.chariot-data-table .chariot-table-actions-cell{min-width:116px;max-width:none}
+.chariot-table-actions-cell .btn{
+  position:relative;display:inline-flex;align-items:center;justify-content:center;
+  min-height:23px;margin:1px;padding:4px 6px;border-radius:5px;font-size:9px;
+  line-height:1.15;white-space:nowrap;box-shadow:none;
+}
+@media(max-width:800px){
+  .chariot-table-wrap{border-radius:7px}
+  .chariot-data-table{min-width:980px;font-size:9px}
+  .chariot-data-table thead th{padding:8px 7px;font-size:9px}
+  .chariot-data-table tbody td{padding:8px 7px}
+  .chariot-data-table .chariot-table-status{font-size:8.5px;padding:4px 6px}
+  .chariot-table-actions-cell .btn{font-size:8.5px;padding:4px 5px}
+}

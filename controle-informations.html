@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SBI — Contrôle des fiches</title>
+<link rel="stylesheet" href="css/style.css?v=67.84">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+.audit-stat{background:#fff;border:1px solid var(--line);border-radius:11px;padding:16px;box-shadow:var(--shadow);min-width:0}
+.audit-stat .audit-label{font-size:13px;color:var(--muted);font-weight:700}
+.audit-stat .audit-number{display:block;font-size:30px;line-height:1.1;font-weight:800;margin-top:8px}
+.audit-stat.total .audit-number{color:#1769c2}.audit-stat.good .audit-number{color:#16803e}.audit-stat.bad .audit-number{color:#b52631}
+.audit-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px}
+.audit-filters{display:grid;grid-template-columns:minmax(220px,1fr) minmax(180px,230px) auto auto;gap:8px;align-items:center}
+.audit-filters select{height:46px;border:1px solid #cbd8e5;border-radius:9px;background:#fff;color:#193f62;padding:0 11px;font-size:13px;min-width:0}
+.audit-note{background:#edf6ff;border:1px solid #d1e7fb;border-radius:9px;padding:11px 13px;margin:0 0 14px;color:#315875;font-size:12px;line-height:1.5}
+.audit-count{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;color:var(--muted);font-size:12px;margin:14px 0 9px}
+.audit-table-wrap{display:block;overflow:auto;border:1px solid var(--line);border-radius:9px;background:#fff}
+.audit-table{width:100%;border-collapse:collapse;min-width:1480px}
+.audit-table th,.audit-table td{padding:10px 11px;border-bottom:1px solid #e7edf3;text-align:left;font-size:12px;vertical-align:middle}
+.audit-table th{position:sticky;top:0;background:#edf4f9;color:#173f63;font-weight:800;z-index:1}
+.audit-table tr:last-child td{border-bottom:0}.audit-table tr:hover td{background:#f8fbff}
+.audit-badge{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:7px;font-weight:800;font-size:11px;white-space:nowrap}
+.audit-badge.complete{background:#d9f5e1;color:#16803e}.audit-badge.incomplete{background:#ffe0e2;color:#b52631}
+.audit-missing{white-space:normal;min-width:190px;max-width:300px;color:#a52b35;font-weight:700;line-height:1.5}
+.audit-missing.none{color:#16803e;font-weight:600}
+.audit-view{white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;min-height:34px;padding:0 11px;border-radius:7px;background:#e8f3ff;color:#075eae;font-size:12px;font-weight:800;border:1px solid #cbe2fa}
+.audit-mobile-list{display:none;gap:10px}
+.audit-mobile-card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px;box-shadow:0 2px 7px rgba(23,56,88,.06);min-width:0}
+.audit-mobile-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px}
+.audit-mobile-title{font-size:15px;font-weight:800;overflow-wrap:anywhere}
+.audit-mobile-client{font-size:12px;color:var(--muted);margin-top:4px;overflow-wrap:anywhere}
+.audit-mobile-details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.audit-mobile-field{background:#f5f8fb;border:1px solid #e7edf3;border-radius:7px;padding:8px;min-width:0}
+.audit-mobile-field small{display:block;color:var(--muted);font-size:10px;margin-bottom:4px}
+.audit-mobile-field b{font-size:12px;overflow-wrap:anywhere;word-break:break-word}
+.audit-mobile-missing{margin-top:10px;padding:9px;border-radius:7px;background:#fff1f1;color:#ad2934;font-size:12px;line-height:1.5}
+.audit-mobile-missing.ok{background:#e8f8ed;color:#16803e}
+.audit-mobile-actions{margin-top:10px}.audit-mobile-actions .audit-view{width:100%;min-height:42px}
+.audit-empty{padding:26px 14px;text-align:center;color:var(--muted);background:#fff;border:1px dashed #cbd8e5;border-radius:9px}
+.audit-load-error{background:#fff1f1;border:1px solid #ffc9cc;color:#a6222c;padding:12px;border-radius:8px;margin:12px 0}
+.audit-action-buttons{display:flex;gap:8px;flex-wrap:wrap}
+.audit-action-buttons .btn{white-space:nowrap}
+@media(max-width:800px){
+ .audit-stats{gap:7px;grid-template-columns:repeat(3,minmax(0,1fr))}
+ .audit-stat{padding:11px}.audit-stat .audit-label{font-size:11px}.audit-stat .audit-number{font-size:25px}
+ .audit-filters{grid-template-columns:1fr 1fr}.audit-filters .search{grid-column:1 / -1}
+ .audit-filters .btn{width:100%;padding:0 8px}
+ .audit-table-wrap{display:none!important}.audit-mobile-list{display:grid}
+}
+@media(max-width:430px){
+ .audit-stats{gap:6px}.audit-stat{padding:9px 7px;border-radius:8px}.audit-stat .audit-label{font-size:10px}.audit-stat .audit-number{font-size:23px}
+ .audit-filters{grid-template-columns:1fr}.audit-filters .search{grid-column:auto}
+ .audit-mobile-details{gap:5px}.audit-mobile-field{padding:7px}.audit-mobile-field b{font-size:11px}
+}
+</style>
+</head>
+<body>
+<div id="licenseGate" class="license-gate"><div class="license-inner"><img src="assets/logo-sbi-hangcha.png" alt="SBI"><div class="license-loader"></div><h2>Vérification de la licence...</h2><div id="licenseInfo" class="license-info">Vérification en cours...</div></div></div>
+<header class="top"><button class="menu-btn mobile-only" onclick="toggleMenu()" aria-label="Ouvrir le menu">☰</button><div class="brand">SBI</div><div class="avatar">H</div></header>
+<div class="layout">
+ <aside class="side desktop" data-nav></aside>
+ <main class="content">
+  <div class="page-head">
+   <div><h1 class="page-title">Contrôle des fiches</h1><div class="sub">Vérification automatique des informations de chaque chariot</div></div>
+   <div class="audit-action-buttons"><button id="auditRefresh" type="button" class="btn light">↻ Actualiser</button><button id="auditExport" type="button" class="btn">Exporter Excel</button></div>
+  </div>
+  <div class="audit-note">Les 12 champs de la fiche sont contrôlés : châssis, série, moteur, client, caractéristiques et statut. Un chariot « En stock » peut rester sans client ; les autres champs sont toujours vérifiés.</div>
+  <div class="audit-stats">
+   <div class="audit-stat total"><div class="audit-label">Total chariots</div><b id="auditTotal" class="audit-number">—</b></div>
+   <div class="audit-stat good"><div class="audit-label">Fiches complètes</div><b id="auditComplete" class="audit-number">—</b></div>
+   <div class="audit-stat bad"><div class="audit-label">Fiches à compléter</div><b id="auditIncomplete" class="audit-number">—</b></div>
+  </div>
+  <section class="card">
+   <div class="audit-filters">
+    <input id="auditSearch" class="search" type="search" placeholder="Rechercher châssis, client, moteur..." aria-label="Rechercher un chariot">
+    <select id="auditStatusFilter" aria-label="Filtrer les fiches"><option value="all">Toutes les fiches</option><option value="incomplete">Fiches incomplètes</option><option value="complete">Fiches complètes</option></select>
+    <button id="auditReset" type="button" class="btn light">Réinitialiser</button>
+    <button id="auditExportIncomplete" type="button" class="btn light">Exporter les manquants</button>
+   </div>
+   <div id="auditMessage" aria-live="polite"></div>
+   <div class="audit-count"><span id="auditCount">Chargement des données…</span><span>Dernière vérification : <b id="auditLastCheck">—</b></span></div>
+   <div id="auditTableWrap" class="audit-table-wrap"></div>
+   <div id="auditMobileList" class="audit-mobile-list"></div>
+  </section>
+ </main>
+</div>
+<div class="overlay"><aside class="side" data-nav></aside></div>
+<footer>Contrôle automatique des informations • Données synchronisées avec Supabase<br>© 2026 · Developed by <strong>BaCkDoooR</strong></footer>
+<script src="js/shell.js?v=67.84"></script>
+<script src="maintenance-config.js?v=7"></script>
+<script src="js/app.js?v=67.84"></script>
+<script>
+async function controleFichesPage(){
+ if(!await session())return;
+ const el={search:document.getElementById('auditSearch'),filter:document.getElementById('auditStatusFilter'),reset:document.getElementById('auditReset'),refresh:document.getElementById('auditRefresh'),exportAll:document.getElementById('auditExport'),exportMissing:document.getElementById('auditExportIncomplete'),total:document.getElementById('auditTotal'),complete:document.getElementById('auditComplete'),incomplete:document.getElementById('auditIncomplete'),count:document.getElementById('auditCount'),message:document.getElementById('auditMessage'),last:document.getElementById('auditLastCheck'),table:document.getElementById('auditTableWrap'),mobile:document.getElementById('auditMobileList')};
+ const fields=[
+  {key:'chassis',label:'N° châssis'},{key:'serial_number',label:'N° de série'},{key:'engine_number',label:'N° moteur'},{key:'engine',label:'Moteur'},{key:'client',label:'Client'},{key:'capacity',label:'Capacité'},{key:'lifting_height',label:'Hauteur de levage'},{key:'mast_type',label:'Type de mât'},{key:'fork_dimension',label:'Dimensions des fourches'},{key:'tire_type',label:'Type de pneu'},{key:'color',label:'Couleur'},{key:'status',label:'Statut'}
+ ];
+ const aliases={chassis:['chassis','n° châssis','numero_chassis','chassis_number'],serial_number:['serial_number','serial','numero_serie','n° de série','no_serie'],engine_number:['engine_number','numero_moteur','n° moteur','motor_number'],engine:['engine','motor','moteur'],client:['client','Client','customer'],capacity:['capacity','capacite'],lifting_height:['lifting_height','liftingHeight','hauteur_de_levage'],mast_type:['mast_type','mastType','type_mât','type_mat'],fork_dimension:['fork_dimension','forkDimension','dimension_fourche','forks'],tire_type:['tire_type','tireType','type_pneu'],color:['color','couleur'],status:['status','statut','status_display']};
+ let allRows=[],visibleRows=[],loading=false;
+ function rawValue(row,key){for(const candidate of aliases[key]||[key])if(Object.prototype.hasOwnProperty.call(row,candidate)&&row[candidate]!==null&&row[candidate]!==undefined)return row[candidate];return ''}
+ function hasValue(value){if(value===null||value===undefined)return false;return !['','—','-','–','n/a','na','null','undefined','aucun','none'].includes(String(value).trim().toLocaleLowerCase('fr'))}
+ function textValue(row,key){const value=rawValue(row,key);return hasValue(value)?String(value).trim():''}
+ function statusNorm(row){return normalizeStatus(textValue(row,'status'))}
+ function missingFor(row){const status=statusNorm(row);return fields.filter(f=>!(f.key==='client'&&status==='en stock')&&!hasValue(rawValue(row,f.key)))}
+ function chariotId(row){return textValue(row,'qr_id')||textValue(row,'QR ID')}
+ function chassisTitle(row){return textValue(row,'chassis')||chariotId(row)||('ID '+String(row.id||'—'))}
+ function checkRow(row){const missing=missingFor(row);return {data:row,missing,isComplete:missing.length===0}}
+ function searchText(row,missing){return norm(fields.map(f=>textValue(row,f.key)).concat([chariotId(row),missing.map(f=>f.label).join(' ')]).join(' '))}
+ function ficheUrl(row){const id=chariotId(row);return id?'chariot.html?id='+encodeURIComponent(id):''}
+ function stateBadge(item){return item.isComplete?'<span class="audit-badge complete">✓ Complet</span>':'<span class="audit-badge incomplete">! Incomplet</span>'}
+ function missingHTML(item){return item.missing.length?'<div class="audit-missing">'+item.missing.map(f=>esc(f.label)).join(', ')+'</div>':'<span class="audit-missing none">Aucun champ manquant</span>'}
+ function viewLink(row){const url=ficheUrl(row);return url?'<a class="audit-view mobile-fiche-popup-link" href="'+esc(url)+'">Voir la fiche</a>':'<span class="sub">Fiche indisponible</span>'}
+ function renderTable(rows){
+  if(!rows.length){el.table.innerHTML='<div class="audit-empty">Aucun chariot ne correspond à ces critères.</div>';return}
+  el.table.innerHTML='<table class="audit-table"><thead><tr><th>État</th>'+fields.map(f=>'<th>'+esc(f.label)+'</th>').join('')+'<th>Informations manquantes</th><th>Fiche</th></tr></thead><tbody>'+rows.map(item=>'<tr><td>'+stateBadge(item)+'</td>'+fields.map(f=>'<td>'+esc(textValue(item.data,f.key)||'—')+'</td>').join('')+'<td>'+missingHTML(item)+'</td><td>'+viewLink(item.data)+'</td></tr>').join('')+'</tbody></table>';
+ }
+ function renderMobile(rows){
+  if(!rows.length){el.mobile.innerHTML='<div class="audit-empty">Aucun chariot ne correspond à ces critères.</div>';return}
+  el.mobile.innerHTML=rows.map(item=>{const row=item.data;const details=fields.map(f=>'<div class="audit-mobile-field"><small>'+esc(f.label)+'</small><b>'+esc(textValue(row,f.key)||'—')+'</b></div>').join('');const missing=item.missing.length?'<div class="audit-mobile-missing"><b>À compléter :</b> '+item.missing.map(f=>esc(f.label)).join(', ')+'</div>':'<div class="audit-mobile-missing ok">✓ Toutes les informations contrôlées sont présentes.</div>';return '<article class="audit-mobile-card"><div class="audit-mobile-head"><div><div class="audit-mobile-title">'+esc(chassisTitle(row))+'</div><div class="audit-mobile-client">Client : '+esc(textValue(row,'client')||'Non renseigné')+'</div></div>'+stateBadge(item)+'</div><div class="audit-mobile-details">'+details+'</div>'+missing+'<div class="audit-mobile-actions">'+viewLink(row)+'</div></article>'}).join('');
+ }
+ function currentItems(){const query=norm(el.search.value),state=el.filter.value;return allRows.map(checkRow).filter(item=>{if(state==='incomplete'&&item.isComplete)return false;if(state==='complete'&&!item.isComplete)return false;return !query||searchText(item.data,item.missing).includes(query)})}
+ function render(){const complete=allRows.filter(row=>checkRow(row).isComplete).length;el.total.textContent=String(allRows.length);el.complete.textContent=String(complete);el.incomplete.textContent=String(allRows.length-complete);visibleRows=currentItems();el.count.textContent=visibleRows.length+' fiche(s) affichée(s) sur '+allRows.length;el.last.textContent=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});renderTable(visibleRows);renderMobile(visibleRows)}
+ async function refresh(){if(loading)return;loading=true;el.refresh.disabled=true;el.refresh.textContent='Actualisation…';el.message.innerHTML='';try{await loadChariots();allRows=Array.isArray(CHARIOTS)?CHARIOTS.slice():[];render()}catch(error){console.error('Contrôle des fiches : chargement impossible',error);el.message.innerHTML='<div class="audit-load-error">Impossible de charger les chariots depuis Supabase. Vérifiez la connexion, puis réessayez.</div>';el.count.textContent='Données non disponibles — le total n’est pas supposé être 0.'}finally{loading=false;el.refresh.disabled=false;el.refresh.textContent='↻ Actualiser'}}
+ function exportRows(rows,filename){if(!rows.length){alert('Aucune fiche à exporter pour ce filtre.');return}const output=rows.map(item=>{const out={};fields.forEach(f=>out[f.label]=textValue(item.data,f.key)||'');out['Informations manquantes']=item.missing.map(f=>f.label).join(', ');out['Contrôle']=item.isComplete?'Complet':'Incomplet';return out});if(window.XLSX){const worksheet=XLSX.utils.json_to_sheet(output);worksheet['!cols']=Object.keys(output[0]).map(k=>({wch:Math.min(32,Math.max(16,k.length+3))}));const book=XLSX.utils.book_new();XLSX.utils.book_append_sheet(book,worksheet,'Controle des fiches');XLSX.writeFile(book,filename)}else{const headers=Object.keys(output[0]);const csv=[headers].concat(output.map(row=>headers.map(h=>row[h]))).map(line=>line.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\r\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename.replace(/\.xlsx$/i,'.csv');a.click();URL.revokeObjectURL(url)}}
+ el.search.addEventListener('input',render);el.filter.addEventListener('change',render);el.reset.addEventListener('click',()=>{el.search.value='';el.filter.value='all';render()});el.refresh.addEventListener('click',refresh);el.exportAll.addEventListener('click',()=>exportRows(visibleRows,'controle-fiches-chariots.xlsx'));el.exportMissing.addEventListener('click',()=>exportRows(visibleRows.filter(item=>!item.isComplete),'fiches-chariots-incompletes.xlsx'));
+ await refresh();
+}
+initPage(controleFichesPage());
+</script>
+<script src="js/button-icons.js?v=67.84"></script>
+<script src="js/search-suggestions.js?v=67.84"></script>
+<script src="js/mobile-fiche-popup.js?v=67.43"></script>
+</body>
+</html>

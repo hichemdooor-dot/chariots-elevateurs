@@ -2696,19 +2696,29 @@ async function globalSearchPage(){
       return result*direction;
     });
   }
+  function looksLikeChassisQuery(value){
+    const q=String(value||'').trim().toUpperCase();
+    // Chassis identifiers are compact and contain at least one digit. Do not restrict
+    // this action to the currently common G6 prefix because users may search older IDs.
+    return q.length>=3 && /[0-9]/.test(q) && /^[A-Z0-9-]+$/.test(q);
+  }
   function renderEmptySearch(q,from,to,anyFilter){
     const value=String(q||'').trim();
-    // SBI chassis numbers use the G6 prefix. Only offer creation for a chassis-like query
-    // when no date/technical filters could be hiding an existing result.
-    const chassisQuery=/^G6[A-Z0-9-]{2,}$/i.test(value);
-    const eligible=chassisQuery&&!from&&!to&&!anyFilter;
-    if(eligible&&isAdmin()){
-      return '<div class="global-create-card"><div class="global-create-icon">＋</div><div class="global-create-copy"><strong>Aucun chariot trouvé</strong><p>Le numéro de châssis <b>'+esc(value.toUpperCase())+'</b> ne correspond à aucun chariot existant.</p><small>Le numéro sera prérempli dans le formulaire de création.</small></div><a class="btn global-create-btn" href="nouveau-chariot.html?chassis='+encodeURIComponent(value.toUpperCase())+'">Créer un chariot avec ce numéro</a></div>';
-    }
-    if(eligible&&!isAdmin()){
-      return '<div class="global-search-empty">Aucun chariot trouvé pour ce numéro de châssis. La création est réservée à l’administrateur.</div>';
+    if(looksLikeChassisQuery(value)&&!isAdmin()){
+      return '<div class="global-search-empty">Aucun chariot trouvé pour ces critères. La création d’un chariot est réservée à l’administrateur.</div>';
     }
     return '<div class="global-search-empty">Aucun chariot trouvé pour ces critères.</div>';
+  }
+  function renderChassisCreateAction(query){
+    const value=String(query||'').trim().toUpperCase();
+    if(!looksLikeChassisQuery(value))return '';
+    if(!isAdmin())return '<div class="global-search-empty global-create-permission">Pour créer un chariot avec ce numéro de châssis, connectez-vous avec un compte administrateur.</div>';
+    const exists=CHARIOTS.some(c=>norm(c?.chassis)===norm(value));
+    const intro=exists
+      ? 'Ce numéro de châssis est déjà utilisé. Vous pouvez créer un autre chariot avec ce numéro si le moteur est différent.'
+      : 'Aucun châssis correspondant n’a été trouvé. Le numéro sera prérempli dans le formulaire.';
+    const label=exists?'Créer un autre chariot avec ce numéro':'Créer un chariot avec ce numéro';
+    return '<div class="global-create-card"><div class="global-create-icon">＋</div><div class="global-create-copy"><strong>Création de chariot</strong><p>'+intro+'</p><small>La règle de contrôle des doublons châssis + moteur reste appliquée.</small></div><a class="btn global-create-btn" href="nouveau-chariot.html?chassis='+encodeURIComponent(value)+'">'+label+'</a></div>';
   }
   function render(){
     const q=els.query.value.trim(),from=els.from.value,to=els.to.value;
@@ -2731,6 +2741,8 @@ async function globalSearchPage(){
     setLatest(machines);
     els.chariotCount.textContent=String(machines.length);
     els.chariots.innerHTML=machines.length?'<div class="global-simple-list"><div class="global-simple-row global-chariot-row global-simple-head"><span>Châssis</span><span>Moteur</span><span>Client</span><span>Statut</span><span>Stock</span></div>'+machines.map(c=>{const label=c.chassis||c.qr_id||'Chariot';return `<a class="global-simple-row global-chariot-row" href="chariot.html?id=${encodeURIComponent(c.qr_id||'')}"><span class="global-chariot-label"><strong>${esc(label)}</strong><small>Couleur : ${esc(c.color||'—')}</small></span><span class="global-chariot-cell" data-label="Moteur"><small>${esc(c.engine||'—')}</small></span><span class="global-chariot-cell" data-label="Client"><small>${esc(c.client||'—')}</small></span><span class="global-chariot-cell" data-label="Statut"><small>${esc(c.status||'—')}</small></span><span class="global-chariot-cell" data-label="Stock"><small>${esc(stockLabel(c.stock)||'—')}</small></span></a>`}).join('')+'</div>':renderEmptySearch(q,from,to,anyFilter);
+    const createAction=renderChassisCreateAction(q);
+    if(createAction)els.chariots.insertAdjacentHTML('beforeend',createAction);
     els.status.textContent=`Recherche terminée : ${machines.length} chariot(s).`;
   }
   els.form.addEventListener('submit',e=>{e.preventDefault();render()});

@@ -1449,7 +1449,7 @@ async function chariotsPage(){
   if(searchEl&&initialSearch)searchEl.value=initialSearch;
   const ids=['engineFilter','capacityFilter','mastFilter','heightFilter'];
   const stockFilter=$('#stockFilter');
-  const pageSize=8;
+  const pageSize=10;
   let currentPage=1;
   function fill(){
     const defs=[

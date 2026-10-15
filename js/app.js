@@ -907,7 +907,7 @@ function compactWorkflowHtml(c){
   }).join('')}</div>`;
 }
 
-function renderChariotTable(rows,from=''){
+function renderChariotTable(rows,from='',padTo=0){
   const value=v=>{const s=String(v??'').trim();return esc(s||'—')};
   const colorHex=v=>{
     const raw=String(v||'').trim(),key=norm(raw);
@@ -958,9 +958,11 @@ function renderChariotTable(rows,from=''){
       '<td class="chariot-table-actions-cell">'+rowActions(c)+'</td>'+
       '</tr>';
   }).join('');
+  const fillerCount=Math.max(0,(Number(padTo)||0)-rows.length);
+  const fillerHtml=Array.from({length:fillerCount},()=>'<tr class="chariot-table-empty-row" aria-hidden="true">'+Array(13).fill('<td>&nbsp;</td>').join('')+'</tr>').join('');
   return '<div class="chariot-table-wrap" role="region" aria-label="Liste des chariots" tabindex="0"><table class="chariot-data-table"><thead><tr>'+
     '<th>N° châssis</th><th>N° de série</th><th>N° moteur</th><th>Moteur</th><th>Client</th><th>Capacité</th><th>Hauteur</th><th>Mât</th><th>Fourches</th><th>Pneu</th><th>Couleur</th><th>Statut</th><th>Actions</th>'+
-    '</tr></thead><tbody>'+rowsHtml+'</tbody></table></div>';
+    '</tr></thead><tbody>'+rowsHtml+fillerHtml+'</tbody></table></div>';
 }
 
 function card(c,from=''){
@@ -1492,7 +1494,7 @@ async function chariotsPage(){
     const pageRows=rows.slice(start,start+pageSize);
     const rangeText=rows.length?'Affichage '+(start+1)+'–'+Math.min(start+pageSize,rows.length)+' sur '+rows.length+' chariots':'';
     const pagination=rows.length>pageSize ? '<nav class="chariot-pagination" aria-label="Pagination des chariots"><span class="chariot-pagination-range">'+rangeText+'</span><div class="chariot-pagination-controls"><button type="button" class="btn light chariot-page-btn" data-page="'+(currentPage-1)+'" '+(currentPage===1?'disabled':'')+'>‹ Précédent</button><span class="chariot-page-number">Page '+currentPage+' / '+totalPages+'</span><button type="button" class="btn light chariot-page-btn" data-page="'+(currentPage+1)+'" '+(currentPage===totalPages?'disabled':'')+'>Suivant ›</button></div></nav>' : '';
-    $('#list').innerHTML=(pageRows.length?renderChariotTable(pageRows):'<div class="empty">Aucun résultat.</div>')+pagination;
+    $('#list').innerHTML=(pageRows.length?renderChariotTable(pageRows,'',pageSize):'<div class="empty">Aucun résultat.</div>')+pagination;
     $('#list').querySelectorAll('[data-page]').forEach(button=>{button.onclick=()=>{const next=Number(button.dataset.page);if(Number.isFinite(next)&&next>=1&&next<=totalPages&&next!==currentPage){currentPage=next;render();}}});
   }
   $('#search').addEventListener('input',()=>{currentPage=1;render()});

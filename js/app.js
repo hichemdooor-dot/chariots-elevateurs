@@ -1844,7 +1844,7 @@ async function detailPage(){
       ['Capacité',fmtCapacity(current.capacity)],['Hauteur de levage',current.lifting_height],['Type de mât',String(current.mast_type||'').toUpperCase()],['Dimensions des fourches',current.fork_dimension],['Type de pneu',current.tire_type],['Couleur',current.color],['Statut',current.status,normalizeStatus(current.status).replace(/\s+/g,'-')]
     ]),
     group('stock','Informations stock',[
-      ['Emplacement',current.stock],['Date d’ajout',current.created_at?String(current.created_at).slice(0,10):'—']
+      ['Emplacement',current.stock],['Statut',current.status,normalizeStatus(current.status).replace(/\s+/g,'-')],['Date d’ajout',current.created_at?String(current.created_at).slice(0,10):'—']
     ]),
     group('delivery','Planning de livraison',[
       ['Date prévue',plannedDate],['Heure prévue',plannedTime],['Chauffeur',plannedDriver],['Destination',plannedDestination],['Date de livraison effective',current.delivery_date]

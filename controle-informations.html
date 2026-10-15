@@ -22,6 +22,11 @@
 .audit-table th,.audit-table td{padding:10px 11px;border-bottom:1px solid #e7edf3;text-align:left;font-size:12px;vertical-align:middle}
 .audit-table th{position:sticky;top:0;background:#edf4f9;color:#173f63;font-weight:800;z-index:1}
 .audit-table tr:last-child td{border-bottom:0}.audit-table tr:hover td{background:#f8fbff}
+.audit-table tr.audit-click-row{cursor:pointer}
+.audit-table tr.audit-click-row:focus-visible td{outline:2px solid #1769c2;outline-offset:-2px}
+.audit-row-fiche-link{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.audit-mobile-card.audit-click-row{cursor:pointer;touch-action:manipulation}
+.audit-mobile-card.audit-click-row:focus-visible{outline:2px solid #1769c2;outline-offset:2px}
 .audit-badge{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:7px;font-weight:800;font-size:11px;white-space:nowrap}
 .audit-badge.complete{background:#d9f5e1;color:#16803e}.audit-badge.incomplete{background:#ffe0e2;color:#b52631}
 .audit-missing{white-space:normal;min-width:190px;max-width:300px;color:#a52b35;font-weight:700;line-height:1.5}
@@ -89,7 +94,7 @@
 </div>
 <div class="overlay"><aside class="side" data-nav></aside></div>
 <footer>Contrôle automatique des informations • Données synchronisées avec Supabase<br>© 2026 · Developed by <strong>BaCkDoooR</strong></footer>
-<script src="js/shell.js?v=67.84"></script>
+<script src="js/shell.js?v=67.85"></script>
 <script src="maintenance-config.js?v=7"></script>
 <script src="js/app.js?v=67.84"></script>
 <script>
@@ -113,19 +118,24 @@ async function controleFichesPage(){
  function ficheUrl(row){const id=chariotId(row);return id?'chariot.html?id='+encodeURIComponent(id):''}
  function stateBadge(item){return item.isComplete?'<span class="audit-badge complete">✓ Complet</span>':'<span class="audit-badge incomplete">! Incomplet</span>'}
  function missingHTML(item){return item.missing.length?'<div class="audit-missing">'+item.missing.map(f=>esc(f.label)).join(', ')+'</div>':'<span class="audit-missing none">Aucun champ manquant</span>'}
- function viewLink(row){const url=ficheUrl(row);return url?'<a class="audit-view mobile-fiche-popup-link" href="'+esc(url)+'">Voir la fiche</a>':'<span class="sub">Fiche indisponible</span>'}
+ function rowLink(row){const url=ficheUrl(row);return url?'<a class="audit-row-fiche-link mobile-fiche-popup-link" href="'+esc(url)+'" tabindex="-1" aria-hidden="true">Ouvrir la fiche</a>':''}
+ function rowAttributes(row){return ficheUrl(row)?' class="audit-click-row" role="link" tabindex="0" aria-label="Ouvrir la fiche du chariot '+esc(chassisTitle(row))+'"':''}
  function renderTable(rows){
   if(!rows.length){el.table.innerHTML='<div class="audit-empty">Aucun chariot ne correspond à ces critères.</div>';return}
-  el.table.innerHTML='<table class="audit-table"><thead><tr><th>État</th>'+fields.map(f=>'<th>'+esc(f.label)+'</th>').join('')+'<th>Informations manquantes</th><th>Fiche</th></tr></thead><tbody>'+rows.map(item=>'<tr><td>'+stateBadge(item)+'</td>'+fields.map(f=>'<td>'+esc(textValue(item.data,f.key)||'—')+'</td>').join('')+'<td>'+missingHTML(item)+'</td><td>'+viewLink(item.data)+'</td></tr>').join('')+'</tbody></table>';
+  el.table.innerHTML='<table class="audit-table"><thead><tr><th>État</th>'+fields.map(f=>'<th>'+esc(f.label)+'</th>').join('')+'<th>Informations manquantes</th></tr></thead><tbody>'+rows.map(item=>'<tr'+rowAttributes(item.data)+'><td>'+stateBadge(item)+(ficheUrl(item.data)?rowLink(item.data):'')+'</td>'+fields.map(f=>'<td>'+esc(textValue(item.data,f.key)||'—')+'</td>').join('')+'<td>'+missingHTML(item)+'</td></tr>').join('')+'</tbody></table>';
  }
  function renderMobile(rows){
   if(!rows.length){el.mobile.innerHTML='<div class="audit-empty">Aucun chariot ne correspond à ces critères.</div>';return}
-  el.mobile.innerHTML=rows.map(item=>{const row=item.data;const details=fields.map(f=>'<div class="audit-mobile-field"><small>'+esc(f.label)+'</small><b>'+esc(textValue(row,f.key)||'—')+'</b></div>').join('');const missing=item.missing.length?'<div class="audit-mobile-missing"><b>À compléter :</b> '+item.missing.map(f=>esc(f.label)).join(', ')+'</div>':'<div class="audit-mobile-missing ok">✓ Toutes les informations contrôlées sont présentes.</div>';return '<article class="audit-mobile-card"><div class="audit-mobile-head"><div><div class="audit-mobile-title">'+esc(chassisTitle(row))+'</div><div class="audit-mobile-client">Client : '+esc(textValue(row,'client')||'Non renseigné')+'</div></div>'+stateBadge(item)+'</div><div class="audit-mobile-details">'+details+'</div>'+missing+'<div class="audit-mobile-actions">'+viewLink(row)+'</div></article>'}).join('');
+  el.mobile.innerHTML=rows.map(item=>{const row=item.data;const details=fields.map(f=>'<div class="audit-mobile-field"><small>'+esc(f.label)+'</small><b>'+esc(textValue(row,f.key)||'—')+'</b></div>').join('');const missing=item.missing.length?'<div class="audit-mobile-missing"><b>À compléter :</b> '+item.missing.map(f=>esc(f.label)).join(', ')+'</div>':'<div class="audit-mobile-missing ok">✓ Toutes les informations contrôlées sont présentes.</div>';return '<article class="audit-mobile-card'+(ficheUrl(row)?' audit-click-row':'')+'"'+rowAttributes(row)+'>'+rowLink(row)+'<div class="audit-mobile-head"><div><div class="audit-mobile-title">'+esc(chassisTitle(row))+'</div><div class="audit-mobile-client">Client : '+esc(textValue(row,'client')||'Non renseigné')+'</div></div>'+stateBadge(item)+'</div><div class="audit-mobile-details">'+details+'</div>'+missing+'</article>'}).join('');
  }
  function currentItems(){const query=norm(el.search.value),state=el.filter.value;return allRows.map(checkRow).filter(item=>{if(state==='incomplete'&&item.isComplete)return false;if(state==='complete'&&!item.isComplete)return false;return !query||searchText(item.data,item.missing).includes(query)})}
  function render(){const complete=allRows.filter(row=>checkRow(row).isComplete).length;el.total.textContent=String(allRows.length);el.complete.textContent=String(complete);el.incomplete.textContent=String(allRows.length-complete);visibleRows=currentItems();el.count.textContent=visibleRows.length+' fiche(s) affichée(s) sur '+allRows.length;el.last.textContent=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});renderTable(visibleRows);renderMobile(visibleRows)}
  async function refresh(){if(loading)return;loading=true;el.refresh.disabled=true;el.refresh.textContent='Actualisation…';el.message.innerHTML='';try{await loadChariots();allRows=Array.isArray(CHARIOTS)?CHARIOTS.slice():[];render()}catch(error){console.error('Contrôle des fiches : chargement impossible',error);el.message.innerHTML='<div class="audit-load-error">Impossible de charger les chariots depuis Supabase. Vérifiez la connexion, puis réessayez.</div>';el.count.textContent='Données non disponibles — le total n’est pas supposé être 0.'}finally{loading=false;el.refresh.disabled=false;el.refresh.textContent='↻ Actualiser'}}
  function exportRows(rows,filename){if(!rows.length){alert('Aucune fiche à exporter pour ce filtre.');return}const output=rows.map(item=>{const out={};fields.forEach(f=>out[f.label]=textValue(item.data,f.key)||'');out['Informations manquantes']=item.missing.map(f=>f.label).join(', ');out['Contrôle']=item.isComplete?'Complet':'Incomplet';return out});if(window.XLSX){const worksheet=XLSX.utils.json_to_sheet(output);worksheet['!cols']=Object.keys(output[0]).map(k=>({wch:Math.min(32,Math.max(16,k.length+3))}));const book=XLSX.utils.book_new();XLSX.utils.book_append_sheet(book,worksheet,'Controle des fiches');XLSX.writeFile(book,filename)}else{const headers=Object.keys(output[0]);const csv=[headers].concat(output.map(row=>headers.map(h=>row[h]))).map(line=>line.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\r\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename.replace(/\.xlsx$/i,'.csv');a.click();URL.revokeObjectURL(url)}}
+ function activateFicheFromRow(row){const link=row&&row.querySelector('.audit-row-fiche-link');if(link)link.click()}
+ function handleRowClick(event){if(event.target.closest('.audit-row-fiche-link'))return;const row=event.target.closest('.audit-click-row');if(row)activateFicheFromRow(row)}
+ function handleRowKeyboard(event){if(event.key!=='Enter'&&event.key!==' ')return;const row=event.target.closest('.audit-click-row');if(!row)return;event.preventDefault();activateFicheFromRow(row)}
+ el.table.addEventListener('click',handleRowClick);el.mobile.addEventListener('click',handleRowClick);el.table.addEventListener('keydown',handleRowKeyboard);el.mobile.addEventListener('keydown',handleRowKeyboard);
  el.search.addEventListener('input',render);el.filter.addEventListener('change',render);el.reset.addEventListener('click',()=>{el.search.value='';el.filter.value='all';render()});el.refresh.addEventListener('click',refresh);el.exportAll.addEventListener('click',()=>exportRows(visibleRows,'controle-fiches-chariots.xlsx'));el.exportMissing.addEventListener('click',()=>exportRows(visibleRows.filter(item=>!item.isComplete),'fiches-chariots-incompletes.xlsx'));
  await refresh();
 }

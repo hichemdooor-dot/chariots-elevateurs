@@ -2419,7 +2419,7 @@ async function deliveryPlanningPage(){
   let plans=[...DELIVERY_PLANS];
   renderDashboardWatch();
   const els={week:$('#weekDays'),list:$('#deliveryList'),range:$('#rangeTitle'),modal:$('#deliveryModal'),form:$('#deliveryForm'),search:$('#deliverySearch'),searchResults:$('#deliverySearchResults'),clearSearch:$('#clearDeliverySearch'),planSearch:$('#deliveryPlanSearch'),planDateFrom:$('#deliveryPlanDateFrom'),planDateTo:$('#deliveryPlanDateTo'),clearPlanFilters:$('#clearDeliveryPlanFilters'),chariot:$('#deliveryChariot'),date:$('#deliveryDate'),time:$('#deliveryTime'),driver:$('#deliveryDriver'),destination:$('#deliveryDestination'),note:$('#deliveryNote'),noteCount:$('#deliveryNoteCount'),close:$('#closeDeliveryModal'),today:$('#todayBtn'),prev:$('#prevWeek'),next:$('#nextWeek'),plan:$('#planBtn'),cancel:$('#cancelDelivery'),todayCount:$('#todayCount'),weekCount:$('#weekCount'),plannedCount:$('#plannedCount'),manageDrivers:$('#manageDeliveryDrivers'),driverManager:$('#driverManagerModal'),closeDriverManager:$('#closeDriverManager'),doneDriverManager:$('#doneDriverManager'),driverAddForm:$('#driverAddForm'),newDriverName:$('#newDeliveryDriver'),driverList:$('#driverManagerList'),driverWarning:$('#driverManagerWarning')};
-  let selectedDate=localDateISO(new Date()), weekStart=startOfWeek(new Date()), refreshBusy=false, planningLocalMutationUntil=0, viewMode='day';
+  let selectedDate=localDateISO(new Date()), weekStart=startOfWeek(new Date()), refreshBusy=false, planningLocalMutationUntil=0, planSaveBusy=false, viewMode='day';
   const DEFAULT_DELIVERY_DRIVERS=['AISSA','YOUNES','BILLAL','HAMZA'], DRIVER_CONFIG_TYPE='Configuration chauffeurs', DRIVER_CONFIG_QR='SYSTEM', DRIVER_CACHE_KEY='sbi_delivery_drivers_v1';
   let deliveryDrivers=[...DEFAULT_DELIVERY_DRIVERS],driverConfigReady=false,driverConfigError='',editingDriverIndex=-1;
   function localDateISO(d){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${day}`}
@@ -2603,7 +2603,78 @@ async function deliveryPlanningPage(){
   async function refreshFromServer({remoteEvent=false}={}){if(refreshBusy||document.visibilityState==='hidden')return;refreshBusy=true;try{const beforeItems=[...plans];const remote=await loadDeliveryPlans();const changedIds=changedPlanningIds(beforeItems,remote);if(changedIds.length){syncPlans(remote);renderWeek();renderList();highlightPlanningRows(changedIds);if(remoteEvent&&Date.now()>planningLocalMutationUntil){const changed=changedIds.map(id=>remote.find(p=>String(p.id)===String(id))||beforeItems.find(p=>String(p.id)===String(id))).find(Boolean);const c=changed?getMachine(changed.qr):null;const label=c?.chassis||changed?.qr||'une livraison';toastPlanning(`Planning mis à jour en temps réel : ${label}`)}}}catch(e){console.warn('Actualisation planning',e)}finally{refreshBusy=false}}
   function toastPlanning(message){let box=document.getElementById('planningToast');if(!box){box=document.createElement('div');box.id='planningToast';box.className='card-action-toast';document.body.appendChild(box)}box.textContent=message;box.classList.add('show');clearTimeout(window.__planningToastTimer);window.__planningToastTimer=setTimeout(()=>box.classList.remove('show'),3200)}
   async function removePlan(id){if(!requireAdmin())return;if(!confirm('Supprimer cette livraison du planning ?'))return;planningLocalMutationUntil=Date.now()+4000;const p=plans.find(x=>x.id===id);if(!p)return;const payload={id:p.id,qr:p.qr,date:p.date,time:p.time||'',note:p.note||''};const {error}=await supabaseClient.from('maintenance').insert({qr_id:p.qr,date:p.date,technicien:getUserDisplayName(),type:'Annulation planification livraison',travaux:JSON.stringify(payload),created_by:currentUser?.id||null});if(error){alert('Erreur : '+friendlySupabaseError(error));return}try{await loadDeliveryPlans()}catch(e){}syncPlans(DELIVERY_PLANS);renderWeek();renderList()}
-  els.form.onsubmit=async e=>{e.preventDefault();if(!requireAdmin())return;const qr=els.chariot.value,date=els.date.value||localDateISO(new Date()),time=els.time.value||'',driver=els.driver.value.trim(),destination=els.destination.value.trim(),note=els.note.value.trim();planningLocalMutationUntil=Date.now()+4000;if(!qr){alert('Veuillez sélectionner un chariot.');return}const edit=els.form.dataset.edit;const duplicate=plans.some(p=>String(p.qr)===String(qr)&&p.id!==edit);if(duplicate){alert('Ce chariot est déjà planifié pour une livraison.');return}const logicalId=edit||('dp_'+Date.now()+'_'+Math.random().toString(36).slice(2,8));const payload={id:logicalId,qr:String(qr),date:String(date),time:String(time||''),driver:String(driver||''),destination:String(destination||''),note:String(note||'')};const previous=edit?plans.find(x=>String(x.id)===String(edit)):null;let planHistory='';if(previous){const changed=[];for(const [k,label] of [['date','Date'],['time','Heure'],['driver','Chauffeur'],['destination','Destination'],['note','Note']]){const a=String(previous[k]||''),b=String(payload[k]||'');if(a!==b)changed.push(`${label} : ${a||'—'} → ${b||'—'}`)}planHistory=changed.join(' • ')}const {error}=await supabaseClient.from('maintenance').insert({qr_id:qr,date,technicien:getUserDisplayName(),type:'Planification livraison',travaux:JSON.stringify(payload),created_by:currentUser?.id||null});if(error){alert('Erreur : '+friendlySupabaseError(error));return}if(edit&&planHistory){try{await supabaseClient.from('maintenance').insert({qr_id:qr,date,technicien:getUserDisplayName(),type:'Modification planification livraison',travaux:planHistory,created_by:currentUser?.id||null})}catch(e){console.warn('Historique modification planification non enregistré',e)}}try{await loadDeliveryPlans()}catch(e){alert('Planification enregistrée mais actualisation impossible : '+friendlySupabaseError(e))}syncPlans(DELIVERY_PLANS);selectedDate=date;weekStart=startOfWeek(parseDate(date));closeModal();refreshChariotOptions();renderWeek();renderList()};
+  els.form.onsubmit=async e=>{
+    e.preventDefault();
+    if(planSaveBusy||!requireAdmin())return;
+    planSaveBusy=true;
+    const submitButton=els.form.querySelector('button[type="submit"],input[type="submit"]');
+    const previousSubmitText=submitButton?.textContent||'';
+    if(submitButton){submitButton.disabled=true;submitButton.textContent='Enregistrement…'}
+    try{
+      const qr=String(els.chariot.value||'').trim();
+      const date=els.date.value||localDateISO(new Date());
+      const time=els.time.value||'';
+      const driver=els.driver.value.trim();
+      const destination=els.destination.value.trim();
+      const note=els.note.value.trim();
+      if(!qr){alert('Veuillez sélectionner un chariot.');return}
+      const edit=String(els.form.dataset.edit||'');
+      // Refresh shared plans before checking so this form does not rely on a stale list.
+      try{
+        await loadDeliveryPlans();
+        syncPlans(DELIVERY_PLANS);
+      }catch(loadError){
+        alert('Impossible de vérifier le planning partagé. Rien n’a été enregistré. '+friendlySupabaseError(loadError));
+        return;
+      }
+      const machine=getMachine(qr);
+      if(!machine){alert('Chariot introuvable. Actualisez la page puis réessayez.');return}
+      if(!edit&&isDelivered(machine)){alert('Un chariot déjà livré ne peut pas être planifié.');return}
+      const duplicate=plans.some(p=>String(p.qr)===qr&&String(p.id)!==edit);
+      if(duplicate){alert('Ce chariot est déjà planifié pour une livraison.');return}
+      planningLocalMutationUntil=Date.now()+4000;
+      const logicalId=edit||('dp_'+Date.now()+'_'+Math.random().toString(36).slice(2,8));
+      const payload={id:logicalId,qr,date:String(date),time:String(time||''),driver:String(driver||''),destination:String(destination||''),note:String(note||'')};
+      const previous=edit?plans.find(x=>String(x.id)===edit):null;
+      let planHistory='';
+      if(previous){
+        const changed=[];
+        for(const [k,label] of [['date','Date'],['time','Heure'],['driver','Chauffeur'],['destination','Destination'],['note','Note']]){
+          const a=String(previous[k]||''),b=String(payload[k]||'');
+          if(a!==b)changed.push(`${label} : ${a||'—'} → ${b||'—'}`);
+        }
+        planHistory=changed.join(' • ');
+      }
+      const {error}=await supabaseClient.from('maintenance').insert({
+        qr_id:qr,date,technicien:getUserDisplayName(),type:'Planification livraison',
+        travaux:JSON.stringify(payload),created_by:currentUser?.id||null
+      });
+      if(error){alert('Erreur : '+friendlySupabaseError(error));return}
+      if(edit&&planHistory){
+        try{
+          const {error:historyError}=await supabaseClient.from('maintenance').insert({
+            qr_id:qr,date,technicien:getUserDisplayName(),type:'Modification planification livraison',
+            travaux:planHistory,created_by:currentUser?.id||null
+          });
+          if(historyError)console.warn('Historique modification planification non enregistré',historyError);
+        }catch(historyError){console.warn('Historique modification planification non enregistré',historyError)}
+      }
+      try{await loadDeliveryPlans()}
+      catch(refreshError){alert('Planification enregistrée mais actualisation impossible : '+friendlySupabaseError(refreshError))}
+      syncPlans(DELIVERY_PLANS);
+      selectedDate=date;
+      weekStart=startOfWeek(parseDate(date));
+      closeModal();
+      refreshChariotOptions();
+      renderWeek();
+      renderList();
+    }catch(error){
+      alert('Erreur lors de l’enregistrement : '+friendlySupabaseError(error));
+    }finally{
+      planSaveBusy=false;
+      if(submitButton){submitButton.disabled=false;submitButton.textContent=previousSubmitText}
+    }
+  };
   if(els.plan){els.plan.style.display=isAdmin()?'':'none'}
   els.cancel.onclick=closeModal;document.querySelectorAll('#deliveryViewFilters [data-view-mode]').forEach(b=>{b.addEventListener('click',()=>setViewMode(b.dataset.viewMode))});els.planSearch?.addEventListener('input',renderList);els.planDateFrom?.addEventListener('change',renderList);els.planDateTo?.addEventListener('change',renderList);els.clearPlanFilters?.addEventListener('click',()=>{if(els.planSearch)els.planSearch.value='';if(els.planDateFrom)els.planDateFrom.value='';if(els.planDateTo)els.planDateTo.value='';renderList();els.planSearch?.focus()});els.close?.addEventListener('click',closeModal);els.clearSearch?.addEventListener('click',()=>{els.search.value='';renderSearchResults();els.search.focus()});els.modal.addEventListener('click',e=>{if(e.target===els.modal)closeModal()});els.search?.addEventListener('input',renderSearchResults);els.search?.addEventListener('search',renderSearchResults);els.chariot?.addEventListener('change',()=>{if(els.search){els.search.value='';els.searchResults.innerHTML=''}});els.note?.addEventListener('input',updateNoteCount);document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(els.driverManager&&!els.driverManager.classList.contains('hidden')){closeDriverManager();return}if(!els.modal.classList.contains('hidden'))closeModal()});els.plan.onclick=()=>openModal(selectedDate, new URLSearchParams(location.search).get('qr')||'');els.today.onclick=()=>{selectedDate=localDateISO(new Date());weekStart=startOfWeek(new Date());setViewMode('today');renderWeek();renderList()};els.prev.onclick=()=>{weekStart=addDays(weekStart,-7);setViewMode('day');renderWeek();renderList()};els.next.onclick=()=>{weekStart=addDays(weekStart,7);setViewMode('day');renderWeek();renderList()};
   window.addEventListener('focus',refreshFromServer);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refreshFromServer()});

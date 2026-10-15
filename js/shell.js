@@ -17,7 +17,8 @@ function menuHTML(){
   </section>`;
   return `<div class="nav dash-menu">
     ${group('pilotage','Pilotage',link('dashboard.html','Tableau de bord','<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>')+
-      link('recherche.html','Recherche globale','<circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/>'))}
+      link('recherche.html','Recherche globale','<circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/>')+
+      link('controle-informations.html','Contrôle des fiches','<path d="M8 3h8l4 4v14H4V3z"/><path d="M8 11h8M8 15h8M8 7h3"/>'))}
     ${group('parc','Parc & stock',
       link('chariots.html','Tous les chariots','<path d="M3 16l2-7h10l5 4v3"/><path d="M5 16h14"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/><path d="M15 9V5h3v5"/>')+
       link('stock.html','Chariots en stock','<path d="M4 7h16v13H4z"/><path d="M8 7V4h8v3M8 11h8M8 15h5"/>')+

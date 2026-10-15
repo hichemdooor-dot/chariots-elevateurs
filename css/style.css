@@ -3305,3 +3305,10 @@ button.btn:disabled,
   .chariot-pagination-controls .chariot-page-btn{flex:1;min-width:0;padding:7px 6px}
   .chariot-page-number{min-width:80px;text-align:center}
 }
+
+
+/* V67.91 — Empty table rows preserve pagination toolbar position */
+.chariot-data-table tbody tr.chariot-table-empty-row,
+.chariot-data-table tbody tr.chariot-table-empty-row td{background:#fff!important;cursor:default}
+.chariot-data-table tbody tr.chariot-table-empty-row:hover td{background:#fff!important}
+.chariot-data-table tbody tr.chariot-table-empty-row td{height:27px;box-sizing:border-box}

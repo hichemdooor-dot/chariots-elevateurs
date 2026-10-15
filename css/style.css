@@ -3289,3 +3289,13 @@ button.btn:disabled,
   .chariot-data-table .chariot-table-status{font-size:8.5px;padding:4px 6px}
   .chariot-table-actions-cell .btn{font-size:8.5px;padding:4px 5px}
 }
+
+
+/* V67.89 — Pagination for the all-chariots table */
+.chariot-pagination{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:10px;padding:10px 12px;border:1px solid #dbe6f2;border-radius:8px;background:#f8fbff;color:#47627d;font-size:11px}
+.chariot-pagination-range{font-weight:700}
+.chariot-pagination-controls{display:flex;align-items:center;gap:9px}
+.chariot-pagination-controls .chariot-page-btn{min-height:30px;padding:6px 10px;font-size:11px;white-space:nowrap}
+.chariot-pagination-controls .chariot-page-btn:disabled{opacity:.42;cursor:not-allowed;box-shadow:none}
+.chariot-page-number{font-weight:800;color:#173f63;white-space:nowrap;font-variant-numeric:tabular-nums}
+@media(max-width:520px){.chariot-pagination{align-items:stretch}.chariot-pagination-range{text-align:center;width:100%}.chariot-pagination-controls{justify-content:space-between;width:100%;gap:6px}.chariot-pagination-controls .chariot-page-btn{flex:1}.chariot-page-number{min-width:78px;text-align:center}}

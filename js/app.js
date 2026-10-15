@@ -1449,6 +1449,8 @@ async function chariotsPage(){
   if(searchEl&&initialSearch)searchEl.value=initialSearch;
   const ids=['engineFilter','capacityFilter','mastFilter','heightFilter'];
   const stockFilter=$('#stockFilter');
+  const pageSize=8;
+  let currentPage=1;
   function fill(){
     const defs=[
       ['engineFilter','engine','Moteur : Tous'],
@@ -1484,17 +1486,25 @@ async function chariotsPage(){
     const fs=[['engineFilter','engine'],['capacityFilter','capacity'],['mastFilter','mast_type'],['heightFilter','lifting_height']];
     rows=rows.filter(c=>(!q||[c.qr_id,c.chassis,c.engine,c.client,c.capacity,c.color].some(v=>String(v||'').toLowerCase().includes(q)))&&fs.every(([id,k])=>!$('#'+id)?.value||norm(c[k])===norm($('#'+id).value)));
     $('#count').textContent=rows.length+' chariot'+(rows.length!==1?'s':'');
-    $('#list').innerHTML=rows.length?renderChariotTable(rows):'<div class="empty">Aucun résultat.</div>';
+    const totalPages=Math.max(1,Math.ceil(rows.length/pageSize));
+    currentPage=Math.min(Math.max(1,currentPage),totalPages);
+    const start=(currentPage-1)*pageSize;
+    const pageRows=rows.slice(start,start+pageSize);
+    const rangeText=rows.length?'Affichage '+(start+1)+'–'+Math.min(start+pageSize,rows.length)+' sur '+rows.length+' chariots':'';
+    const pagination=rows.length>pageSize ? '<nav class="chariot-pagination" aria-label="Pagination des chariots"><span class="chariot-pagination-range">'+rangeText+'</span><div class="chariot-pagination-controls"><button type="button" class="btn light chariot-page-btn" data-page="'+(currentPage-1)+'" '+(currentPage===1?'disabled':'')+'>‹ Précédent</button><span class="chariot-page-number">Page '+currentPage+' / '+totalPages+'</span><button type="button" class="btn light chariot-page-btn" data-page="'+(currentPage+1)+'" '+(currentPage===totalPages?'disabled':'')+'>Suivant ›</button></div></nav>' : '';
+    $('#list').innerHTML=(pageRows.length?renderChariotTable(pageRows):'<div class="empty">Aucun résultat.</div>')+pagination;
+    $('#list').querySelectorAll('[data-page]').forEach(button=>{button.onclick=()=>{const next=Number(button.dataset.page);if(Number.isFinite(next)&&next>=1&&next<=totalPages&&next!==currentPage){currentPage=next;render();}}});
   }
-  $('#search').addEventListener('input',render);
-  $('#statusFilter').addEventListener('change',render);
-  stockFilter?.addEventListener('change',render);
-  ids.forEach(id=>$('#'+id).addEventListener('change',render));
+  $('#search').addEventListener('input',()=>{currentPage=1;render()});
+  $('#statusFilter').addEventListener('change',()=>{currentPage=1;render()});
+  stockFilter?.addEventListener('change',()=>{currentPage=1;render()});
+  ids.forEach(id=>$('#'+id).addEventListener('change',()=>{currentPage=1;render()}));
   $('#clearFilters').onclick=()=>{
     ids.forEach(id=>$('#'+id).value='');
     $('#statusFilter').value='';
     if(stockFilter)stockFilter.value='';
     $('#search').value='';
+    currentPage=1;
     render();
   };
   render();

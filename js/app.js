@@ -910,7 +910,7 @@ function compactWorkflowHtml(c){
 function renderChariotTable(rows,from='',padTo=0){
   const value=v=>{const s=String(v??'').trim();return esc(s||'—')};
   const colorHex=v=>{
-    const raw=String(v||'').trim(),key=norm(raw);
+    const raw=String(v||'').trim(),key=norm(raw).toLowerCase();
     if(/^#[0-9a-f]{3}(?:[0-9a-f]{3})?(?:[0-9a-f]{2})?$/i.test(raw))return raw;
     const palette={
       'vert':'#16a34a','green':'#16a34a','vert fonce':'#15803d','dark green':'#15803d',

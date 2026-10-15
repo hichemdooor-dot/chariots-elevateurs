@@ -969,6 +969,16 @@ function toastCardUpdate(id,status){
   box.textContent=`${id} — ${status}`;box.classList.add('show');clearTimeout(window.__cardToastTimer);window.__cardToastTimer=setTimeout(()=>box.classList.remove('show'),2200);
 }
 initInteractiveCards();
+function dashboardChassisCreateActionHTML(value){
+  const chassis=String(value||'').trim().toUpperCase();
+  if(chassis.length<3||!/^G6[A-Z0-9-]+$/.test(chassis))return '';
+  if(!(typeof isAdmin==='function'&&isAdmin()))return '';
+  const exists=(Array.isArray(CHARIOTS)?CHARIOTS:[]).some(c=>String(c?.chassis||'').trim().toUpperCase()===chassis);
+  const note=exists
+    ? 'Ce numéro existe déjà. Le contrôle châssis + moteur reste appliqué.'
+    : 'Numéro non trouvé : il sera prérempli dans le formulaire.';
+  return '<a class="dashboard-search-create" href="nouveau-chariot.html?chassis='+encodeURIComponent(chassis)+'"><span class="dashboard-search-create-plus" aria-hidden="true">＋</span><span class="dashboard-search-create-copy"><strong>Créer un chariot avec ce numéro</strong><small>'+esc(note)+'</small></span><span class="dashboard-search-create-arrow" aria-hidden="true">→</span></a>';
+}
 function initDashboardGlobalSearch(){
   const input=document.getElementById('dashboardSearch'),box=document.getElementById('dashboardSearchResults');
   if(!input||!box||input.dataset.searchReady==='1')return;
@@ -994,8 +1004,9 @@ function initDashboardGlobalSearch(){
     if(!q){close();return}
     const rows=matches(q);
     activeIndex=rows.length?0:-1;
-    if(!rows.length){box.innerHTML='<div class="dashboard-search-empty">Aucun chariot correspondant.</div>';box.classList.add('open');input.setAttribute('aria-expanded','true');return}
-    box.innerHTML=rows.map((x,i)=>{const c=x.c;const title=c.chassis||c.qr_id||'Chariot';const meta=[c.qr_id,c.engine,c.capacity,c.color?`Couleur : ${c.color}`:'',c.client].filter(Boolean).join(' · ');return `<button type="button" class="dashboard-search-result ${i===activeIndex?'is-active':''}" role="option" aria-selected="${i===activeIndex?'true':'false'}" data-qr="${esc(c.qr_id||'')}"><span class="dashboard-search-result-icon">${esc(String(title).slice(0,2).toUpperCase())}</span><span class="dashboard-search-result-main"><span class="dashboard-search-result-title">${esc(title)}</span><span class="dashboard-search-result-meta">${esc(meta||'Ouvrir la fiche du chariot')}</span></span></button>`}).join('')+`<div class="dashboard-search-footer"><span>${rows.length} résultat${rows.length>1?'s':''} affiché${rows.length>1?'s':''}</span><button type="button" id="dashboardSearchAll">Voir tous les résultats →</button></div>`;
+    const createAction=dashboardChassisCreateActionHTML(q);
+    if(!rows.length){box.innerHTML='<div class="dashboard-search-empty">Aucun chariot correspondant.</div>'+createAction;box.classList.add('open');input.setAttribute('aria-expanded','true');return}
+    box.innerHTML=rows.map((x,i)=>{const c=x.c;const title=c.chassis||c.qr_id||'Chariot';const meta=[c.qr_id,c.engine,c.capacity,c.color?`Couleur : ${c.color}`:'',c.client].filter(Boolean).join(' · ');return `<button type="button" class="dashboard-search-result ${i===activeIndex?'is-active':''}" role="option" aria-selected="${i===activeIndex?'true':'false'}" data-qr="${esc(c.qr_id||'')}"><span class="dashboard-search-result-icon">${esc(String(title).slice(0,2).toUpperCase())}</span><span class="dashboard-search-result-main"><span class="dashboard-search-result-title">${esc(title)}</span><span class="dashboard-search-result-meta">${esc(meta||'Ouvrir la fiche du chariot')}</span></span></button>`}).join('')+`<div class="dashboard-search-footer"><span>${rows.length} résultat${rows.length>1?'s':''} affiché${rows.length>1?'s':''}</span><button type="button" id="dashboardSearchAll">Voir tous les résultats →</button></div>`+createAction;
     box.classList.add('open');input.setAttribute('aria-expanded','true');
     box.querySelectorAll('.dashboard-search-result').forEach((btn)=>btn.addEventListener('click',()=>{const qr=btn.dataset.qr;if(qr)location.href='chariot.html?id='+encodeURIComponent(qr)}));
     box.querySelector('#dashboardSearchAll')?.addEventListener('click',()=>dashboardGlobalSearch());

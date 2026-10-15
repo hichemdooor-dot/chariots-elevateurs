@@ -113,6 +113,39 @@ function openGlobalDateSearch(){
   const input=document.getElementById('siteGlobalSearchInput')||document.getElementById('dashboardSearch');
   goToGlobalSearch(input?.value||'','','',true);
 }
+function isSbiChassisSearchValue(value){
+  const q=String(value||'').trim().toUpperCase();
+  return q.length>=3 && /^G6[A-Z0-9-]+$/.test(q);
+}
+function sbiChassisCreateSuggestionHTML(value){
+  const chassis=String(value||'').trim().toUpperCase();
+  if(!isSbiChassisSearchValue(chassis))return '';
+  const url='nouveau-chariot.html?chassis='+encodeURIComponent(chassis);
+  let exists=false;
+  try{exists=typeof CHARIOTS!=='undefined'&&Array.isArray(CHARIOTS)&&CHARIOTS.some(c=>String(c?.chassis||'').trim().toUpperCase()===chassis)}catch(_){}
+  const admin=typeof isAdmin==='function'&&isAdmin();
+  if(!admin)return '<div class="sbi-chassis-create-note">Créer un chariot avec ce numéro : option réservée à l’administrateur.</div>';
+  const note=exists
+    ? 'Ce numéro existe déjà. Le contrôle châssis + moteur reste appliqué.'
+    : 'Numéro non trouvé : il sera prérempli dans le formulaire.';
+  return '<a class="sbi-chassis-create-action" href="'+url+'"><span class="sbi-chassis-create-plus" aria-hidden="true">＋</span><span class="sbi-chassis-create-copy"><strong>Créer un chariot avec ce numéro</strong><small>'+note+'</small></span><span class="sbi-chassis-create-arrow" aria-hidden="true">→</span></a>';
+}
+function initSbiChassisCreateSuggestion(input,wrapper,panel){
+  if(!input||!wrapper||!panel||input.dataset.chassisCreateReady==='1')return;
+  input.dataset.chassisCreateReady='1';
+  const render=()=>{
+    const html=sbiChassisCreateSuggestionHTML(input.value);
+    panel.innerHTML=html;
+    panel.classList.toggle('open',!!html);
+    panel.setAttribute('aria-hidden',html?'false':'true');
+  };
+  input.addEventListener('input',render);
+  input.addEventListener('focus',render);
+  input.addEventListener('keydown',e=>{if(e.key==='Escape'){panel.classList.remove('open');panel.setAttribute('aria-hidden','true')}});
+  document.addEventListener('click',e=>{
+    if(!wrapper.contains(e.target)){panel.classList.remove('open');panel.setAttribute('aria-hidden','true')}
+  });
+}
 function initSiteGlobalSearch(){
   const page=location.pathname.split('/').pop()||'dashboard.html';
   if(['index.html','maintenance.html'].includes(page))return;
@@ -131,8 +164,13 @@ function initSiteGlobalSearch(){
   form.innerHTML='<input id="siteGlobalSearchInput" type="search" autocomplete="off" placeholder="Recherche globale : châssis, série, client, moteur..." aria-label="Rechercher dans tout le site"><button class="sbi-global-submit" type="submit" aria-label="Lancer la recherche"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></svg></button><button class="sbi-global-date-btn" type="button" title="Rechercher par date" aria-label="Recherche par date"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M8 14h3M8 17h6"/></svg></button>';
   form.addEventListener('submit',e=>{e.preventDefault();goToGlobalSearch(form.querySelector('input')?.value||'')});
   form.querySelector('.sbi-global-date-btn')?.addEventListener('click',()=>openGlobalDateSearch());
+  const wrapper=document.createElement('div');wrapper.className='sbi-global-search-wrap';
+  wrapper.appendChild(form);
+  const panel=document.createElement('div');panel.className='sbi-chassis-create-panel';panel.setAttribute('aria-hidden','true');
+  wrapper.appendChild(panel);
   const avatar=header.querySelector('.avatar');
-  if(avatar)header.insertBefore(form,avatar);else header.appendChild(form);
+  if(avatar)header.insertBefore(wrapper,avatar);else header.appendChild(wrapper);
+  initSbiChassisCreateSuggestion(form.querySelector('input'),wrapper,panel);
 }
 document.addEventListener('DOMContentLoaded',()=>{
   // Use the exact dashboard hamburger drawer on every page.

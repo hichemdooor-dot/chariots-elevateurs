@@ -3218,3 +3218,14 @@ button.btn:disabled,
 .driver-manager-footer{display:flex;justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid #e4ebf2}
 .driver-manager-footer .btn{min-height:42px}
 @media(max-width:700px){.delivery-driver-control{grid-template-columns:minmax(0,1fr) auto;gap:7px}.delivery-driver-manage{padding:0 9px!important;min-width:78px;min-height:42px!important}.delivery-driver-manage-prominent{font-size:12px!important}.driver-manage-label{font-size:12px!important}.driver-manager-body{padding:14px}.driver-manager-row{align-items:flex-start;flex-direction:column}.driver-manager-row.editing{flex-direction:column}.driver-manager-actions{width:100%;justify-content:flex-end}.driver-manager-actions .btn{flex:1}.driver-add-row{grid-template-columns:minmax(0,1fr) auto;gap:6px}.driver-add-row input{font-size:14px}.driver-add-row .btn{padding:0 10px}.driver-manager-footer .btn{width:100%}}
+
+/* SBI — chassis quick-create action in every shared search bar */
+.sbi-global-search-wrap{position:relative;display:flex;align-items:center;flex:1 1 300px;min-width:0;max-width:560px;margin:0 14px 0 22px;z-index:1300}
+.sbi-global-search-wrap .sbi-global-searchbar{flex:1 1 auto;width:100%;max-width:none;min-width:0;margin:0}
+.sbi-chassis-create-panel{display:none;position:absolute;top:calc(100% + 8px);left:0;right:0;z-index:1400;overflow:hidden;background:#fff;border:1px solid #cbdceb;border-radius:12px;box-shadow:0 16px 38px rgba(6,30,55,.24)}
+.sbi-chassis-create-panel.open{display:block}
+.sbi-chassis-create-action{display:flex;align-items:center;gap:11px;padding:12px 14px;color:#173f63;text-decoration:none;background:#fff;border-left:4px solid #16803e}
+.sbi-chassis-create-action:hover,.sbi-chassis-create-action:focus-visible{background:#f0faf3;outline:none}
+.sbi-chassis-create-plus{display:grid;place-items:center;width:34px;height:34px;flex:0 0 34px;border-radius:9px;background:#16803e;color:#fff;font-size:24px;font-weight:600;line-height:1}
+.sbi-chassis-create-copy{display:block;flex:1;min-width:0}.sbi-chassis-create-copy strong{display:block;color:#117239;font-size:13px;font-weight:800;line-height:1.4}.sbi-chassis-create-copy small{display:block;margin-top:3px;color:#687d8f;font-size:10px;line-height:1.4;white-space:normal}.sbi-chassis-create-arrow{font-size:22px;color:#16803e}.sbi-chassis-create-note{padding:12px 14px;color:#697b8c;font-size:12px;background:#fff}
+@media(max-width:800px){.sbi-global-search-wrap{flex:1 1 120px;max-width:none;margin:0 7px 0 10px}.sbi-global-search-wrap .sbi-global-searchbar{margin:0;flex:1 1 auto}.sbi-chassis-create-panel{min-width:260px;left:auto;right:0;width:min(360px,calc(100vw - 22px))}.sbi-chassis-create-action{padding:10px 11px}}

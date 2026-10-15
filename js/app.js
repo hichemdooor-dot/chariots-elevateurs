@@ -1825,11 +1825,14 @@ async function newPage(){
   if(!await session())return;
   if(!requireAdmin()){location.replace('dashboard.html');return}
   await loadChariots();
-  const id=new URLSearchParams(location.search).get('id');
+  const params=new URLSearchParams(location.search);
+  const id=params.get('id');
+  const chassisPrefill=String(params.get('chassis')||'').trim().toUpperCase();
   const old=CHARIOTS.find(c=>String(c.qr_id)===String(id));
   if(old&&!isAdmin()){location.href='chariot.html?id='+encodeURIComponent(old.qr_id);return}
   if(old){editingQrId=old.qr_id;$('#formTitle').textContent='Modifier '+old.qr_id;for(const [k,v] of Object.entries(old)){const el=document.querySelector(`[name="${k}"]`);if(el)el.value=v??''}}
   else{$('[name="qr_id"]').value=nextQr();editingQrId=null;}
+  if(!old&&chassisPrefill){const chassisField=document.querySelector('[name="chassis"]');if(chassisField)chassisField.value=chassisPrefill;}
   setupAutomaticStatusField(old);
   setupAutomaticHeightMastField();
   const clientField=document.querySelector('[name="client"]');

@@ -953,7 +953,7 @@ function renderChariotTable(rows,from=''){
       '<td>'+value(String(c.mast_type||'').toUpperCase())+'</td>'+
       '<td>'+value(c.fork_dimension)+'</td>'+
       '<td>'+value(c.tire_type)+'</td>'+
-      '<td class="chariot-table-color-cell"><span class="chariot-color-dot" style="background-color:'+colorHex(color)+'" title="Couleur : '+esc(color||'non renseignée')+'" aria-label="Couleur : '+esc(color||'non renseignée')+'"></span></td>'+
+      '<td class="chariot-table-color-cell"><span class="chariot-color-dot" style="display:inline-block;flex:0 0 10px;width:10px;height:10px;min-width:10px;min-height:10px;border-radius:50%;box-sizing:border-box;border:1px solid rgba(15,35,55,.22);background-color:'+colorHex(color)+'" title="Couleur : '+esc(color||'non renseignée')+'" aria-label="Couleur : '+esc(color||'non renseignée')+'"></span></td>'+
       '<td><span class="badge '+statusClass(c.status)+' chariot-table-status">'+esc(status)+'</span></td>'+
       '<td class="chariot-table-actions-cell">'+rowActions(c)+'</td>'+
       '</tr>';

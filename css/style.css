@@ -3312,3 +3312,31 @@ button.btn:disabled,
 .chariot-data-table tbody tr.chariot-table-empty-row td{background:#fff!important;cursor:default}
 .chariot-data-table tbody tr.chariot-table-empty-row:hover td{background:#fff!important}
 .chariot-data-table tbody tr.chariot-table-empty-row td{height:27px;box-sizing:border-box}
+
+
+/* V67.92 — Uniform row height in the technical chariot table */
+.chariot-data-table tbody>tr{height:42px!important}
+.chariot-data-table tbody>tr>td{
+  box-sizing:border-box!important;height:42px!important;max-height:42px;
+  padding:0 8px!important;vertical-align:middle!important;
+}
+.chariot-data-table tbody>tr>.chariot-table-actions-cell{
+  padding:0 6px!important;white-space:nowrap!important;
+}
+.chariot-data-table .chariot-table-actions-cell .btn,
+.chariot-data-table .chariot-table-actions-cell a.btn,
+.chariot-data-table .chariot-table-actions-cell button.btn{
+  box-sizing:border-box!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  height:28px!important;min-height:28px!important;max-height:28px!important;
+  margin:0 2px!important;padding:0 8px!important;
+  line-height:1!important;font-size:9px!important;white-space:nowrap!important;
+  vertical-align:middle!important;flex:0 0 auto!important;
+}
+.chariot-data-table .chariot-table-actions-cell .sbi-button-icon{width:13px!important;height:13px!important;flex-basis:13px!important}
+.chariot-data-table .chariot-table-actions-cell .sbi-button-icon svg{width:13px!important;height:13px!important}
+@media(max-width:800px){
+  .chariot-data-table tbody>tr>td{height:42px!important;padding:0 7px!important}
+  .chariot-data-table .chariot-table-actions-cell .btn,
+  .chariot-data-table .chariot-table-actions-cell a.btn,
+  .chariot-data-table .chariot-table-actions-cell button.btn{height:28px!important;min-height:28px!important;max-height:28px!important;padding:0 6px!important;font-size:8.5px!important}
+}

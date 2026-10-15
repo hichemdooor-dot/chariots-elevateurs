@@ -1689,11 +1689,12 @@ async function saveDeliveryConfirmationToStock(qrId,plan,details){
   const nextTime=String(details?.time||plan?.time||'').trim();
   const nextDriver=String(details?.driver||plan?.driver||'').trim();
   const nextDestination=String(details?.destination||plan?.destination||'').trim();
-  const nextClient=String(details?.client||c?.client||'').trim();
-  if(details.client){
-    const {error}=await supabaseClient.from('chariots').update({client:String(details.client).trim(),updated_at:now.toISOString()}).eq('qr_id',qrId);
+  const deliveredClient=String(details?.client||'').trim().toUpperCase();
+  const nextClient=deliveredClient||String(c?.client||'').trim().toUpperCase();
+  if(deliveredClient){
+    const {error}=await supabaseClient.from('chariots').update({client:deliveredClient,updated_at:now.toISOString()}).eq('qr_id',qrId);
     if(error)throw error;
-    if(c){c.client=String(details.client).trim();c.updated_at=now.toISOString();}
+    if(c){c.client=deliveredClient;c.updated_at=now.toISOString();}
   }
   // Always persist a planning entry after delivery confirmation. Reuse the
   // existing logical plan ID when present; otherwise create one so deliveries

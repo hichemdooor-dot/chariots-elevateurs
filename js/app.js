@@ -2081,7 +2081,6 @@ function showDuplicatePopup(duplicate, fields){
   if(existing) existing.remove();
   const chassis=String(fields?.chassis?.value||duplicate?.chassis||'').trim();
   const engine=String(fields?.engine?.value||duplicate?.engine||'').trim();
-  const capacity=String(fields?.capacity?.value||duplicate?.capacity||'').trim();
   const qr=String(duplicate?.qr_id||'chariot').trim();
   const backdrop=document.createElement('div');
   backdrop.id='sbiDuplicateModal';
@@ -2093,7 +2092,7 @@ function showDuplicatePopup(duplicate, fields){
       <button type="button" class="sbi-duplicate-modal-close" aria-label="Fermer">×</button>
     </div>
     <div class="sbi-duplicate-modal-body">
-      <p>Le chariot avec le châssis <strong>${esc(chassis)}</strong>, le moteur <strong>${esc(engine)}</strong> et la capacité <strong>${esc(capacity)}</strong> existe déjà.</p>
+      <p>Le chariot avec le châssis <strong>${esc(chassis)}</strong> et le moteur <strong>${esc(engine)}</strong> existe déjà, quelle que soit sa capacité.</p>
       <div class="sbi-duplicate-modal-ref">Référence existante : <strong>${esc(qr)}</strong></div>
     </div>
     <div class="sbi-duplicate-modal-actions"><button type="button" class="btn" data-duplicate-ok>OK</button></div>
@@ -2108,14 +2107,14 @@ function setupLiveDuplicateGuard(old){
   const form=document.getElementById('chariotForm'),box=document.getElementById('duplicateSmartWarning');
   if(!form)return;
   if(box){box.hidden=true;box.textContent='';}
-  const fields={chassis:form.querySelector('[name="chassis"]'),engine:form.querySelector('[name="engine"]'),capacity:form.querySelector('[name="capacity"]')};
+  const fields={chassis:form.querySelector('[name="chassis"]'),engine:form.querySelector('[name="engine"]')};
   let lastPopupKey='';
   let lastDuplicate=false;
   const check=()=>{
-    const chassis=norm(fields.chassis?.value),engine=norm(fields.engine?.value),capacity=norm(fields.capacity?.value);
-    const duplicate=!!chassis&&!!engine&&!!capacity&&(CHARIOTS||[]).find(c=>norm(c?.chassis)===chassis&&norm(c?.engine)===engine&&norm(c?.capacity)===capacity&&String(c?.qr_id)!==String(old?.qr_id||''));
+    const chassis=norm(fields.chassis?.value),engine=norm(fields.engine?.value);
+    const duplicate=!!chassis&&!!engine&&(CHARIOTS||[]).find(c=>norm(c?.chassis)===chassis&&norm(c?.engine)===engine&&String(c?.qr_id)!==String(old?.qr_id||''));
     if(duplicate){
-      const key=[chassis,engine,capacity,String(duplicate.qr_id||'')].join('|');
+      const key=[chassis,engine,String(duplicate.qr_id||'')].join('|');
       if(!lastDuplicate||key!==lastPopupKey){
         showDuplicatePopup(duplicate,fields);
         lastPopupKey=key;
@@ -2127,7 +2126,7 @@ function setupLiveDuplicateGuard(old){
     }
     $('#saveBtn')?.classList.toggle('save-ready',!duplicate && ['chassis','color','engine','capacity','fork_dimension','tire_type'].every(k=>String(form.querySelector(`[name="${k}"]`)?.value||'').trim()));
   };
-  [fields.chassis,fields.engine,fields.capacity].forEach(el=>{if(!el)return;el.addEventListener(el.tagName==='SELECT'?'change':'input',check)});
+  [fields.chassis,fields.engine].forEach(el=>{if(!el)return;el.addEventListener(el.tagName==='SELECT'?'change':'input',check)});
   check();
 }
 function setupLastUsedConfiguration(old){

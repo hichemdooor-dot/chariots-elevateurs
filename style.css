@@ -2638,3 +2638,15 @@ button.btn:disabled,
   .login-heading h1{font-size:27px}
 }
 @media(prefers-reduced-motion:reduce){.login-page::before,.login-page::after,.welcome-glow{animation:none}}
+
+
+/* V68.00 — SBI Industrial Premium polish for standalone pages */
+:root{--sbi-navy:#12365a;--sbi-blue:#1976d2;--sbi-line:#d9e4f0;--sbi-shadow:0 5px 18px rgba(18,54,90,.075)}
+:where(button,.btn,a.btn,[role="button"]){transition:background-color .16s ease,border-color .16s ease,color .16s ease,box-shadow .16s ease,transform .16s ease;-webkit-tap-highlight-color:transparent}
+:where(button,.btn,a.btn,[role="button"]):focus-visible{outline:3px solid rgba(25,118,210,.30);outline-offset:2px}
+:where(input,select,textarea):focus-visible{outline:2px solid rgba(25,118,210,.24);outline-offset:1px}
+button:disabled,.btn:disabled{cursor:not-allowed;opacity:.55;box-shadow:none!important;transform:none!important}
+@media(hover:hover) and (pointer:fine){button:not(:disabled):hover,.btn:not(:disabled):hover,a.btn:hover{box-shadow:0 5px 12px rgba(18,54,90,.13);transform:translateY(-1px)}button:not(:disabled):active,.btn:not(:disabled):active,a.btn:active{transform:translateY(0)}}
+@keyframes sbiSoftEnterStandalone{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.notification-page-row,.notification-card,.login-shell{animation:sbiSoftEnterStandalone .2s ease-out both}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}}

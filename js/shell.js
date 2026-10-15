@@ -202,7 +202,7 @@ document.addEventListener('DOMContentLoaded',()=>{
       if(dx < -70 && Math.abs(dx) > Math.abs(dy)*1.2) closeMobileMenu();
     },{passive:true});
   });
-  document.querySelectorAll('.brand').forEach(el=>{el.innerHTML='<img class="site-logo" src="assets/logo-sbi-hangcha.png" alt="SBI HANGCHA">';});
+  document.querySelectorAll('.brand').forEach(el=>{el.innerHTML='<img class="site-logo" src="assets/sbi-benouatas-logo.jpg?v=20261015" alt="SBI BENOUATAS INDUSTRIE · ALGÉRIE">';});
   document.querySelectorAll('.avatar').forEach(el=>{
     const wrap=document.createElement('div');
     wrap.className='user-menu-wrap';

@@ -762,19 +762,58 @@ async function generateSbiPasswordResetLink(button){
   button.textContent='Génération…';
   sbiPasswordResetStatus(button,'Vérification de la demande…');
   try{
-    const result=await supabaseClient.functions.invoke('admin-generate-password-reset',{
-      body:{requestId,email}
+    // Refresh the admin session before calling the protected Edge Function.
+    // Explicitly pass the current access token so an old cached bearer token
+    // cannot cause a misleading "Session invalide" response.
+    let sessionResult=await supabaseClient.auth.refreshSession();
+    let session=sessionResult.data?.session;
+    if(sessionResult.error||!session?.access_token){
+      const current=await supabaseClient.auth.getSession();
+      session=current.data?.session;
+    }
+    if(!session?.access_token){
+      throw new Error('Session administrateur expirée. Déconnectez-vous puis reconnectez-vous.');
+    }
+    let result=await supabaseClient.functions.invoke('admin-generate-password-reset',{
+      body:{requestId,email},
+      headers:{Authorization:'Bearer '+session.access_token}
     });
     if(result.error){
       let message=friendlySupabaseError(result.error);
+      let status=0;
       try{
         const response=result.error.context;
+        status=Number(response?.status||0);
         if(response&&typeof response.clone==='function'){
           const payload=await response.clone().json();
           if(payload?.error)message=String(payload.error);
         }
       }catch(_){}
-      throw new Error(message);
+      // One controlled retry if the Edge Function rejected the previous token.
+      if(status===401||/session invalide|session administrateur manquante/i.test(message)){
+        const refreshed=await supabaseClient.auth.refreshSession();
+        const freshSession=refreshed.data?.session;
+        if(!refreshed.error&&freshSession?.access_token){
+          result=await supabaseClient.functions.invoke('admin-generate-password-reset',{
+            body:{requestId,email},
+            headers:{Authorization:'Bearer '+freshSession.access_token}
+          });
+          if(!result.error)message='';
+          else{
+            message=friendlySupabaseError(result.error);
+            try{
+              const response=result.error.context;
+              if(response&&typeof response.clone==='function'){
+                const payload=await response.clone().json();
+                if(payload?.error)message=String(payload.error);
+              }
+            }catch(_){}
+          }
+        }else{
+          throw new Error('Votre session administrateur a expiré. Déconnectez-vous puis reconnectez-vous.');
+        }
+      }
+      if(result.error)throw new Error(message);
     }
     if(result.data?.error)throw new Error(String(result.data.error));
     const recoveryUrl=String(result.data?.recoveryUrl||'');

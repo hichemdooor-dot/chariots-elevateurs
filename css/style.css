@@ -3748,5 +3748,5 @@ body.professional-dashboard .dash-logo img{
     width:18px!important;height:18px!important;flex:0 0 18px!important;
   }
   body.dashboard-page.sidebar-rail .pro-menu-btn{position:relative;z-index:6001!important}
-  body.dashboard-page.sidebar-hover-expanded .pro-menu-btn{z-index:6001!important}
+  body.dashboard-page.sidebar-hover-expanded .pro-menu-btn{position:fixed!important;left:236px!important;top:14px!important;width:32px!important;height:34px!important;z-index:6001!important;background:#0a66ad!important;color:#fff!important;border:1px solid rgba(255,255,255,.18)!important;border-radius:8px!important;}
 }

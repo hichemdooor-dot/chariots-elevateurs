@@ -3750,3 +3750,40 @@ body.professional-dashboard .dash-logo img{
   body.dashboard-page.sidebar-rail .pro-menu-btn{position:relative;z-index:6001!important}
   body.dashboard-page.sidebar-hover-expanded .pro-menu-btn{position:fixed!important;left:236px!important;top:14px!important;width:32px!important;height:34px!important;z-index:6001!important;background:#0a66ad!important;color:#fff!important;border:1px solid rgba(255,255,255,.18)!important;border-radius:8px!important;}
 }
+
+/* SBI password reset request link modal */
+.password-request-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px;max-width:100%}
+.password-request-actions .badge{white-space:nowrap}
+.sbi-reset-inline-status{flex-basis:100%;text-align:right;font-size:12px;line-height:1.45;color:#58738b;overflow-wrap:anywhere}
+.sbi-reset-inline-status.error{color:#b4232c}
+.password-request-actions button:disabled{opacity:.55;cursor:not-allowed}
+.sbi-password-reset-overlay{position:fixed;inset:0;z-index:99999;display:grid;place-items:center;padding:18px;box-sizing:border-box;background:rgba(5,22,37,.58);backdrop-filter:blur(3px)}
+.sbi-password-reset-dialog{width:min(700px,100%);max-height:min(90vh,850px);overflow:auto;background:#fff;color:#183650;border:1px solid #d7e3ee;border-radius:16px;box-shadow:0 22px 65px rgba(4,22,38,.32);box-sizing:border-box}
+.sbi-password-reset-head{display:flex;align-items:center;gap:13px;padding:21px 24px 18px;border-bottom:1px solid #e3ebf2}
+.sbi-password-reset-icon{width:43px;height:43px;flex:0 0 43px;display:grid;place-items:center;border-radius:12px;background:#e4f7ed;color:#128452;font-size:23px;font-weight:900}
+.sbi-password-reset-heading{flex:1;min-width:0}
+.sbi-password-reset-heading h2{margin:0 0 5px;font-size:19px;color:#14334f}
+.sbi-password-reset-heading p{margin:0;font-size:13px;color:#70869a;overflow-wrap:anywhere}
+.sbi-password-reset-x{width:35px;height:35px;display:grid;place-items:center;border:0;border-radius:8px;background:transparent;color:#627c90;font-size:25px;cursor:pointer}
+.sbi-password-reset-x:hover{background:#f0f5f9}
+.sbi-password-reset-body{padding:22px 24px}
+.sbi-password-reset-body>p{margin:0 0 18px;color:#526e85;font-size:13px;line-height:1.6}
+.sbi-password-reset-label{display:block;margin-bottom:8px;color:#4b6379;font-size:11px;font-weight:900;letter-spacing:.055em;text-transform:uppercase}
+.sbi-password-reset-link{width:100%;min-height:105px;resize:vertical;box-sizing:border-box;padding:12px 14px;border:1px solid #d7e3ee;border-radius:10px;background:#f4f8fc;color:#176bbd;font:12px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;overflow-wrap:anywhere;word-break:break-word}
+.sbi-password-reset-link:focus{outline:3px solid rgba(23,121,232,.16);border-color:#1779e8}
+.sbi-password-reset-notice{display:flex;align-items:flex-start;gap:9px;margin-top:15px;color:#6a8094;font-size:12px;line-height:1.5}
+.sbi-password-reset-notice>span:first-child{flex:0 0 auto;color:#1779e8;font-weight:800}
+.sbi-password-reset-copy-status{margin-top:10px;font-size:12px;line-height:1.5;color:#13784e}
+.sbi-password-reset-copy-status.error{color:#b4232c}
+.sbi-password-reset-foot{display:flex;justify-content:flex-end;gap:9px;padding:15px 24px;background:#f8fafc;border-top:1px solid #e3ebf2}
+@media(max-width:700px){
+  .password-request-actions{justify-content:flex-start}
+  .sbi-reset-inline-status{text-align:left}
+  .sbi-password-reset-overlay{padding:10px}
+  .sbi-password-reset-dialog{max-height:94vh;border-radius:13px}
+  .sbi-password-reset-head{padding:17px 16px}
+  .sbi-password-reset-body{padding:17px 16px}
+  .sbi-password-reset-heading h2{font-size:17px}
+  .sbi-password-reset-foot{padding:13px 16px;flex-wrap:wrap}
+  .sbi-password-reset-foot .btn{flex:1;justify-content:center}
+}

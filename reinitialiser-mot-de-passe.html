@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b2942">
+  <title>SBI — Réinitialiser le mot de passe</title>
+  <link rel="stylesheet" href="css/style.css?v=68.06">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body.sbi-reset-page{min-height:100vh;margin:0;background:#eef3f9;color:#173550;font-family:Arial,sans-serif;display:grid;place-items:center;padding:22px;box-sizing:border-box}
+    .sbi-reset-card{width:min(520px,100%);box-sizing:border-box;background:#fff;border:1px solid #d7e3ee;border-radius:16px;padding:28px;box-shadow:0 14px 38px rgba(17,52,80,.10)}
+    .sbi-reset-brand{display:flex;align-items:center;justify-content:center;background:#0b2942;border-radius:12px;padding:17px;margin-bottom:22px}
+    .sbi-reset-brand img{width:min(280px,100%);height:auto;max-height:70px;object-fit:contain}
+    .sbi-reset-card h1{margin:0 0 8px;font-size:24px;color:#14334f}
+    .sbi-reset-lead{margin:0 0 22px;color:#71869a;line-height:1.6;font-size:14px}
+    .sbi-reset-field{display:block;margin:0 0 15px}
+    .sbi-reset-field span{display:block;font-size:13px;font-weight:700;color:#3d5a73;margin:0 0 7px}
+    .sbi-reset-field input{width:100%;box-sizing:border-box;border:1px solid #cbdbe8;border-radius:9px;background:#fbfdff;min-height:46px;padding:11px 12px;font:inherit;color:#173550}
+    .sbi-reset-field input:focus{outline:3px solid rgba(23,121,232,.15);border-color:#1779e8}
+    .sbi-reset-btn{width:100%;justify-content:center;min-height:46px;border:0;border-radius:9px;background:#1779e8;color:#fff;font-weight:800;cursor:pointer}
+    .sbi-reset-btn:disabled{opacity:.6;cursor:wait}
+    .sbi-reset-msg{margin-top:14px;font-size:13px;line-height:1.55;color:#526e85;overflow-wrap:anywhere}
+    .sbi-reset-msg.error{color:#b4232c}.sbi-reset-msg.success{color:#13784e}
+    .sbi-reset-back{display:block;text-align:center;margin-top:20px;color:#1475d1;text-decoration:none;font-size:13px;font-weight:700}
+    [hidden]{display:none!important}
+    @media(max-width:480px){body.sbi-reset-page{padding:12px}.sbi-reset-card{padding:20px}.sbi-reset-card h1{font-size:21px}}
+  </style>
+</head>
+<body class="sbi-reset-page">
+  <main class="sbi-reset-card">
+    <div class="sbi-reset-brand"><img src="assets/sbi-benouatas-logo.webp?v=20261015f" alt="BENOUATAS INDUSTRIE · ALGÉRIE"></div>
+    <section id="sbiResetChecking">
+      <h1>Réinitialiser le mot de passe</h1>
+      <p class="sbi-reset-lead">Vérification du lien sécurisé en cours…</p>
+      <div id="sbiResetCheckMsg" class="sbi-reset-msg" role="status" aria-live="polite">Veuillez patienter.</div>
+    </section>
+    <form id="sbiResetForm" hidden>
+      <h1>Choisir un nouveau mot de passe</h1>
+      <p class="sbi-reset-lead">Saisissez un nouveau mot de passe pour votre compte SBI.</p>
+      <label class="sbi-reset-field"><span>Nouveau mot de passe</span><input id="sbiResetPassword" type="password" autocomplete="new-password" minlength="6" required></label>
+      <label class="sbi-reset-field"><span>Confirmer le mot de passe</span><input id="sbiResetPasswordConfirm" type="password" autocomplete="new-password" minlength="6" required></label>
+      <button id="sbiResetSubmit" class="sbi-reset-btn" type="submit">Enregistrer le nouveau mot de passe</button>
+      <div id="sbiResetFormMsg" class="sbi-reset-msg" role="status" aria-live="polite"></div>
+    </form>
+    <section id="sbiResetDone" hidden>
+      <h1>Mot de passe modifié</h1>
+      <p class="sbi-reset-lead">Votre nouveau mot de passe a été enregistré. Vous pouvez maintenant vous reconnecter à votre espace SBI.</p>
+      <a class="sbi-reset-btn" style="display:flex;align-items:center;text-decoration:none" href="index.html">Retour à la connexion</a>
+    </section>
+    <a class="sbi-reset-back" href="index.html">Retour à la connexion</a>
+  </main>
+  <script>
+    const SBI_RESET_SUPABASE_URL = "https://hkakedonludcqjgjzkei.supabase.co";
+    const SBI_RESET_PUBLISHABLE_KEY = "sb_publishable_AQWeYHI3Xli_1iBKVr9EPg_8L8PR-Hc";
+    const sbiRecoveryHashAtLoad = window.location.hash;
+    const sbiArrivedWithRecoveryType = new URLSearchParams(sbiRecoveryHashAtLoad.replace(/^#/, "")).get("type") === "recovery";
+    const sbiResetClient = window.supabase.createClient(SBI_RESET_SUPABASE_URL, SBI_RESET_PUBLISHABLE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: true, storageKey: "sbi-password-recovery-flow" }
+    });
+    const sbiResetChecking = document.getElementById("sbiResetChecking");
+    const sbiResetCheckMsg = document.getElementById("sbiResetCheckMsg");
+    const sbiResetForm = document.getElementById("sbiResetForm");
+    const sbiResetFormMsg = document.getElementById("sbiResetFormMsg");
+    const sbiResetDone = document.getElementById("sbiResetDone");
+    const sbiResetSubmit = document.getElementById("sbiResetSubmit");
+    let sbiRecoverySessionReady = false;
+    function sbiShowRecoveryForm() {
+      sbiRecoverySessionReady = true;
+      sbiResetChecking.hidden = true;
+      sbiResetDone.hidden = true;
+      sbiResetForm.hidden = false;
+      document.getElementById("sbiResetPassword").focus();
+    }
+    sbiResetClient.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY" && session?.user) sbiShowRecoveryForm();
+    });
+    async function sbiCheckRecoveryLink() {
+      const { data, error } = await sbiResetClient.auth.getSession();
+      if (sbiRecoverySessionReady) return;
+      if (!error && data?.session && sbiArrivedWithRecoveryType) {
+        sbiShowRecoveryForm();
+        return;
+      }
+      const query = new URLSearchParams(window.location.search);
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      const authMessage = query.get("error_description") || hash.get("error_description") || query.get("error") || hash.get("error");
+      sbiResetCheckMsg.textContent = authMessage
+        ? "Le lien n'est pas valide ou a expiré. Demandez à votre administrateur de générer un nouveau lien."
+        : "Aucun lien de récupération valide n'a été détecté. Ouvrez le lien reçu de votre administrateur ou demandez-en un nouveau.";
+      sbiResetCheckMsg.classList.add("error");
+    }
+    sbiResetForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!sbiRecoverySessionReady) {
+        sbiResetFormMsg.textContent = "Le lien de récupération n'est pas validé. Demandez un nouveau lien.";
+        sbiResetFormMsg.className = "sbi-reset-msg error";
+        return;
+      }
+      const password = document.getElementById("sbiResetPassword").value;
+      const confirmPassword = document.getElementById("sbiResetPasswordConfirm").value;
+      if (password.length < 6) {
+        sbiResetFormMsg.textContent = "Le mot de passe doit contenir au moins 6 caractères.";
+        sbiResetFormMsg.className = "sbi-reset-msg error";
+        return;
+      }
+      if (password !== confirmPassword) {
+        sbiResetFormMsg.textContent = "Les deux mots de passe ne correspondent pas.";
+        sbiResetFormMsg.className = "sbi-reset-msg error";
+        return;
+      }
+      sbiResetSubmit.disabled = true;
+      sbiResetSubmit.textContent = "Enregistrement…";
+      try {
+        const { error } = await sbiResetClient.auth.updateUser({ password });
+        if (error) throw error;
+        sbiRecoverySessionReady = false;
+        sbiResetForm.hidden = true;
+        sbiResetChecking.hidden = true;
+        sbiResetDone.hidden = false;
+        try { await sbiResetClient.auth.signOut({ scope: "local" }); } catch (_) {}
+      } catch (error) {
+        sbiResetFormMsg.textContent = error?.message || "Impossible de modifier le mot de passe.";
+        sbiResetFormMsg.className = "sbi-reset-msg error";
+      } finally {
+        sbiResetSubmit.disabled = false;
+        sbiResetSubmit.textContent = "Enregistrer le nouveau mot de passe";
+      }
+    });
+    sbiCheckRecoveryLink();
+  </script>
+</body>
+</html>

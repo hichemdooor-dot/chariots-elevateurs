@@ -3706,6 +3706,7 @@ body.professional-dashboard .dash-logo img{
     border-radius:9px!important;font-size:0!important;white-space:nowrap!important;
   }
   body.dashboard-page.sidebar-rail .dash-menu a>span{display:none!important}
+  body.dashboard-page.sidebar-rail .dash-menu a.hidden{display:none!important}
   body.dashboard-page.sidebar-rail .dash-menu .nav-svg{
     display:block!important;width:19px!important;height:19px!important;flex:0 0 19px!important;
   }

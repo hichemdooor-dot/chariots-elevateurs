@@ -3655,3 +3655,17 @@ tbody tr{transition:background-color .14s ease}
   html{scroll-behavior:auto}
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}
 }
+
+/* Dashboard SBI logo — match the blue header used across the other pages */
+body.professional-dashboard .dash-logo{
+  background:linear-gradient(90deg,#084878 0%,#0a66ad 100%)!important;
+  border-bottom:3px solid #1976c8!important;
+}
+body.professional-dashboard .dash-logo img{
+  display:block!important;
+  width:198px!important;
+  height:57px!important;
+  max-width:100%!important;
+  object-fit:contain!important;
+  object-position:center!important;
+}

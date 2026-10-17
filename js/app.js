@@ -2465,32 +2465,25 @@ async function loadConnectionHistory(){
     const rows=data||[];
     if(!rows.length){box.innerHTML='<div class="empty">Aucune connexion enregistrée.</div>';return}
 
-    const groups=new Map();
+    // Results are newest-first: keep only the first event for each user.
+    const latestByUser=new Map();
     rows.forEach(x=>{
       const user=String(x.user_email||x.user_id||'Utilisateur').trim()||'Utilisateur';
-      if(!groups.has(user))groups.set(user,[]);
-      groups.get(user).push(x);
+      if(!latestByUser.has(user))latestByUser.set(user,x);
     });
 
-    const sortedGroups=[...groups.entries()].sort((a,b)=>{
-      const ad=new Date(a[1][0]?.created_at||0).getTime();
-      const bd=new Date(b[1][0]?.created_at||0).getTime();
+    const latestRows=[...latestByUser.entries()].sort((a,b)=>{
+      const ad=new Date(a[1]?.created_at||0).getTime();
+      const bd=new Date(b[1]?.created_at||0).getTime();
       return bd-ad;
     });
 
-    box.innerHTML=sortedGroups.map(([user,events])=>{
-      const latest=events[0];
+    box.innerHTML=latestRows.map(([user,latest])=>{
       const latestAction=String(latest.action||'Connexion')==='Connexion'?'Connexion':'Déconnexion';
       const latestDt=latest.created_at?new Date(latest.created_at):null;
       const latestWhen=latestDt&&!Number.isNaN(latestDt.getTime())?latestDt.toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'}):String(latest.created_at||'—');
-      const eventHtml=events.map(x=>{
-        const action=String(x.action||'Connexion')==='Connexion'?'Connexion':'Déconnexion';
-        const dt=x.created_at?new Date(x.created_at):null;
-        const when=dt&&!Number.isNaN(dt.getTime())?dt.toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'}):String(x.created_at||'—');
-        const device=String(x.user_agent||'').slice(0,180)||'—';
-        return `<div class="connection-event"><div class="connection-event-main"><div class="connection-event-line"><span class="badge ${action==='Connexion'?'connection-green':'red'}">${esc(action)}</span><strong>${esc(when)}</strong></div><div class="meta"><span title="${esc(device)}"><strong>Appareil :</strong> ${esc(device)}</span></div></div></div>`;
-      }).join('');
-      return `<section class="connection-user-group"><div class="connection-user-head"><div><div class="connection-user-email">${esc(user)}</div><div class="meta">${events.length} événement${events.length>1?'s':''} · Dernière activité : ${esc(latestWhen)}</div></div><span class="badge ${latestAction==='Connexion'?'connection-green':'red'}">${esc(latestAction)}</span></div><div class="connection-user-events">${eventHtml}</div></section>`;
+      const device=String(latest.user_agent||'').slice(0,180)||'—';
+      return '<section class="connection-user-group"><div class="connection-user-head"><div><div class="connection-user-email">'+esc(user)+'</div><div class="meta">Dernière activité : '+esc(latestWhen)+'<br><strong>Appareil :</strong> <span title="'+esc(device)+'">'+esc(device)+'</span></div></div><span class="badge '+(latestAction==='Connexion'?'connection-green':'red')+'">'+esc(latestAction)+'</span></div></section>';
     }).join('');
   }catch(e){
     box.innerHTML='<div class="notice red">Impossible de charger l’historique des connexions. Exécutez une fois le fichier <strong>SUPABASE_USER_CONNECTION_LOGS.sql</strong> dans Supabase SQL Editor.</div>';

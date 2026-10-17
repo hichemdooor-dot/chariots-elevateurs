@@ -688,6 +688,109 @@ async function sendPasswordChangeRequest(){
     if($('#passwordRequestMsg')){$('#passwordRequestMsg').textContent='Erreur : '+friendlySupabaseError(e);$('#passwordRequestMsg').className='notice red';}
   }finally{if(btn)btn.disabled=false}
 }
+function closeSbiPasswordResetModal(){
+  const overlay=document.getElementById('sbiPasswordResetOverlay');
+  if(overlay)overlay.remove();
+  document.removeEventListener('keydown',sbiPasswordResetEscape);
+}
+function sbiPasswordResetEscape(event){
+  if(event.key==='Escape')closeSbiPasswordResetModal();
+}
+function openSbiPasswordResetModal(email,recoveryUrl){
+  closeSbiPasswordResetModal();
+  const overlay=document.createElement('div');
+  overlay.id='sbiPasswordResetOverlay';
+  overlay.className='sbi-password-reset-overlay';
+  overlay.innerHTML=
+    '<section class="sbi-password-reset-dialog" role="dialog" aria-modal="true" aria-labelledby="sbiPasswordResetTitle">'+
+      '<header class="sbi-password-reset-head"><span class="sbi-password-reset-icon" aria-hidden="true">✓</span>'+
+        '<div class="sbi-password-reset-heading"><h2 id="sbiPasswordResetTitle">Lien de réinitialisation généré</h2><p>Pour <strong>'+esc(email)+'</strong></p></div>'+
+        '<button class="sbi-password-reset-x" type="button" data-reset-close aria-label="Fermer">×</button></header>'+
+      '<div class="sbi-password-reset-body"><p>Copiez ce lien sécurisé et transmettez-le à l’utilisateur par votre canal habituel. Aucun email automatique n’est envoyé.</p>'+
+        '<label class="sbi-password-reset-label" for="sbiPasswordResetLink">Lien de récupération</label>'+
+        '<textarea id="sbiPasswordResetLink" class="sbi-password-reset-link" readonly rows="4" spellcheck="false"></textarea>'+
+        '<div class="sbi-password-reset-notice"><span aria-hidden="true">ⓘ</span><span>Traitez ce lien comme un secret : la personne qui le détient peut réinitialiser le mot de passe de ce compte.</span></div>'+
+        '<div id="sbiPasswordResetCopyStatus" class="sbi-password-reset-copy-status" role="status" aria-live="polite"></div></div>'+
+      '<footer class="sbi-password-reset-foot"><button class="btn light" type="button" data-reset-close>Fermer</button>'+
+        '<button class="btn" type="button" data-reset-copy>▣ Copier le lien</button></footer>'+
+    '</section>';
+  document.body.appendChild(overlay);
+  const input=overlay.querySelector('#sbiPasswordResetLink');
+  input.value=recoveryUrl;
+  overlay.querySelectorAll('[data-reset-close]').forEach(button=>button.addEventListener('click',closeSbiPasswordResetModal));
+  overlay.addEventListener('click',event=>{if(event.target===overlay)closeSbiPasswordResetModal()});
+  document.addEventListener('keydown',sbiPasswordResetEscape);
+  overlay.querySelector('[data-reset-copy]').addEventListener('click',async event=>{
+    const button=event.currentTarget;
+    const status=overlay.querySelector('#sbiPasswordResetCopyStatus');
+    try{
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        await navigator.clipboard.writeText(input.value);
+      }else{
+        input.focus();input.select();
+        if(!document.execCommand('copy'))throw new Error('Copie automatique indisponible');
+      }
+      button.textContent='✓ Lien copié';
+      status.textContent='Lien copié. Transmettez-le uniquement au titulaire du compte.';
+      status.classList.remove('error');
+    }catch(error){
+      input.focus();input.select();
+      status.textContent='La copie automatique a échoué. Le lien est sélectionné : copiez-le manuellement.';
+      status.classList.add('error');
+    }
+  });
+  input.focus();
+}
+function sbiPasswordResetStatus(button,message,isError=false){
+  const item=button?.closest('.password-request-item');
+  const status=item?.querySelector('[data-reset-status]');
+  if(status){status.textContent=message;status.classList.toggle('error',!!isError)}
+}
+async function generateSbiPasswordResetLink(button){
+  if(!requireAdmin()||!button)return;
+  const requestId=String(button.dataset.requestId||'').trim();
+  const email=String(button.dataset.email||'').trim().toLowerCase();
+  if(!requestId||!email){
+    sbiPasswordResetStatus(button,'Adresse email ou demande introuvable.',true);
+    return;
+  }
+  if(!confirm('Générer un lien de réinitialisation pour '+email+' ? Aucun email ne sera envoyé automatiquement.')){
+    return;
+  }
+  const originalText=button.textContent;
+  button.disabled=true;
+  button.textContent='Génération…';
+  sbiPasswordResetStatus(button,'Vérification de la demande…');
+  try{
+    const result=await supabaseClient.functions.invoke('admin-generate-password-reset',{
+      body:{requestId,email}
+    });
+    if(result.error){
+      let message=friendlySupabaseError(result.error);
+      try{
+        const response=result.error.context;
+        if(response&&typeof response.clone==='function'){
+          const payload=await response.clone().json();
+          if(payload?.error)message=String(payload.error);
+        }
+      }catch(_){}
+      throw new Error(message);
+    }
+    if(result.data?.error)throw new Error(String(result.data.error));
+    const recoveryUrl=String(result.data?.recoveryUrl||'');
+    if(!recoveryUrl)throw new Error('Supabase n’a pas retourné de lien de récupération.');
+    sbiPasswordResetStatus(button,'Lien généré : copiez-le dans la fenêtre, puis transmettez-le manuellement.');
+    openSbiPasswordResetModal(email,recoveryUrl);
+  }catch(error){
+    const message=String(error?.message||friendlySupabaseError(error)||'Erreur inconnue.');
+    sbiPasswordResetStatus(button,'Erreur : '+message,true);
+    console.error('Génération du lien de réinitialisation impossible',message);
+  }finally{
+    button.disabled=false;
+    button.textContent=originalText;
+  }
+}
+
 async function loadPasswordRequests(){
   if(!requireAdmin())return;
   const box=$('#passwordRequests');
@@ -703,7 +806,7 @@ async function loadPasswordRequests(){
       const reason=reasonIndex>=0?lines.slice(reasonIndex+1).join(' ').trim():String(x.travaux||'');
       const email=emailLine?emailLine.replace(/^Email\s*:/i,'').trim():'';
       const when=x.created_at?new Date(x.created_at).toLocaleString('fr-FR'):(x.date||'');
-      return `<div class="item password-request-item" style="cursor:default"><div class="item-main"><div class="item-title">${esc(x.technicien||'Utilisateur')}</div><div class="meta"><strong>Email :</strong> ${esc(email||'—')}<br><strong>Date :</strong> ${esc(when)}<br><strong>Motif :</strong> ${esc(reason||'—')}</div></div><div class="user-actions"><span class="badge orange">À traiter</span><button class="btn light" type="button" onclick="resolvePasswordRequest('${esc(x.id)}')">Marquer traité</button></div></div>`;
+      return `<div class="item password-request-item" style="cursor:default"><div class="item-main"><div class="item-title">${esc(x.technicien||'Utilisateur')}</div><div class="meta"><strong>Email :</strong> ${esc(email||'—')}<br><strong>Date :</strong> ${esc(when)}<br><strong>Motif :</strong> ${esc(reason||'—')}</div></div><div class="user-actions password-request-actions"><span class="badge orange">À traiter</span><button class="btn light" type="button" data-request-id="${esc(x.id)}" data-email="${esc(email)}" onclick="generateSbiPasswordResetLink(this)" ${email?'':'disabled title="Adresse email introuvable dans la demande"'}>↻ Réinitialiser le mot de passe</button><button class="btn light" type="button" onclick="resolvePasswordRequest('${esc(x.id)}')">Marquer traité</button><span class="sbi-reset-inline-status" data-reset-status role="status" aria-live="polite"></span></div></div>`;
     }).join(''):'<div class="empty">Aucune demande de changement de mot de passe.</div>';
   }catch(e){box.innerHTML=`<div class="notice red">Erreur : ${esc(friendlySupabaseError(e))}</div>`}
 }

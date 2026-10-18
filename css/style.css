@@ -3888,3 +3888,9 @@ body.professional-dashboard .dash-logo img{
   .professional-dashboard .user-menu-button{padding:4px;border-radius:999px}
   .professional-dashboard .user-circle{width:32px;height:32px;flex-basis:32px}
 }
+
+/* SBI quick actions in forklift tables */
+.sbi-quick-actions{display:flex;align-items:center;gap:5px;flex-wrap:wrap;min-width:250px}
+.sbi-quick-actions .btn{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;min-height:32px;padding:6px 10px;font-size:12px;text-decoration:none}
+.sbi-quick-actions .btn:first-child{font-weight:700}
+@media(max-width:800px){.sbi-quick-actions{min-width:220px;gap:4px}.sbi-quick-actions .btn{min-height:36px;padding:7px 9px;font-size:12px}}

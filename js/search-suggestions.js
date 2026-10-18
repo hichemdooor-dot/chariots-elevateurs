@@ -101,7 +101,7 @@
     const below = viewportTop + viewportHeight - rect.bottom - 12;
     const above = rect.top - viewportTop - 12;
     const placeAbove = below < 150 && above > below;
-    const maxHeight = Math.max(100, Math.min(330, (placeAbove ? above : below) - 8));
+    const maxHeight = Math.max(100, Math.min(280, (placeAbove ? above : below) - 8));
     panel.style.position = 'fixed';
     panel.style.left = `${Math.round(left)}px`;
     panel.style.right = 'auto';

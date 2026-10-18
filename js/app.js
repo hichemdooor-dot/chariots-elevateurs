@@ -1184,6 +1184,9 @@ function initDashboardGlobalSearch(){
   const input=document.getElementById('dashboardSearch'),box=document.getElementById('dashboardSearchResults');
   if(!input||!box||input.dataset.searchReady==='1')return;
   input.dataset.searchReady='1';
+  // Keep the dropdown outside transformed/header containers so fixed positioning
+  // stays relative to the phone viewport on every screen size.
+  if(box.parentElement!==document.body)document.body.appendChild(box);
   let activeIndex=-1;
   const close=()=>{box.classList.remove('open');input.setAttribute('aria-expanded','false');activeIndex=-1};
   const fields=(c)=>[c?.qr_id,c?.chassis,c?.engine,c?.engine_number,c?.client,c?.capacity,c?.color,c?.status,c?.serial_number].map(v=>String(v||'').trim()).filter(Boolean);
@@ -1208,14 +1211,15 @@ function initDashboardGlobalSearch(){
       const viewport=window.visualViewport;
       const viewportHeight=viewport?viewport.height:window.innerHeight;
       const viewportOffset=viewport?viewport.offsetTop:0;
-      const top=Math.max(8,Math.min(rect.bottom+8,viewportOffset+viewportHeight-140));
+      const visibleBottom=viewportOffset+viewportHeight-12;
+      const top=Math.max(viewportOffset+8,Math.min(rect.bottom+8,visibleBottom-180));
       box.style.setProperty('position','fixed','important');
       box.style.setProperty('left','12px','important');
       box.style.setProperty('right','12px','important');
       box.style.setProperty('top',top+'px','important');
       box.style.setProperty('width','auto','important');
       box.style.setProperty('max-width','none','important');
-      box.style.setProperty('max-height',Math.max(120,viewportHeight-(top-viewportOffset)-12)+'px','important');
+      box.style.setProperty('max-height',Math.max(100,visibleBottom-top)+'px','important');
     }else{
       ['position','left','right','top','width','max-width','max-height'].forEach(k=>box.style.removeProperty(k));
     }
@@ -1238,7 +1242,7 @@ function initDashboardGlobalSearch(){
   const highlight=()=>{box.querySelectorAll('.dashboard-search-result').forEach((el,i)=>{const on=i===activeIndex;el.classList.toggle('is-active',on);el.setAttribute('aria-selected',on?'true':'false');if(on)el.scrollIntoView({block:'nearest'})})};
   input.addEventListener('input',open);
   input.addEventListener('keydown',(e)=>{if(e.key==='ArrowDown'){e.preventDefault();if(!box.classList.contains('open'))open();const n=box.querySelectorAll('.dashboard-search-result').length;if(n){activeIndex=(activeIndex+1)%n;highlight()}}else if(e.key==='ArrowUp'){e.preventDefault();const n=box.querySelectorAll('.dashboard-search-result').length;if(n){activeIndex=(activeIndex-1+n)%n;highlight()}}else if(e.key==='Enter'){const btn=box.querySelectorAll('.dashboard-search-result')[activeIndex];if(btn){e.preventDefault();btn.click()}}else if(e.key==='Escape'){e.preventDefault();close()}});
-  document.addEventListener('click',(e)=>{if(!e.target.closest('.dashboard-search-shell'))close()});
+  document.addEventListener('click',(e)=>{if(!e.target.closest('.dashboard-search-shell')&&!box.contains(e.target))close()});
   window.__openDashboardSearch=open;
 }
 

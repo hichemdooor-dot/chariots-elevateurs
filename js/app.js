@@ -1086,7 +1086,7 @@ function renderChariotTable(rows,from='',padTo=0){
       '<a class="btn light" href="'+href+'">Voir</a>'+
       (isAdmin()?'<a class="btn light" href="nouveau-chariot.html?id='+encodeURIComponent(id)+'">Client</a><a class="btn light" href="nouveau-chariot.html?id='+encodeURIComponent(id)+'">Modifier</a>':'')+
       plan+action+
-      '<button class="btn light" type="button" data-card-action="more" data-qr="'+esc(id)+'" aria-label="Autres actions">⋯</button></div>';
+      '</div>';
     return quick;
   };
   const rowsHtml=rows.map(c=>{

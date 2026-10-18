@@ -1069,6 +1069,7 @@ function renderChariotTable(rows,from='',padTo=0){
   const rowActions=c=>{
     const id=String(c.qr_id||''),st=normalizeStatus(c.status),delivered=isDelivered(c);
     const planned=!!getDeliveryPlan(id);
+    const href='chariot.html?id='+encodeURIComponent(id)+(from?'&from='+encodeURIComponent(from):'');
     let action='',plan='';
     if(isAdmin()){
       if(st==='en stock')action='<button class="btn light" type="button" data-card-action="assign" data-qr="'+esc(id)+'">Affecter</button>';
@@ -1078,10 +1079,15 @@ function renderChariotTable(rows,from='',padTo=0){
       else if(st==='pret a livrer'&&!delivered)action='<button class="btn delivered-action" type="button" data-card-action="deliver" data-qr="'+esc(id)+'">Livrer</button>';
       if(!delivered){
         if(planned)plan='<button class="btn light planned-delivery-action" type="button" disabled aria-label="'+esc(id)+' a déjà une livraison planifiée">✓ Planifiée</button>';
-        else plan='<button class="btn plan-delivery-action" type="button" data-card-action="plan" data-qr="'+esc(id)+'">Planifier</button>';
+        else plan='<a class="btn plan-delivery-action" href="chariots-prevus-livraison.html?qr='+encodeURIComponent(id)+'">Livraison</a>';
       }
     }
-    return action+plan;
+    const quick='<div class="sbi-quick-actions">'+
+      '<a class="btn light" href="'+href+'">Voir</a>'+
+      (isAdmin()?'<a class="btn light" href="nouveau-chariot.html?id='+encodeURIComponent(id)+'">Client</a><a class="btn light" href="nouveau-chariot.html?id='+encodeURIComponent(id)+'">Modifier</a>':'')+
+      plan+action+
+      '<button class="btn light" type="button" data-card-action="more" data-qr="'+esc(id)+'" aria-label="Autres actions">⋯</button></div>';
+    return quick;
   };
   const rowsHtml=rows.map(c=>{
     const id=String(c.qr_id||''),href='chariot.html?id='+encodeURIComponent(id)+(from?'&from='+encodeURIComponent(from):'');

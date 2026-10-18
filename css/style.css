@@ -3889,8 +3889,16 @@ body.professional-dashboard .dash-logo img{
   .professional-dashboard .user-circle{width:32px;height:32px;flex-basis:32px}
 }
 
-/* SBI quick actions in forklift tables */
-.sbi-quick-actions{display:flex;align-items:center;gap:5px;flex-wrap:wrap;min-width:250px}
-.sbi-quick-actions .btn{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;min-height:32px;padding:6px 10px;font-size:12px;text-decoration:none}
-.sbi-quick-actions .btn:first-child{font-weight:700}
-@media(max-width:800px){.sbi-quick-actions{min-width:220px;gap:4px}.sbi-quick-actions .btn{min-height:36px;padding:7px 9px;font-size:12px}}
+/* SBI compact per-row action menu */
+.chariot-data-table .chariot-table-actions-cell{min-width:70px;width:70px;text-align:center;overflow:visible}
+.sbi-row-menu{position:relative;display:inline-block;vertical-align:middle}
+.sbi-row-menu>summary{list-style:none;display:grid;place-items:center;width:34px;height:30px;border:1px solid #d4e2f1;border-radius:7px;background:#fff;color:#153b60;font-size:23px;font-weight:800;line-height:1;cursor:pointer;user-select:none}
+.sbi-row-menu>summary::-webkit-details-marker{display:none}
+.sbi-row-menu>summary:hover,.sbi-row-menu[open]>summary{background:#edf5ff;border-color:#8dbcf0;color:#087bf0}
+.sbi-row-menu-panel{position:absolute;right:0;top:calc(100% + 5px);z-index:100;min-width:218px;padding:5px;background:#fff;border:1px solid #d8e4ef;border-radius:9px;box-shadow:0 8px 24px rgba(18,49,79,.18);text-align:left;white-space:normal}
+.sbi-row-menu-panel>a{display:flex;align-items:center;gap:10px;padding:10px;border-radius:6px;color:#173b5d;font-size:12px;font-weight:700;text-decoration:none}
+.sbi-row-menu-panel>a:hover{background:#edf5ff;color:#087bf0}
+.sbi-row-menu-panel>a span{width:16px;text-align:center;font-size:15px;color:#315d86}
+.sbi-row-menu-extra{padding:3px 7px}
+.sbi-row-menu-extra .btn{width:100%;justify-content:center;min-height:30px;font-size:11px}
+@media(max-width:800px){.sbi-row-menu>summary{width:38px;height:36px}.sbi-row-menu-panel{min-width:210px}.sbi-row-menu-panel>a{padding:11px;font-size:12px}}

@@ -111,14 +111,56 @@ html.sbi-mobile-fiche-popup-lock,html.sbi-mobile-fiche-popup-lock body{overflow:
       closePopup();
     }
   });
-  // Capture before card-level navigation handlers so all pages behave consistently.
+  // Chassis number: tap/click opens the popup; press-and-hold opens the full page.
+  var chassisHoldTimer = null;
+  var chassisHoldLink = null;
+  var chassisHoldTriggered = false;
+  var CHASSIS_HOLD_MS = 600;
+  function isChassisLink(link) {
+    return !!(link && link.classList && link.classList.contains('mobile-fiche-popup-link'));
+  }
+  function cancelChassisHold() {
+    if (chassisHoldTimer !== null) window.clearTimeout(chassisHoldTimer);
+    chassisHoldTimer = null;
+    chassisHoldLink = null;
+  }
+  document.addEventListener('pointerdown', function (event) {
+    var target = event.target && event.target.nodeType === 3 ? event.target.parentElement : event.target;
+    var link = target && target.closest ? target.closest('a[href]') : null;
+    if (!isChassisLink(link) || (event.pointerType === 'mouse' && event.button !== 0)) return;
+    cancelChassisHold();
+    chassisHoldTriggered = false;
+    chassisHoldLink = link;
+    chassisHoldTimer = window.setTimeout(function () {
+      if (!chassisHoldLink) return;
+      chassisHoldTriggered = true;
+      var destination = chassisHoldLink.href;
+      cancelChassisHold();
+      window.location.href = destination;
+    }, CHASSIS_HOLD_MS);
+  }, true);
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (type) {
+    document.addEventListener(type, function () {
+      if (!chassisHoldTriggered) cancelChassisHold();
+    }, true);
+  });
+  document.addEventListener('contextmenu', function (event) {
+    var target = event.target && event.target.nodeType === 3 ? event.target.parentElement : event.target;
+    var link = target && target.closest ? target.closest('a[href]') : null;
+    if (isChassisLink(link)) event.preventDefault();
+  }, true);
   document.addEventListener('click', function (event) {
     var target = event.target && event.target.nodeType === 3 ? event.target.parentElement : event.target;
     var link = target && target.closest ? target.closest('a[href]') : null;
-    if (!isMobile() || !isViewFicheLink(link)) return;
+    var chassisLink = isChassisLink(link);
+    if (!isViewFicheLink(link) || (!chassisLink && !isMobile())) return;
     event.preventDefault();
     event.stopPropagation();
     if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
+    if (chassisHoldTriggered) {
+      chassisHoldTriggered = false;
+      return;
+    }
     openPopup(link);
   }, true);
 })();

@@ -893,13 +893,16 @@ async function transitionChariotStatus(qrId,nextStatus,reason='',options={}){
   if(!c){alert('Chariot introuvable.');return false}
   const from=normalizeStatus(c.status),to=normalizeStatus(nextStatus);
   if(from===to)return true;
+  if(to==='livre'&&from!=='pret a livrer'){alert('Le chariot doit être en « Prêt à livrer » avant de passer à « Livré ».');return false}
+  const blockedRecovery=from==='bloque / non conforme'&&isAdmin()&&['en stock','reserve'].includes(to);
   if(!isAdmin()&&['reserve','preparation livraison','pret a livrer'].includes(to)){alert('Cette action est réservée à l’administrateur.');return false}
-  if(AUTO_WORKFLOW_FORWARD[from]!==nextStatus&&!(isAdmin()&&['livre','bloque / non conforme'].includes(to))){alert(`Transition non autorisée : ${c.status||'—'} → ${nextStatus}.`);return false}
+  if(AUTO_WORKFLOW_FORWARD[from]!==nextStatus&&!(isAdmin()&&to==='bloque / non conforme')&&!blockedRecovery){alert(`Transition non autorisée : ${c.status||'—'} → ${nextStatus}.`);return false}
+  if(from==='bloque / non conforme'&&!blockedRecovery){alert('Un chariot bloqué doit être réintégré au stock par un administrateur.');return false}
   const now=new Date(),updatedAt=now.toISOString(),payload={status:nextStatus,updated_at:updatedAt};
   // Workflow: dès qu'un chariot atteint Préparation livraison ou Prêt à livrer,
   // son emplacement de stock devient automatiquement STOCK1.
   if(to==='en fabrication'||to==='modification production')payload.stock='FABRICATION';
-  else if(to==='en stock'&&from==='en fabrication')payload.stock='STOCK1';
+  else if(to==='en stock'&&(from==='en fabrication'||(from==='bloque / non conforme'&&normalizeStatus(c.stock)==='fabrication')))payload.stock='STOCK1';
   else if(to==='preparation livraison'||to==='pret a livrer')payload.stock='STOCK1';
   if(to==='livre')payload.delivery_date=String(options?.deliveryDate||'').trim()||localISODateGlobal(now);
   else if(from==='livre'&&to!=='livre')payload.delivery_date=null;
@@ -972,6 +975,7 @@ function renderWorkflowAction(c,planned){
   else if(st==='modification production'){b.textContent='Modification terminée';b.style.display='inline-flex';b.className='btn save-ready workflow-preparation-action';b.title='Transférer le chariot vers Préparation livraison.';b.onclick=()=>finishModificationFromDetail(id)}
   else if(st==='preparation livraison'){b.textContent='Prêt à livrer';b.style.display='inline-flex';b.title='Marquer la préparation comme terminée.';b.onclick=()=>markReadyToDeliver(id)}
   else if(st==='pret a livrer'&&isAdmin()){b.textContent='Livrer';b.style.display='inline-flex';b.title='Réservé à l’administrateur.';b.onclick=async()=>{const ok=await performWorkflowAction(id,'deliver');if(ok)location.reload()}}
+  else if(st==='bloque / non conforme'){b.textContent='Réintégrer au stock';b.style.display='inline-flex';b.title='Réservé à l’administrateur, après vérification de l’état physique.';b.onclick=async()=>{const ok=await performWorkflowAction(id,'recover-blocked');if(ok)location.reload()}}
 }
 async function startModificationFromDetail(qrId){if(!requireAdmin())return;const ok=await performWorkflowAction(qrId,'start-modification');if(ok)location.reload();}
 async function finishModificationFromDetail(qrId){if(!requireAdmin())return;const ok=await performWorkflowAction(qrId,'finish-modification');if(ok)location.reload();}
@@ -1936,7 +1940,13 @@ async function saveDeliveryConfirmationToStock(qrId,plan,details){
 async function performWorkflowAction(qrId,action){
   const c=CHARIOTS.find(x=>String(x.qr_id)===String(qrId));
   if(!c)return false;
-  if(['stock','start-modification','finish-modification','prepare','ready'].includes(action)&&!requireAdmin())return false;
+  if(['stock','start-modification','finish-modification','prepare','ready','recover-blocked'].includes(action)&&!requireAdmin())return false;
+  if(action==='recover-blocked'){
+    if(normalizeStatus(c.status)!=='bloque / non conforme'){alert('Le chariot doit être « Bloqué / Non conforme ».');return false}
+    const nextStatus=String(c.client||'').trim()?'Réservé':'En stock';
+    if(!confirm(`Réintégrer ${c.chassis||qrId} au workflow avec le statut « ${nextStatus} » ? Vérifiez son état physique avant confirmation.`))return false;
+    return await transitionChariotStatus(qrId,nextStatus,'Réintégration après blocage');
+  }
   if(action==='stock'){
     if(normalizeStatus(c.status)!=='en fabrication'){alert('Le chariot doit être en « En fabrication » pour passer en stock.');return false}
     if(!confirm(`Passer ${c.chassis||qrId} en « En stock » (Stock 1) ?`))return false;

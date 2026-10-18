@@ -91,18 +91,27 @@
   function positionPanel() {
     if (!activeInput || !panel || panel.hidden) return;
     const rect = activeInput.getBoundingClientRect();
-    const margin = 10;
-    const width = Math.min(Math.max(rect.width, 280), window.innerWidth - margin * 2, 460);
-    const left = Math.min(Math.max(margin, rect.left), window.innerWidth - width - margin);
-    const below = window.innerHeight - rect.bottom - 12;
-    const above = rect.top - 12;
-    const placeAbove = below < 160 && above > below;
-    const maxHeight = Math.max(120, Math.min(330, (placeAbove ? above : below) - 8));
-    panel.style.left = `${left}px`;
-    panel.style.width = `${width}px`;
-    panel.style.maxHeight = `${maxHeight}px`;
-    panel.style.top = placeAbove ? 'auto' : `${Math.round(rect.bottom + 6)}px`;
-    panel.style.bottom = placeAbove ? `${Math.max(8, window.innerHeight - Math.round(rect.top) + 6)}px` : 'auto';
+    const margin = 12;
+    const viewport = window.visualViewport;
+    const viewportWidth = viewport ? viewport.width : window.innerWidth;
+    const viewportHeight = viewport ? viewport.height : window.innerHeight;
+    const viewportTop = viewport ? viewport.offsetTop : 0;
+    const width = Math.max(0, Math.min(460, viewportWidth - margin * 2));
+    const left = Math.max(margin, Math.min(rect.left, viewportWidth - width - margin));
+    const below = viewportTop + viewportHeight - rect.bottom - 12;
+    const above = rect.top - viewportTop - 12;
+    const placeAbove = below < 150 && above > below;
+    const maxHeight = Math.max(100, Math.min(330, (placeAbove ? above : below) - 8));
+    panel.style.position = 'fixed';
+    panel.style.left = `${Math.round(left)}px`;
+    panel.style.right = 'auto';
+    panel.style.width = `${Math.round(width)}px`;
+    panel.style.maxWidth = `calc(100vw - ${margin * 2}px)`;
+    panel.style.maxHeight = `${Math.round(maxHeight)}px`;
+    panel.style.overflowY = 'auto';
+    panel.style.overflowX = 'hidden';
+    panel.style.top = placeAbove ? 'auto' : `${Math.max(viewportTop + 4, Math.round(rect.bottom + 6))}px`;
+    panel.style.bottom = placeAbove ? `${Math.max(8, Math.round(viewportTop + viewportHeight - rect.top + 6))}px` : 'auto';
   }
 
   function closePanel() {
@@ -242,6 +251,8 @@
     });
     window.addEventListener('resize', positionPanel, { passive: true });
     window.addEventListener('scroll', positionPanel, { passive: true, capture: true });
+    window.visualViewport?.addEventListener('resize', positionPanel, { passive: true });
+    window.visualViewport?.addEventListener('scroll', positionPanel, { passive: true });
   }
 
   function init() {

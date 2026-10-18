@@ -1200,15 +1200,38 @@ function initDashboardGlobalSearch(){
       return 99;
     })()})).filter(x=>x.score<99).sort((a,b)=>a.score-b.score||a.idx-b.idx).slice(0,8);
   };
+  const positionResults=()=>{
+    if(!box.classList.contains('open'))return;
+    if(window.matchMedia&&window.matchMedia('(max-width: 800px)').matches){
+      const shell=input.closest('.dashboard-search-shell');
+      const rect=shell?shell.getBoundingClientRect():input.getBoundingClientRect();
+      const viewport=window.visualViewport;
+      const viewportHeight=viewport?viewport.height:window.innerHeight;
+      const viewportOffset=viewport?viewport.offsetTop:0;
+      const top=Math.max(8,Math.min(rect.bottom+8,viewportOffset+viewportHeight-140));
+      box.style.setProperty('position','fixed','important');
+      box.style.setProperty('left','12px','important');
+      box.style.setProperty('right','12px','important');
+      box.style.setProperty('top',top+'px','important');
+      box.style.setProperty('width','auto','important');
+      box.style.setProperty('max-width','none','important');
+      box.style.setProperty('max-height',Math.max(120,viewportHeight-(top-viewportOffset)-12)+'px','important');
+    }else{
+      ['position','left','right','top','width','max-width','max-height'].forEach(k=>box.style.removeProperty(k));
+    }
+  };
+  window.addEventListener('resize',positionResults);
+  window.visualViewport?.addEventListener('resize',positionResults);
+  window.visualViewport?.addEventListener('scroll',positionResults);
   const open=()=>{
     const q=input.value.trim();
     if(!q){close();return}
     const rows=matches(q);
     activeIndex=rows.length?0:-1;
     const createAction=dashboardChassisCreateActionHTML(q);
-    if(!rows.length){box.innerHTML='<div class="dashboard-search-empty">Aucun chariot correspondant.</div>'+createAction;box.classList.add('open');input.setAttribute('aria-expanded','true');return}
+    if(!rows.length){box.innerHTML='<div class="dashboard-search-empty">Aucun chariot correspondant.</div>'+createAction;box.classList.add('open');input.setAttribute('aria-expanded','true');positionResults();return}
     box.innerHTML=rows.map((x,i)=>{const c=x.c;const title=c.chassis||c.qr_id||'Chariot';const status=String(c.status||'').trim();const meta=[c.engine?'Moteur : '+c.engine:'',c.capacity?fmtCapacity(c.capacity):'',c.color?'Couleur : '+c.color:'',c.client?'Client : '+c.client:'',c.qr_id?'QR ID : '+c.qr_id:''].filter(Boolean);return `<button type="button" class="dashboard-search-result ${i===activeIndex?'is-active':''}" role="option" aria-selected="${i===activeIndex?'true':'false'}" data-qr="${esc(c.qr_id||'')}"><span class="dashboard-search-result-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7h11v10H3zM14 11h4l3 3v3h-7z"/><circle cx="7" cy="19" r="2"/><circle cx="18" cy="19" r="2"/></svg></span><span class="dashboard-search-result-main"><span class="dashboard-search-result-title">${esc(title)}</span><span class="dashboard-search-result-meta">${meta.map(v=>`<span>${esc(v)}</span>`).join('')}</span></span><span class="dashboard-search-result-side">${status?`<span class="dashboard-search-result-status">${esc(status)}</span>`:''}<span class="dashboard-search-result-arrow" aria-hidden="true">›</span></span></button>`}).join('')+`<div class="dashboard-search-footer"><span>${rows.length} résultat${rows.length>1?'s':''} affiché${rows.length>1?'s':''}</span><button type="button" id="dashboardSearchAll">Voir tous les résultats →</button></div>`+createAction;
-    box.classList.add('open');input.setAttribute('aria-expanded','true');
+    box.classList.add('open');input.setAttribute('aria-expanded','true');positionResults();
     box.querySelectorAll('.dashboard-search-result').forEach((btn)=>btn.addEventListener('click',()=>{const qr=btn.dataset.qr;if(qr)location.href='chariot.html?id='+encodeURIComponent(qr)}));
     box.querySelector('#dashboardSearchAll')?.addEventListener('click',()=>dashboardGlobalSearch());
   };

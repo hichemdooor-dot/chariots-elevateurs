@@ -950,13 +950,16 @@ function normalizeHeightValue(v){
 }
 function setupAutomaticStatusField(old){
   const display=document.getElementById('statusDisplay'),hidden=document.getElementById('statusAuto');if(!display||!hidden)return;
-  const stockEl=document.querySelector('[name="stock"]'),clientEl=document.querySelector('[name="client"]'),stock=stockEl?.value||'',client=clientEl?.value||'',value=String(old?.status||statusFromStock(stock,client));
+  const stockEl=document.querySelector('[name="stock"]'),clientEl=document.querySelector('[name="client"]');
+  const syncNewStatus=()=>{if(old)return;const client=String(clientEl?.value||'').trim();const value=client?'Réservé':statusFromStock(stockEl?.value||'','');display.value=value;hidden.value=value;};
+  const stock=stockEl?.value||'',client=clientEl?.value||'',value=String(old?.status||statusFromStock(stock,client));
   display.value=value;hidden.value=value;
   const syncStockForStatus=()=>{const st=normalizeStatus(display.value);if(st==='en fabrication'||st==='modification production'){if(stockEl)stockEl.value='FABRICATION';stockEl.dataset.forcedByStatus='1';}else if(st==='preparation livraison'||st==='pret a livrer'){if(stockEl)stockEl.value='STOCK1';stockEl.dataset.forcedByStatus='1';}else if(stockEl?.dataset.forcedByStatus==='1'){delete stockEl.dataset.forcedByStatus;}};
   syncStockForStatus();
   if(!isAdmin()){display.disabled=true;display.title='Statut géré automatiquement par le workflow.';}
-  else{display.disabled=false;display.title='Admin : intervention manuelle possible.';display.addEventListener('change',()=>{hidden.value=display.value;syncStockForStatus();});}
-  stockEl?.addEventListener('change',()=>{const st=normalizeStatus(display.value);if(st==='en fabrication'||st==='modification production')stockEl.value='FABRICATION';else if(st==='preparation livraison'||st==='pret a livrer')stockEl.value='STOCK1';});
+  else{display.disabled=false;display.title='Le nom du client impose « Réservé » pour un nouveau chariot.';display.addEventListener('change',()=>{if(!old&&String(clientEl?.value||'').trim()){display.value='Réservé';hidden.value='Réservé';return;}hidden.value=display.value;syncStockForStatus();});}
+  clientEl?.addEventListener('input',()=>{if(!old){syncNewStatus();syncStockForStatus();}});
+  stockEl?.addEventListener('change',()=>{if(!old){syncNewStatus();syncStockForStatus();}const st=normalizeStatus(display.value);if(st==='en fabrication'||st==='modification production')stockEl.value='FABRICATION';else if(st==='preparation livraison'||st==='pret a livrer')stockEl.value='STOCK1';});
 }
 function renderWorkflowAction(c,planned){
   const b=document.getElementById('workflowAction');if(!b)return;
@@ -2356,9 +2359,11 @@ async function saveChariot(){
   p.client=String(p.client||'').trim().toUpperCase();
   const requestedStatus=String(p.status||'').trim();
   const displayStatus=String(p.status_display||'').trim();
-  // New chariot: the admin-selected status must be saved exactly as chosen.
-  // Existing chariots keep the workflow logic unless the admin explicitly changes the status.
-  if(isAdmin()&&displayStatus){
+  // Nouveau chariot : un client renseigné impose toujours le statut « Réservé ».
+  // Pour les autres cas, conserver le statut choisi et la logique du workflow existant.
+  if(!old&&String(p.client||'').trim()){
+    p.status='Réservé';
+  }else if(isAdmin()&&displayStatus){
     if(!old || normalizeStatus(displayStatus)!==normalizeStatus(old.status)) p.status=displayStatus;
     else p.status=automaticStatusForChariot(old,p);
   }else{

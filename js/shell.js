@@ -315,3 +315,153 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMobileMenu()});
   window.addEventListener('resize',()=>{if(window.innerWidth>800)closeMobileMenu()});
 });
+
+
+/* SBI SMART FILTER — enhances existing filter controls without replacing page logic. */
+(function(){
+  function smartFilterStyles(){
+    if(document.getElementById('sbiSmartFilterStyles'))return;
+    const style=document.createElement('style');
+    style.id='sbiSmartFilterStyles';
+    style.textContent=[
+      '.sbi-smart-filter-panel{box-sizing:border-box;min-width:0;margin:0 0 14px;padding:15px;border:1px solid #d7e3ef;border-radius:15px;background:linear-gradient(180deg,#fff 0%,#f8fbff 100%);box-shadow:0 4px 18px rgba(18,56,88,.045)}',
+      '.sbi-smart-filter-head{display:flex;align-items:center;gap:11px;min-width:0;margin:0 0 13px}',
+      '.sbi-smart-filter-mark{display:grid;place-items:center;flex:0 0 40px;height:40px;border-radius:11px;background:#eaf3ff;color:#155b9a}',
+      '.sbi-smart-filter-mark svg{width:21px;height:21px;display:block}',
+      '.sbi-smart-filter-heading{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}',
+      '.sbi-smart-filter-heading strong{font-size:15px;line-height:1.3;color:#183b5a;font-weight:800}',
+      '.sbi-smart-filter-heading small{font-size:12px;line-height:1.4;color:#6b7e91}',
+      '.sbi-smart-filter-head-actions{display:flex;align-items:center;gap:8px;flex:0 0 auto}',
+      '.sbi-smart-filter-count{display:inline-flex;align-items:center;justify-content:center;min-height:28px;padding:0 10px;border-radius:999px;background:#edf3f9;color:#385875;font-size:11px;font-weight:800;white-space:nowrap}',
+      '.sbi-smart-filter-reset{border:1px solid #d5e0ea!important;border-radius:9px!important;background:#fff!important;color:#31516e!important;padding:8px 11px!important;font-size:12px!important;font-weight:700!important;white-space:nowrap;cursor:pointer}',
+      '.sbi-smart-filter-panel input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]),.sbi-smart-filter-panel select{box-sizing:border-box;min-width:0;max-width:100%;min-height:42px;border-radius:10px}',
+      '.sbi-smart-filter-panel .filter-grid,.sbi-smart-filter-panel .prep-filter-grid,.sbi-smart-filter-panel .pl-filter-grid{margin-top:0!important;margin-bottom:0!important}',
+      '.sbi-smart-filter-panel .sbi-smart-filter-chips{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:12px;min-width:0}',
+      '.sbi-smart-filter-chip{display:inline-flex;align-items:center;gap:8px;max-width:100%;border:1px solid #cfe0f2;border-radius:999px;background:#f0f7ff;color:#214c70;padding:6px 10px;font-size:12px;line-height:1.25;cursor:pointer}',
+      '.sbi-smart-filter-chip-label{min-width:0;overflow-wrap:anywhere}',
+      '.sbi-smart-filter-chip-x{font-size:16px;line-height:12px;font-weight:700;color:#52718c}',
+      '.sbi-smart-filter-empty{font-size:12px;color:#8998a8;padding:2px 0}',
+      '.sbi-smart-filter-panel .global-search-form{margin:0}',
+      '.sbi-smart-filter-panel .global-search-actions{align-self:end}',
+      '.sbi-smart-filter-panel .global-search-date-tip{margin-top:10px}',
+      '.sbi-smart-filter-panel .search{width:100%;box-sizing:border-box}',
+      '@media(max-width:650px){.sbi-smart-filter-panel{padding:12px;border-radius:12px}.sbi-smart-filter-head{align-items:flex-start;gap:9px}.sbi-smart-filter-mark{flex-basis:36px;height:36px}.sbi-smart-filter-heading strong{font-size:14px}.sbi-smart-filter-heading small{font-size:11px}.sbi-smart-filter-head-actions{gap:5px;flex-direction:column;align-items:flex-end}.sbi-smart-filter-count{min-height:24px;padding:0 8px}.sbi-smart-filter-reset{padding:7px 8px!important;font-size:11px!important}.sbi-smart-filter-chip{font-size:11px;padding:6px 8px}}'
+    ].join('');
+    (document.head||document.documentElement).appendChild(style);
+  }
+  const excludedIds=new Set(['globalSortBy','globalSortOrder']);
+  function labelFor(el){
+    const known={globalQuery:'Mot-clé',globalFrom:'Date du',globalTo:'Date au',globalStatus:'Statut',globalStock:'Stock',globalEngine:'Moteur',globalCapacity:'Capacité',globalHeight:'Hauteur de levage',globalMast:'Type de mât',globalClient:'Client',stockSearch:'Recherche',search:'Recherche',prepSearch:'Recherche',plSearch:'Recherche',affSearch:'Recherche',modSearch:'Recherche',deliveredSearch:'Recherche',auditSearch:'Recherche',returnSearch:'Recherche',historySearch:'Recherche'};
+    if(known[el.id])return known[el.id];
+    const lbl=el.id?document.querySelector('label[for="'+el.id+'"]'):null;
+    const raw=(lbl?.textContent||el.getAttribute('aria-label')||el.getAttribute('placeholder')||el.id||'Filtre').trim();
+    return raw.replace(/[.…]+$/,'').trim()||'Filtre';
+  }
+  function valueFor(el){
+    if(!el||excludedIds.has(el.id)||el.disabled)return '';
+    if(el.tagName==='SELECT'){
+      const value=String(el.value||'').trim();
+      const option=el.options?.[el.selectedIndex];
+      const text=String(option?.textContent||value).trim();
+      if(!value)return '';
+      if(el.selectedIndex===0&&/^(tous|toutes|statut\s*:\s*tous|moteur\s*:\s*tous|capacité\s*:\s*toutes|mât\s*:\s*tous|hauteur\s*:\s*toutes|stock\s*:\s*tous|étape\s*:\s*toutes|sélectionner|choisir)/i.test(text))return '';
+      return text;
+    }
+    return String(el.value||'').trim();
+  }
+  function dispatchFilterChange(el){
+    el.dispatchEvent(new Event('input',{bubbles:true}));
+    el.dispatchEvent(new Event('change',{bubbles:true}));
+  }
+  function initPanel(key,nodes){
+    nodes=(nodes||[]).filter(Boolean);
+    if(!nodes.length||nodes.some(n=>n.dataset.sbiSmartFilterWrapped==='1'))return;
+    const parent=nodes[0].parentElement;
+    if(!parent||nodes.some(n=>n.parentElement!==parent))return;
+    const panel=document.createElement('section');
+    panel.className='sbi-smart-filter-panel';
+    panel.dataset.sbiSmartFilter=key;
+    panel.setAttribute('aria-label','Smart Filter');
+    const head=document.createElement('div');
+    head.className='sbi-smart-filter-head';
+    head.innerHTML='<div class="sbi-smart-filter-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M7 12h10M10 17h4"/><circle cx="8" cy="7" r="2" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="2" fill="currentColor" stroke="none"/></svg></div><div class="sbi-smart-filter-heading"><strong>Smart Filter</strong><small>Combinez les critères pour affiner les résultats</small></div><div class="sbi-smart-filter-head-actions"><span class="sbi-smart-filter-count" aria-live="polite">0 actif</span></div>';
+    const chips=document.createElement('div');
+    chips.className='sbi-smart-filter-chips';
+    chips.setAttribute('aria-live','polite');
+    panel.appendChild(head);
+    parent.insertBefore(panel,nodes[0]);
+    nodes.forEach(node=>{node.dataset.sbiSmartFilterWrapped='1';panel.appendChild(node)});
+    panel.appendChild(chips);
+    let controls=()=>Array.from(panel.querySelectorAll('input,select')).filter(el=>!el.disabled&&el.type!=='hidden'&&el.type!=='button'&&el.type!=='submit'&&el.type!=='reset'&&!excludedIds.has(el.id));
+    const resetExisting=panel.querySelector('button[type="reset"],button[id*="reset" i],button[id*="clear" i],input[type="reset"]');
+    if(!resetExisting){
+      const reset=document.createElement('button');
+      reset.type='button';reset.className='sbi-smart-filter-reset';reset.textContent='Réinitialiser';
+      reset.addEventListener('click',()=>{
+        controls().forEach(el=>{if(el.tagName==='SELECT')el.selectedIndex=0;else el.value='';dispatchFilterChange(el)});
+        renderChips();
+      });
+      head.querySelector('.sbi-smart-filter-head-actions').appendChild(reset);
+    }else resetExisting.classList.add('sbi-smart-filter-reset');
+    function renderChips(){
+      const active=controls().map(el=>({el,label:labelFor(el),value:valueFor(el)})).filter(x=>x.value);
+      head.querySelector('.sbi-smart-filter-count').textContent=active.length+' filtre'+(active.length>1?'s':'')+' actif'+(active.length>1?'s':'');
+      chips.replaceChildren();
+      if(!active.length){
+        const empty=document.createElement('span');empty.className='sbi-smart-filter-empty';empty.textContent='Aucun filtre actif. Choisissez un ou plusieurs critères.';chips.appendChild(empty);return;
+      }
+      active.forEach(item=>{
+        const chip=document.createElement('button');
+        chip.type='button';chip.className='sbi-smart-filter-chip';
+        chip.title='Retirer le filtre : '+item.label;
+        const text=document.createElement('span');text.className='sbi-smart-filter-chip-label';text.textContent=item.label+' : '+item.value;
+        const x=document.createElement('span');x.className='sbi-smart-filter-chip-x';x.setAttribute('aria-hidden','true');x.textContent='×';
+        chip.append(text,x);
+        chip.addEventListener('click',()=>{
+          if(item.el.tagName==='SELECT')item.el.selectedIndex=0;else item.el.value='';
+          dispatchFilterChange(item.el);renderChips();
+        });
+        chips.appendChild(chip);
+      });
+    }
+    controls().forEach(el=>{
+      ['input','change','search'].forEach(eventName=>el.addEventListener(eventName,renderChips));
+    });
+    renderChips();
+  }
+  function initSmartFilters(){
+    smartFilterStyles();
+    const $=selector=>document.querySelector(selector);
+    function siblingSearchGroup(inputSelector,gridClass){
+      const input=$(inputSelector);if(!input)return;
+      const parent=input.parentElement;
+      const grid=Array.from(parent?.children||[]).find(n=>n.classList?.contains(gridClass));
+      initPanel(input.id||inputSelector.replace('#',''),[input,grid].filter(Boolean));
+    }
+    const globalForm=$('#globalSearchForm');
+    if(globalForm)initPanel('global-search',[globalForm]);
+    siblingSearchGroup('#stockSearch','filter-grid');
+    siblingSearchGroup('#search','filter-grid');
+    const prep=$('#prepSearch')?.closest('.prep-filter-grid');
+    if(prep)initPanel('preparation-livraison',[prep]);
+    const planned=$('#plSearch')?.closest('.pl-filter-grid');
+    if(planned)initPanel('livraisons-prevues',[planned]);
+    const aff=$('#affSearch')?.closest('.filter-grid');
+    if(aff)initPanel('affectation', [aff]);
+    const mod=$('#modSearch')?.closest('.filter-grid');
+    if(mod)initPanel('modification-production',[mod]);
+    const audit=$('#auditSearch')?.closest('.audit-filters');
+    if(audit)initPanel('controle-fiches',[audit]);
+    const returns=$('#returnSearch')?.closest('.return-toolbar');
+    if(returns)initPanel('retours-sav',[returns]);
+    const delivered=$('#deliveredSearch');
+    if(delivered)initPanel('chariots-livres',[delivered]);
+    const history=$('#historySearch');
+    if(history&&!history.closest('.sbi-smart-filter-panel')){
+      const group=history.closest('.filter-grid,.history-toolbar,.search-toolbar')||history;
+      initPanel('historique',[group]);
+    }
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initSmartFilters,{once:true});
+  else initSmartFilters();
+})();

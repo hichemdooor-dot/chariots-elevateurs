@@ -1082,11 +1082,16 @@ function renderChariotTable(rows,from='',padTo=0){
         else plan='<a class="btn plan-delivery-action" href="chariots-prevus-livraison.html?qr='+encodeURIComponent(id)+'">Livraison</a>';
       }
     }
-    const quick='<div class="sbi-quick-actions">'+
-      '<a class="btn light" href="'+href+'">Voir</a>'+
-      (isAdmin()?'<a class="btn light" href="nouveau-chariot.html?id='+encodeURIComponent(id)+'">Client</a><a class="btn light" href="nouveau-chariot.html?id='+encodeURIComponent(id)+'">Modifier</a>':'')+
-      plan+action+
-      '</div>';
+    const menuId='row-actions-'+id.replace(/[^a-zA-Z0-9_-]/g,'-');
+    const quick='<details class="sbi-row-menu">'+
+      '<summary aria-label="Actions pour le chariot '+esc(id)+'" title="Actions">⋯</summary>'+
+      '<div class="sbi-row-menu-panel">'+
+      '<a href="'+href+'"><span aria-hidden="true">◉</span> Voir la fiche</a>'+
+      (isAdmin()?'<a href="nouveau-chariot.html?id='+encodeURIComponent(id)+'"><span aria-hidden="true">✎</span> Modifier le chariot</a><a href="nouveau-chariot.html?id='+encodeURIComponent(id)+'"><span aria-hidden="true">♙</span> Affecter / modifier le client</a>':'')+
+      (!delivered&&isAdmin()?'<a href="chariots-prevus-livraison.html?qr='+encodeURIComponent(id)+'"><span aria-hidden="true">▣</span> Préparer la livraison</a>':'')+
+      (plan?'<div class="sbi-row-menu-extra">'+plan+'</div>':'')+
+      (action?'<div class="sbi-row-menu-extra">'+action+'</div>':'')+
+      '</div></details>';
     return quick;
   };
   const rowsHtml=rows.map(c=>{

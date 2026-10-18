@@ -1052,6 +1052,16 @@ function compactWorkflowHtml(c){
   }).join('')}</div>`;
 }
 
+// Close any open row-action menu when the user clicks outside it.
+if(!window.__SBI_ROW_MENU_OUTSIDE_CLICK_BOUND){
+  window.__SBI_ROW_MENU_OUTSIDE_CLICK_BOUND=true;
+  document.addEventListener('click',event=>{
+    document.querySelectorAll('.sbi-row-menu[open]').forEach(menu=>{
+      if(!menu.contains(event.target))menu.open=false;
+    });
+  });
+}
+
 function renderChariotTable(rows,from='',padTo=0){
   const value=v=>{const s=String(v??'').trim();return esc(s||'—')};
   const colorHex=v=>{

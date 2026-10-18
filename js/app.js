@@ -1931,9 +1931,13 @@ async function performWorkflowAction(qrId,action){
   return false;
 }
 
+let SBI_OBSERVATION_POPUP_SHOWN_FOR=null;
 function showChariotObservationPopup(chariot){
   const observation=String(chariot?.observations||'').trim();
   if(!observation)return;
+  const observationKey=String(chariot?.qr_id||chariot?.qrId||chariot?.id||chariot?.chassis_number||chariot?.numero_chassis||observation);
+  if(SBI_OBSERVATION_POPUP_SHOWN_FOR===observationKey)return;
+  SBI_OBSERVATION_POPUP_SHOWN_FOR=observationKey;
   const rootId='sbiChariotObservationPopup';
   document.getElementById(rootId)?.remove();
   const styleId=rootId+'Style';

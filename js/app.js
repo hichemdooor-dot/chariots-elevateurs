@@ -2399,6 +2399,9 @@ async function saveChariot(){
   // Même lors d'une modification directe de la fiche, ces étapes imposent STOCK1.
   if(['en fabrication','modification production'].includes(normalizeStatus(p.status)))p.stock='FABRICATION';
   else if(['preparation livraison','pret a livrer'].includes(normalizeStatus(p.status)))p.stock='STOCK1';
+  // « En stock » ne doit jamais conserver l’emplacement FABRICATION :
+  // choisir Stock 1 comme emplacement par défaut, sans écraser Stock 2 ou Showroom.
+  else if(normalizeStatus(p.status)==='en stock'&&normalizeStatus(p.stock)==='fabrication')p.stock='STOCK1';
   // Règle hauteur de levage → type de mât : une suggestion automatique est appliquée,
   // mais la valeur choisie manuellement reste prioritaire et peut être modifiée.
   const heightRule=normalizeHeightValue(p.lifting_height);
@@ -2440,7 +2443,7 @@ async function markDelivered(qrId){
 }
 
 async function deleteChariot(){if(!requireValidLicense()||!requireAdmin())return;const id=new URLSearchParams(location.search).get('id')||$('#qr_id')?.value;if(!id)return;const c=CHARIOTS.find(x=>String(x.qr_id)===String(id));if(!confirm('Supprimer définitivement le chariot '+id+' ?'))return;try{await supabaseClient.from('maintenance').insert({qr_id:id,date:new Date().toISOString().slice(0,10),technicien:getUserDisplayName(),type:'Suppression chariot',travaux:`Chariot supprimé • Châssis : ${c?.chassis||'—'} • Moteur : ${c?.engine||'—'} • Client : ${c?.client||'—'}`,created_by:currentUser.id})}catch(e){console.warn('Historique suppression non enregistré',e)}const {error}=await supabaseClient.from('chariots').delete().eq('qr_id',id);if(error){alert('Erreur : '+friendlySupabaseError(error));return}location.href='chariots.html'}
-function stockLabel(value){const v=normalizeStatus(value);return v==='stock1'?'Stock 1':v==='stock2'?'Stock 2':v==='fabrication'?'Fabrication':String(value||'—')}
+function stockLabel(value){const v=normalizeStatus(value);return v==='stock1'?'Stock 1':v==='stock2'?'Stock 2':v==='showroom'?'Showroom':v==='fabrication'?'Fabrication':String(value||'—')}
 async function affectationPage(){
   if(!await session())return;
   await loadChariots();

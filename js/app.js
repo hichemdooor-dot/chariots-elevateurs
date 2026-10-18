@@ -1689,6 +1689,11 @@ async function chariotsPage(){
     });
   }
   function stockKey(value){return normalizeStatus(value).replace(/[\s_-]/g,'')}
+  function updateActiveFilterCount(){
+    const active=[searchEl?.value.trim(),$('#statusFilter')?.value,stockFilter?.value,$('#engineFilter')?.value,$('#capacityFilter')?.value,$('#mastFilter')?.value,$('#heightFilter')?.value].filter(Boolean).length;
+    const badge=$('#sbiActiveFilterCount');
+    if(badge)badge.textContent=active+' filtre actif'+(active===1?'':'s');
+  }
   function render(){
     fill();
     let rows=CHARIOTS;
@@ -1705,6 +1710,7 @@ async function chariotsPage(){
     const fs=[['engineFilter','engine'],['capacityFilter','capacity'],['mastFilter','mast_type'],['heightFilter','lifting_height']];
     rows=rows.filter(c=>(!q||[c.qr_id,c.chassis,c.engine,c.client,c.capacity,c.color].some(v=>String(v||'').toLowerCase().includes(q)))&&fs.every(([id,k])=>!$('#'+id)?.value||norm(c[k])===norm($('#'+id).value)));
     $('#count').textContent=rows.length+' chariot'+(rows.length!==1?'s':'');
+    updateActiveFilterCount();
     const totalPages=Math.max(1,Math.ceil(rows.length/pageSize));
     currentPage=Math.min(Math.max(1,currentPage),totalPages);
     const start=(currentPage-1)*pageSize;

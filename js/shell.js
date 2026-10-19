@@ -231,6 +231,70 @@ function initSiteGlobalSearch(){
   if(avatar)header.insertBefore(wrapper,avatar);else header.appendChild(wrapper);
   initSbiChassisCreateSuggestion(form.querySelector('input'),wrapper,panel);
 }
+
+/* SBI shared account header — consistent across pages */
+(function(){
+  if(document.getElementById('sbiSharedHeaderSkin'))return;
+  const s=document.createElement('style');s.id='sbiSharedHeaderSkin';
+  s.textContent=`
+    header.top{
+      min-height:76px;height:auto;padding:10px 22px;gap:14px;
+      background:#102f4b;border-top:3px solid #1689e8;
+      border-radius:0 0 16px 16px;
+      box-shadow:0 7px 22px rgba(16,47,75,.12);
+    }
+    header.top .brand{flex:0 1 220px;min-width:0}
+    header.top .sbi-global-search-wrap{flex:1;min-width:120px;max-width:620px}
+    header.top .sbi-global-searchbar{border-radius:12px}
+    header.top .user-menu-wrap{margin-left:0}
+    header.top .user-menu-button,
+    .professional-dashboard .user-menu-button{
+      min-width:0;min-height:42px;padding:4px 12px 4px 7px;gap:9px;
+      border:1px solid rgba(255,255,255,.14);border-radius:999px;
+      background:rgba(255,255,255,.08);color:#fff;
+      transition:background .16s ease,border-color .16s ease;
+    }
+    header.top .user-menu-button:hover,
+    .professional-dashboard .user-menu-button:hover{
+      background:rgba(255,255,255,.13);border-color:rgba(255,255,255,.28)
+    }
+    header.top .user-circle,
+    .professional-dashboard .user-circle{
+      width:36px;height:36px;flex:0 0 36px;border:0;
+      background:#1689e8;color:#fff;font-size:17px
+    }
+    header.top .user-menu-name b,
+    .professional-dashboard .user-menu-name b{font-size:13px;color:#fff}
+    header.top .user-menu-name small,
+    .professional-dashboard .user-menu-name small{font-size:10px;color:#c1d3e3}
+    header.top .user-menu-chevron,
+    .professional-dashboard .user-menu-chevron{color:#dce9f5}
+    header.top .user-menu,
+    .professional-dashboard .user-menu{
+      border:1px solid #dce6ef;border-radius:12px;
+      box-shadow:0 14px 34px rgba(10,35,58,.22);overflow:hidden
+    }
+    .notification-bell{
+      width:42px;height:42px;border-radius:12px;
+      border:1px solid rgba(255,255,255,.16);
+      background:rgba(255,255,255,.08);color:#fff;
+      display:inline-flex;align-items:center;justify-content:center
+    }
+    .notification-bell svg{width:20px;height:20px}
+    .notification-count{right:-3px;top:-4px;min-width:16px;height:16px;font-size:10px;border:2px solid #102f4b}
+    @media(max-width:800px){
+      header.top{min-height:64px;padding:8px 10px;gap:8px;border-radius:0 0 13px 13px}
+      header.top .brand{flex:0 1 105px;max-width:105px}
+      header.top .brand .site-logo{max-width:100%;height:auto}
+      header.top .sbi-global-search-wrap{min-width:0}
+      header.top .user-menu-button{width:auto;min-width:42px;padding:3px 7px}
+      header.top .user-menu-name,header.top .user-menu-chevron{display:none}
+      .professional-dashboard .user-menu-button{width:42px;min-width:42px;height:42px;padding:3px;justify-content:center}
+    }
+  `;
+  (document.head||document.documentElement).appendChild(s);
+})();
+
 document.addEventListener('DOMContentLoaded',()=>{
   // Use the exact dashboard hamburger drawer on every page.
   document.querySelectorAll('.overlay').forEach((ov,i)=>{

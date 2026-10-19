@@ -1,11 +1,30 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="2048" height="360" viewBox="0 0 2048 360">
-<rect width="2048" height="360" fill="#fff"/>
+<rect width="2048" height="360" fill="#ffffff"/>
 <g fill="#17356b" font-family="Arial,Helvetica,sans-serif" font-weight="900">
 <text x="28" y="154" font-size="164" textLength="1035" lengthAdjust="spacingAndGlyphs">HANGCHA</text>
 <text x="32" y="224" font-size="53" textLength="820" lengthAdjust="spacingAndGlyphs">CHARIOTS ELEVATEURS</text>
 </g>
 <path d="M32 244 H1088" stroke="#ed1c24" stroke-width="15"/>
-<g transform="translate(1115 14)">
-<image href="sbi-forklift-logo.png" x="0" y="0" width="900" height="325" preserveAspectRatio="xMidYMid meet"/>
+<g transform="translate(1120 18)">
+<path d="M515 14 H890 L910 34 L886 47 H550 L530 69 L485 206 H430 Z" fill="#151515"/>
+<path d="M552 43 H851 L861 170 H516 Z" fill="#fff"/>
+<path d="M520 172 L850 172 L905 212 L905 252 L454 252 L454 220 L486 220 Z" fill="#151515"/>
+<path d="M480 212 L454 212 L454 245 L480 245 Z" fill="#151515"/>
+<path d="M490 62 H520 V202 H490 Z" fill="#151515"/>
+<path d="M478 60 H494 V204 H478 Z" fill="#151515"/>
+<path d="M470 198 H488 V224 H470 Z" fill="#151515"/>
+<path d="M495 215 H540 V235 H495 Z" fill="#151515"/>
+<path d="M560 191 L610 140 L640 140 L665 190 Z" fill="#151515"/>
+<path d="M614 139 L642 96 L652 100 L632 143 Z" fill="#151515"/>
+<path d="M644 95 L665 105 L661 112 L640 103 Z" fill="#151515"/>
+<path d="M687 186 H753 V202 H687 Z" fill="#151515"/>
+<path d="M697 176 C697 155 719 151 735 165 L735 184 H697 Z" fill="#151515"/>
+<path d="M760 183 L778 100 L795 100 L784 184 Z" fill="#151515"/>
+<circle cx="555" cy="256" r="54" fill="#151515"/><circle cx="555" cy="256" r="35" fill="#ed1c24"/><circle cx="555" cy="256" r="10" fill="#fff"/>
+<circle cx="840" cy="256" r="54" fill="#151515"/><circle cx="840" cy="256" r="35" fill="#ed1c24"/><circle cx="840" cy="256" r="10" fill="#fff"/>
 </g>
+<g font-family="Arial,Helvetica,sans-serif" font-weight="900" fill="#151515">
+<text x="1128" y="285" font-size="225" textLength="390" lengthAdjust="spacingAndGlyphs">SBI</text>
+</g>
+<rect x="1132" y="300" width="400" height="10" fill="#ed1c24"/>
 </svg>

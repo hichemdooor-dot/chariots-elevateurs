@@ -1,10 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="260" viewBox="0 0 1600 260">
-<rect width="1600" height="260" fill="#d71920"/>
-<image href="sbi-benouatas-logo.webp" x="32" y="32" width="360" height="196" preserveAspectRatio="xMidYMid meet"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="520" viewBox="0 0 1600 520">
+<rect width="1600" height="520" fill="#d00000"/>
+<image href="sbi-benouatas-logo.webp" x="35" y="65" width="400" height="390" preserveAspectRatio="xMidYMid meet"/>
 <g fill="#fff" font-family="Arial,Helvetica,sans-serif" text-anchor="middle" font-weight="700">
-<text x="800" y="111" font-size="43">SARL BENOUATAS INDUSTRIE</text>
-<path d="M570 147 H720 M880 147 H1030" stroke="#fff" stroke-width="4"/>
-<text x="800" y="172" font-size="35">ALGÉRIE</text>
+<text x="820" y="245" font-size="54" textLength="760" lengthAdjust="spacingAndGlyphs">SARL BENOUATAS INDUSTRIE</text>
+<path d="M565 295 H720 M920 295 H1075" stroke="#fff" stroke-width="5"/>
+<text x="820" y="360" font-size="58">ALGÉRIE</text>
 </g>
-<image href="logo-sbi-hangcha.png" x="1210" y="25" width="350" height="210" preserveAspectRatio="xMidYMid meet"/>
+<image href="logo-sbi-hangcha.png" x="1210" y="55" width="355" height="410" preserveAspectRatio="xMidYMid meet"/>
 </svg>

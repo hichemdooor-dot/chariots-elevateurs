@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2048" height="360" viewBox="0 0 2048 360">
+<rect width="2048" height="360" fill="#fff"/>
+<g fill="#17356b" font-family="Arial,Helvetica,sans-serif" font-weight="900">
+<text x="28" y="154" font-size="164" textLength="1035" lengthAdjust="spacingAndGlyphs">HANGCHA</text>
+<text x="32" y="224" font-size="53" textLength="820" lengthAdjust="spacingAndGlyphs">CHARIOTS ELEVATEURS</text>
+</g>
+<path d="M32 244 H1088" stroke="#ed1c24" stroke-width="15"/>
+<g transform="translate(1115 14)">
+<image href="sbi-forklift-logo.png" x="0" y="0" width="900" height="325" preserveAspectRatio="xMidYMid meet"/>
+</g>
+</svg>

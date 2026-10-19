@@ -48,8 +48,8 @@ async function loadDeliveryFiche(){
   const c=CHARIOTS.find(x=>String(x.qr_id)===String(qr));
   if(!c){document.getElementById('sheet').innerHTML='<div class="error">Chariot introuvable. Retournez à la liste et ouvrez la fiche depuis le bon chariot.</div>';return}
   const plan=typeof getDeliveryPlan==='function'?getDeliveryPlan(c.qr_id):null;
-  document.getElementById('client').textContent=ficheText(c.client,'CLIENT À RENSEIGNER');
-  document.getElementById('destination').textContent=ficheText(plan?.destination||c.destination||c.delivery_destination,'DESTINATION À RENSEIGNER');
+  document.getElementById('client').textContent=ficheText(c.client,'CLIENT À RENSEIGNER').toLocaleUpperCase('fr');
+  document.getElementById('destination').textContent=ficheText(plan?.destination||c.destination||c.delivery_destination,'DESTINATION À RENSEIGNER').toLocaleUpperCase('fr');
   document.getElementById('capacity').textContent=ficheText(fmtCapacity(c.capacity)||c.capacity);
   document.getElementById('engine').textContent=ficheText(c.engine);
   document.getElementById('mast').textContent=ficheText((c.mast_type||'')+(c.lifting_height?' '+c.lifting_height+' M':''));

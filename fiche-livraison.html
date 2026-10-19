@@ -32,10 +32,21 @@
 function ficheText(value,fallback='—'){return String(value??'').trim()||fallback}
 async function loadDeliveryFiche(){
  try{
+  const params=new URLSearchParams(location.search), qr=params.get('qr')||'';
+  if(!qr){
+   document.getElementById('manualPanel').classList.add('open');
+   document.getElementById('client').textContent='NOM DU CLIENT';
+   document.getElementById('destination').textContent='DESTINATION';
+   document.getElementById('sold').textContent='VENDU';
+   document.getElementById('capacity').textContent='—';
+   document.getElementById('engine').textContent='—';
+   document.getElementById('mast').textContent='—';
+   fitFicheText();
+   return;
+  }
   if(!await session())return;
   await loadChariots();
   try{await loadDeliveryPlans({migrateLocal:false})}catch(e){console.warn('Planification non disponible',e)}
-  const params=new URLSearchParams(location.search), qr=params.get('qr')||'';
   const c=CHARIOTS.find(x=>String(x.qr_id)===String(qr));
   if(!c){document.getElementById('sheet').innerHTML='<div class="error">Chariot introuvable. Retournez à la liste et ouvrez la fiche depuis le bon chariot.</div>';return}
   const plan=typeof getDeliveryPlan==='function'?getDeliveryPlan(c.qr_id):null;

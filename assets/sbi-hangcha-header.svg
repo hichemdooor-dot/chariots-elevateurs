@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="260" viewBox="0 0 1600 260">
+<rect width="1600" height="260" fill="#d71920"/>
+<image href="sbi-benouatas-logo.webp" x="32" y="32" width="360" height="196" preserveAspectRatio="xMidYMid meet"/>
+<g fill="#fff" font-family="Arial,Helvetica,sans-serif" text-anchor="middle" font-weight="700">
+<text x="800" y="111" font-size="43">SARL BENOUATAS INDUSTRIE</text>
+<path d="M570 147 H720 M880 147 H1030" stroke="#fff" stroke-width="4"/>
+<text x="800" y="172" font-size="35">ALGÉRIE</text>
+</g>
+<image href="logo-sbi-hangcha.png" x="1210" y="25" width="350" height="210" preserveAspectRatio="xMidYMid meet"/>
+</svg>

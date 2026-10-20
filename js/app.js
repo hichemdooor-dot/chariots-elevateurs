@@ -1692,8 +1692,13 @@ function highlightLiveListItem(listId,qr,message=''){
 
 async function chariotsPage(){
   if(!await session())return;
-  await loadChariots();
-  try{await loadDeliveryPlans()}catch(e){DELIVERY_PLANS=readCachedDeliveryPlans()}
+  // Show the cached fleet immediately, then refresh the authoritative server data.
+  const hadCachedFleet=hydrateCachedChariots();
+  if(!hadCachedFleet)await loadChariots();
+  if(Array.isArray(DELIVERY_PLANS)&&DELIVERY_PLANS.length===0)DELIVERY_PLANS=readCachedDeliveryPlans();
+  if(!DELIVERY_PLANS.length){
+    try{await loadDeliveryPlans()}catch(e){DELIVERY_PLANS=readCachedDeliveryPlans()}
+  }
   const initialSearch=new URLSearchParams(window.location.search).get('search')||'';
   const searchEl=$('#search');
   if(searchEl&&initialSearch)searchEl.value=initialSearch;
@@ -1764,6 +1769,16 @@ async function chariotsPage(){
     render();
   };
   render();
+  if(hadCachedFleet){
+    // Do not hold the page open for the network: refresh and redraw when current data arrives.
+    Promise.resolve().then(async()=>{
+      try{
+        await loadChariots();
+        try{await loadDeliveryPlans()}catch(e){DELIVERY_PLANS=readCachedDeliveryPlans()}
+        render();
+      }catch(e){console.warn('Actualisation de Tous les chariots impossible; données en cache conservées.',e)}
+    });
+  }
   function highlightCard(qr,message=''){
     const el=document.querySelector(`[data-card-id="${CSS.escape(String(qr))}"]`);
     if(!el)return;

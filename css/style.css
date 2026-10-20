@@ -3956,3 +3956,32 @@ body.professional-dashboard .dash-logo img{
   .delivery-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
   .delivery-stat-grid>.delivery-stat:last-child{grid-column:1/-1!important}
 }
+
+/* Approved fix — keep delivery-planning navigation on one row on mobile */
+@media (max-width:800px){
+  .delivery-planning-page-head>.actions.delivery-week-nav{
+    display:grid!important;
+    grid-template-columns:44px minmax(0,1fr) 44px!important;
+    width:100%!important;
+    gap:8px!important;
+    align-items:stretch!important;
+  }
+  .delivery-planning-page-head>.actions.delivery-week-nav>.btn{
+    width:100%!important;
+    min-width:0!important;
+    min-height:50px!important;
+    flex:initial!important;
+    margin:0!important;
+    padding:0 6px!important;
+    box-sizing:border-box!important;
+  }
+  .delivery-planning-page-head>.actions.delivery-week-nav>#todayBtn{
+    white-space:nowrap!important;
+  }
+}
+@media (max-width:480px){
+  .delivery-planning-page-head>.actions.delivery-week-nav{
+    grid-template-columns:42px minmax(0,1fr) 42px!important;
+    gap:7px!important;
+  }
+}

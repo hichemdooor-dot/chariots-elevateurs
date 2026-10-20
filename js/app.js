@@ -3110,10 +3110,17 @@ async function globalSearchPage(){
     const q=els.query.value.trim(),from=els.from.value,to=els.to.value;
     const filters={status:els.statusFilter?.value||'',stock:els.stockFilter?.value||'',engine:els.engineFilter?.value||'',capacity:els.capacityFilter?.value||'',height:els.heightFilter?.value||'',mast:els.mastFilter?.value||'',client:els.clientFilter?.value.trim()||''};
     const anyFilter=Object.values(filters).some(Boolean);
+    // When the keyword matches a client name, treat it as a client-only search
+    // so unrelated matches in chassis, engine, notes, etc. are not shown.
+    const queryNorm=norm(q);
+    const clientSearchMode=queryNorm.length>=3&&CHARIOTS.some(c=>norm(c?.client).includes(queryNorm));
     if(from&&to&&from>to){setLatest([]);els.status.textContent='La date de début doit être antérieure ou égale à la date de fin.';els.chariots.innerHTML='';els.chariotCount.textContent='0';return}
     if(!q&&!from&&!to&&!anyFilter){setLatest([]);els.status.textContent='Saisissez un mot-clé, choisissez une date ou activez un filtre pour lancer la recherche.';els.chariots.innerHTML='<div class="global-search-empty">Exemples : numéro de châssis, client, moteur, statut ou période.</div>';els.chariotCount.textContent='0';return}
     const machines=CHARIOTS.filter(c=>{
-      if(!hasTerms(chariotText(c),q)||!dateInRange(rowDates(c),from,to))return false;
+      const keywordMatches=clientSearchMode
+        ? norm(c?.client).includes(queryNorm)
+        : hasTerms(chariotText(c),q);
+      if(!keywordMatches||!dateInRange(rowDates(c),from,to))return false;
       if(filters.client&&!norm(c.client).includes(norm(filters.client)))return false;
       if(filters.status&&norm(c.status)!==norm(filters.status))return false;
       if(filters.stock&&stockValue(c)!==filters.stock)return false;

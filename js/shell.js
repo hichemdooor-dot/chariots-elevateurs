@@ -410,6 +410,8 @@ document.addEventListener('DOMContentLoaded',()=>{
       '.sbi-smart-filter-panel .global-search-actions{align-self:end}',
       '.sbi-smart-filter-panel .global-search-date-tip{margin-top:10px}',
       '.sbi-smart-filter-panel .search{width:100%;box-sizing:border-box}',
+      '.sbi-smart-filter-panel #globalQuery,.sbi-smart-filter-panel input[name="globalQuery"],.sbi-smart-filter-panel .global-search-form input[type="search"],.sbi-smart-filter-panel .global-search-form input[type="text"]{display:block;width:100%!important;max-width:100%;min-width:0;min-height:56px!important;padding:14px 16px!important;font-size:18px!important;line-height:1.35;border:1px solid #cbd8e3;border-radius:14px!important;box-sizing:border-box}',
+      '@media(max-width:650px){.sbi-smart-filter-panel #globalQuery,.sbi-smart-filter-panel input[name="globalQuery"],.sbi-smart-filter-panel .global-search-form input[type="search"],.sbi-smart-filter-panel .global-search-form input[type="text"]{min-height:58px!important;font-size:18px!important;padding:15px 16px!important}}',
       '@media(max-width:650px){.sbi-smart-filter-panel{padding:12px;border-radius:12px}.sbi-smart-filter-head{align-items:flex-start;gap:9px}.sbi-smart-filter-mark{flex-basis:36px;height:36px}.sbi-smart-filter-heading strong{font-size:14px}.sbi-smart-filter-heading small{font-size:11px}.sbi-smart-filter-head-actions{gap:5px;flex-direction:column;align-items:flex-end}.sbi-smart-filter-count{min-height:24px;padding:0 8px}.sbi-smart-filter-reset{padding:7px 8px!important;font-size:11px!important}.sbi-smart-filter-chip{font-size:11px;padding:6px 8px}}'
     ].join('');
     (document.head||document.documentElement).appendChild(style);

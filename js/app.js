@@ -3049,6 +3049,14 @@ async function globalSearchPage(){
   const dateOnly=v=>String(v||'').slice(0,10);
   const chariotText=c=>Object.entries(c||{}).map(([k,v])=>typeof v==='string'||typeof v==='number'?String(v):'').join(' ');
   const hasTerms=(text,q)=>{const terms=norm(q).split(/\s+/).filter(Boolean);if(!terms.length)return true;const t=norm(text);return terms.every(term=>t.includes(term))};
+  // Prefer an exact client-name match when that full name exists; only use
+  // partial matching when the entered text is not itself a complete client name.
+  const clientNameMatches=(value,query)=>{
+    const target=norm(query);
+    if(!target)return true;
+    const exactClientExists=CHARIOTS.some(c=>norm(c?.client)===target);
+    return exactClientExists?norm(value)===target:norm(value).includes(target);
+  };
   const dateInRange=(dates,from,to)=>{const valid=dates.map(dateOnly).filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x));if(!from&&!to)return true;if(!valid.length)return false;return valid.some(d=>(!from||d>=from)&&(!to||d<=to))};
   const rowDates=c=>Object.entries(c||{}).filter(([k,v])=>/(date|_at|timestamp|time)$/i.test(k)&&v).map(([,v])=>v);
   const setLatest=rows=>{latestMachines=rows; if(els.exportBtn)els.exportBtn.disabled=!rows.length};
@@ -3114,14 +3122,15 @@ async function globalSearchPage(){
     // so unrelated matches in chassis, engine, notes, etc. are not shown.
     const queryNorm=norm(q);
     const clientSearchMode=queryNorm.length>=3&&CHARIOTS.some(c=>norm(c?.client).includes(queryNorm));
+    const exactClientQuery=clientSearchMode&&CHARIOTS.some(c=>norm(c?.client)===queryNorm);
     if(from&&to&&from>to){setLatest([]);els.status.textContent='La date de début doit être antérieure ou égale à la date de fin.';els.chariots.innerHTML='';els.chariotCount.textContent='0';return}
     if(!q&&!from&&!to&&!anyFilter){setLatest([]);els.status.textContent='Saisissez un mot-clé, choisissez une date ou activez un filtre pour lancer la recherche.';els.chariots.innerHTML='<div class="global-search-empty">Exemples : numéro de châssis, client, moteur, statut ou période.</div>';els.chariotCount.textContent='0';return}
     const machines=CHARIOTS.filter(c=>{
       const keywordMatches=clientSearchMode
-        ? norm(c?.client).includes(queryNorm)
+        ? (exactClientQuery?norm(c?.client)===queryNorm:norm(c?.client).includes(queryNorm))
         : hasTerms(chariotText(c),q);
       if(!keywordMatches||!dateInRange(rowDates(c),from,to))return false;
-      if(filters.client&&!norm(c.client).includes(norm(filters.client)))return false;
+      if(filters.client&&!clientNameMatches(c?.client,filters.client))return false;
       if(filters.status&&norm(c.status)!==norm(filters.status))return false;
       if(filters.stock&&stockValue(c)!==filters.stock)return false;
       if(filters.engine&&norm(c.engine)!==norm(filters.engine))return false;

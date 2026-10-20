@@ -2685,9 +2685,16 @@ function renderPresenceRows(rows){
     }).join('');
   });
 }
-function stopSbiPresence(){if(!SBI_PRESENCE_CHANNEL)return;try{SBI_PRESENCE_CHANNEL.untrack()}catch(_){}try{if(supabaseClient?.removeChannel)supabaseClient.removeChannel(SBI_PRESENCE_CHANNEL)}catch(_){}SBI_PRESENCE_CHANNEL=null}
+function stopSbiPresence(){if(!SBI_PRESENCE_CHANNEL)return;try{SBI_PRESENCE_CHANNEL.untrack()}catch(_){}try{if(supabaseClient?.removeChannel)supabaseClient.removeChannel(SBI_PRESENCE_CHANNEL)}catch(_){}SBI_PRESENCE_CHANNEL=null;window.__SBI_PRESENCE_CHANNEL=null}
+function showSbiPresenceError(message){
+  document.querySelectorAll('[data-online-list]').forEach(box=>{
+    box.innerHTML='<div class="presence-empty">'+esc(message)+'</div>';
+  });
+  document.querySelectorAll('[data-online-count]').forEach(el=>{el.textContent='—'});
+}
 async function startSbiPresence(){
-  if(!currentUser||!isAdmin()||!document.querySelector('[data-online-list]')||!supabaseClient?.channel){stopSbiPresence();return null;}
+  // Every authenticated user must publish presence, even on pages without the admin-only list.
+  if(!currentUser||!supabaseClient?.channel){stopSbiPresence();return null;}
   stopSbiPresence();
   const channel=supabaseClient.channel('sbi-users-online',{config:{presence:{key:String(currentUser.id)}}});
   channel.on('presence',{event:'sync'},()=>renderPresenceRows(presenceRows(channel)));
@@ -2695,8 +2702,41 @@ async function startSbiPresence(){
   channel.on('presence',{event:'leave'},()=>renderPresenceRows(presenceRows(channel)));
   const name=getUserDisplayName();
   const payload={user_id:String(currentUser.id),name,email:String(currentUser.email||''),role:getPresenceRoleLabel(),at:new Date().toISOString()};
-  const status=await new Promise(resolve=>{let done=false;const finish=v=>{if(done)return;done=true;resolve(v)};channel.subscribe(async st=>{if(st==='SUBSCRIBED'){try{await channel.track(payload)}catch(e){console.warn('Présence SBI non enregistrée',e)}renderPresenceRows(presenceRows(channel));finish(st)}else if(st==='CHANNEL_ERROR'||st==='TIMED_OUT'){console.warn('Présence SBI indisponible');finish(st)}});setTimeout(()=>finish('TIMEOUT'),8000)});
-  if(status==='SUBSCRIBED'){SBI_PRESENCE_CHANNEL=channel;window.__SBI_PRESENCE_CHANNEL=channel;window.addEventListener('beforeunload',stopSbiPresence,{once:true});}
+  let timer=null;
+  const status=await new Promise(resolve=>{
+    let done=false;
+    const finish=v=>{if(done)return;done=true;if(timer)clearTimeout(timer);resolve(v)};
+    channel.subscribe(async st=>{
+      if(st==='SUBSCRIBED'){
+        try{
+          const result=await channel.track(payload);
+          if(result?.error)throw result.error;
+          renderPresenceRows(presenceRows(channel));
+          finish(st);
+        }catch(e){
+          console.warn('Présence SBI non enregistrée',e);
+          showSbiPresenceError('Connexion au suivi en temps réel impossible. Vérifiez Supabase Realtime et les autorisations.');
+          finish('TRACK_ERROR');
+        }
+      }else if(st==='CHANNEL_ERROR'||st==='TIMED_OUT'||st==='CLOSED'){
+        console.warn('Présence SBI indisponible :',st);
+        showSbiPresenceError(st==='TIMED_OUT'?'Délai dépassé pour le suivi en temps réel. Réessayez.':'Suivi en temps réel indisponible. Vérifiez la configuration Supabase.');
+        finish(st);
+      }
+    });
+    timer=setTimeout(()=>{
+      console.warn('Présence SBI : délai dépassé lors de la connexion.');
+      showSbiPresenceError('Connexion au suivi en temps réel expirée. Vérifiez votre réseau et Supabase Realtime.');
+      finish('TIMEOUT');
+    },10000);
+  });
+  if(status==='SUBSCRIBED'){
+    SBI_PRESENCE_CHANNEL=channel;
+    window.__SBI_PRESENCE_CHANNEL=channel;
+    window.addEventListener('beforeunload',stopSbiPresence,{once:true});
+  }else{
+    try{if(supabaseClient?.removeChannel)await supabaseClient.removeChannel(channel)}catch(_){}
+  }
   return channel;
 }
 

@@ -325,6 +325,15 @@ function initSiteGlobalSearch(){
       .professional-dashboard .user-menu-button{width:42px;min-width:42px;height:42px;padding:3px;justify-content:center}
     }
 
+
+    /* Keep the shared-header search vertically centered with the menu and account controls. */
+    header.top{align-items:center!important}
+    header.top .sbi-global-search-wrap{
+      align-self:center!important;height:44px!important;
+      margin:0!important;transform:none!important;
+    }
+    header.top .sbi-global-searchbar{height:100%!important;box-sizing:border-box!important}
+    header.top .user-menu-wrap{align-self:center!important;margin-top:0!important;margin-bottom:0!important}
     /* Unified clean white global search across every page header */
     header.top .sbi-global-search-wrap,
     .pro-header .dashboard-search-shell{

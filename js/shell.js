@@ -324,6 +324,69 @@ function initSiteGlobalSearch(){
       header.top .user-menu-name,header.top .user-menu-chevron{display:none}
       .professional-dashboard .user-menu-button{width:42px;min-width:42px;height:42px;padding:3px;justify-content:center}
     }
+
+    /* Unified clean white global search across every page header */
+    header.top .sbi-global-search-wrap,
+    .pro-header .dashboard-search-shell{
+      flex:1 1 320px!important;min-width:180px!important;max-width:680px!important;
+      height:48px!important;margin:0 12px!important;box-sizing:border-box!important;
+    }
+    header.top .sbi-global-searchbar,
+    .pro-header .dashboard-search-shell{
+      background:#fff!important;border:1px solid #cbd8e5!important;
+      border-radius:14px!important;box-shadow:0 2px 8px rgba(8,36,60,.10)!important;
+    }
+    header.top .sbi-global-searchbar input,
+    .pro-header .dashboard-search-shell #dashboardSearch{
+      color:#173b58!important;font-size:16px!important;font-weight:500!important;
+      background:transparent!important;min-width:0!important;
+    }
+    header.top .sbi-global-searchbar input::placeholder,
+    .pro-header .dashboard-search-shell #dashboardSearch::placeholder{
+      color:#7b8b9b!important;opacity:1!important;font-size:14px!important;
+    }
+    header.top .sbi-global-searchbar .sbi-global-submit,
+    header.top .sbi-global-searchbar .sbi-global-date-btn,
+    .pro-header .dashboard-search-shell .search-action,
+    .pro-header .dashboard-search-shell .sbi-global-date-btn{
+      flex:0 0 44px!important;width:44px!important;
+      border-left:1px solid #e1e8ef!important;background:transparent!important;
+      color:#285a82!important;
+    }
+    header.top .sbi-global-searchbar .sbi-global-submit:hover,
+    header.top .sbi-global-searchbar .sbi-global-date-btn:hover,
+    .pro-header .dashboard-search-shell .search-action:hover,
+    .pro-header .dashboard-search-shell .sbi-global-date-btn:hover{
+      background:#edf6ff!important;
+    }
+    header.top .sbi-global-searchbar svg,
+    .pro-header .dashboard-search-shell .search-action svg,
+    .pro-header .dashboard-search-shell .sbi-global-date-btn svg{
+      width:20px!important;height:20px!important;color:#285a82!important;
+    }
+    @media(max-width:800px){
+      header.top{flex-wrap:wrap!important}
+      header.top .sbi-global-search-wrap,
+      .pro-header .dashboard-search-shell{
+        order:20!important;flex:1 1 100%!important;width:100%!important;
+        min-width:0!important;max-width:none!important;height:50px!important;
+        margin:4px 0 2px!important;
+      }
+      header.top .sbi-global-searchbar,
+      .pro-header .dashboard-search-shell{height:50px!important}
+      header.top .sbi-global-searchbar input,
+      .pro-header .dashboard-search-shell #dashboardSearch{
+        font-size:16px!important;padding:0 14px!important;
+      }
+      header.top .sbi-global-searchbar input::placeholder,
+      .pro-header .dashboard-search-shell #dashboardSearch::placeholder{font-size:14px!important}
+      header.top .sbi-global-searchbar .sbi-global-submit,
+      header.top .sbi-global-searchbar .sbi-global-date-btn,
+      .pro-header .dashboard-search-shell .search-action,
+      .pro-header .dashboard-search-shell .sbi-global-date-btn{
+        flex-basis:46px!important;width:46px!important;
+      }
+    }
   `;
   (document.head||document.documentElement).appendChild(s);
 })();

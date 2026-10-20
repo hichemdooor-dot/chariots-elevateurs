@@ -472,6 +472,14 @@ async function restoreLoginSession(){
 
 
 const CHARIOT_SELECT_FIELDS='*';
+function hydrateCachedChariots(){
+  try{
+    const cached=JSON.parse(localStorage.getItem('sbi_chariots_cache_v2')||localStorage.getItem('sbi_chariots_cache_v1')||'null');
+    if(!Array.isArray(cached?.rows))return false;
+    CHARIOTS=cached.rows;
+    return true;
+  }catch(_){return false}
+}
 async function loadChariots(){
   // Keep the original Supabase query as the primary path because this is the
   // schema/query that the working version of the application used.
@@ -1291,6 +1299,15 @@ async function dashboardPage(){
   renderConnectedUser();
   if($('#dashDate'))$('#dashDate').textContent=new Date().toLocaleString('fr-FR',{weekday:'long',day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
 
+  // Render the last locally cached fleet snapshot immediately while Supabase refreshes it.
+  // The cache is only a fast first paint; the live query below remains authoritative.
+  const hadCachedFleet=hydrateCachedChariots();
+  if(hadCachedFleet){
+    if($('#stock'))$('#stock').textContent=CHARIOTS.filter(isStock).length;
+    if($('#delivered'))$('#delivered').textContent=CHARIOTS.filter(isDelivered).length;
+    renderDashboardLatest();
+  }
+
   let dataLoadError=null;
   try{
     await loadChariots();
@@ -1299,9 +1316,7 @@ async function dashboardPage(){
     console.error('Chargement des chariots du dashboard impossible',e);
   }
 
-  // Render the main fleet KPIs immediately. Delivery/activity are loaded
-  // independently so a slow secondary query cannot leave the whole dashboard
-  // showing its static 0 / Chargement... placeholders.
+  // Refresh KPIs and rows with current server data after the initial cached render.
   if($('#stock'))$('#stock').textContent=dataLoadError?'—':CHARIOTS.filter(isStock).length;
   if($('#delivered'))$('#delivered').textContent=dataLoadError?'—':CHARIOTS.filter(isDelivered).length;
   if($('#plannedKpi'))$('#plannedKpi').textContent=0;

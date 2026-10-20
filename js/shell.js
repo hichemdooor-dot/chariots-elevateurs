@@ -229,7 +229,9 @@ function initSiteGlobalSearch(){
   const panel=document.createElement('div');panel.className='sbi-chassis-create-panel';panel.setAttribute('aria-hidden','true');
   wrapper.appendChild(panel);
   const avatar=header.querySelector('.avatar');
-  if(avatar)header.insertBefore(wrapper,avatar);else header.appendChild(wrapper);
+  const notification=header.querySelector('.notification-bell,[data-notifications],.notifications-btn');
+  const firstRightControl=notification||avatar;
+  if(firstRightControl)header.insertBefore(wrapper,firstRightControl);else header.appendChild(wrapper);
   initSbiChassisCreateSuggestion(form.querySelector('input'),wrapper,panel);
 }
 
@@ -239,7 +241,8 @@ function initSiteGlobalSearch(){
   const s=document.createElement('style');s.id='sbiSharedHeaderSkin';
   s.textContent=`
     header.top{
-      min-height:76px;height:auto;padding:10px 22px;gap:14px;
+      display:flex;align-items:center;justify-content:space-between;flex-wrap:nowrap;
+      min-height:96px;height:auto;padding:10px 28px;gap:14px;
       background:#102f4b;border-top:3px solid #1689e8;
       border-radius:0 0 16px 16px;
       box-shadow:0 7px 22px rgba(16,47,75,.12);

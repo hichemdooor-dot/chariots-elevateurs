@@ -3919,3 +3919,40 @@ body.professional-dashboard .dash-logo img{
 .sbi-filter-content>.search{margin:0}
 .sbi-filter-collapse:not([open]){margin-bottom:14px}
 @media(max-width:600px){.sbi-filter-collapse>summary{gap:8px;padding:11px}.sbi-filter-icon{width:34px;height:34px;flex-basis:34px}.sbi-filter-heading small{font-size:10px}.sbi-filter-count{font-size:10px;padding:6px 7px}.sbi-filter-content{padding:0 10px 10px}}
+
+
+/* Approved mobile polish — delivery planning page only */
+@media (max-width:800px){
+  .delivery-planning-page-head{display:flex;flex-direction:column;align-items:stretch;gap:10px}
+  .delivery-planning-page-head>.actions.delivery-week-nav{
+    display:grid!important;
+    grid-template-columns:44px minmax(0,1fr) 44px;
+    align-items:stretch;
+    gap:8px;
+    width:100%;
+    margin:0;
+  }
+  .delivery-planning-page-head>.actions.delivery-week-nav>.btn{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:100%!important;
+    min-width:0;
+    min-height:48px;
+    padding:0 8px!important;
+    margin:0;
+    border-radius:10px;
+    font-size:15px;
+  }
+  .delivery-planning-page-head>.actions.delivery-week-nav>#todayBtn{
+    font-size:15px;
+    font-weight:800;
+  }
+  .delivery-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px}
+  .delivery-stat-grid>.delivery-stat:last-child{grid-column:1/-1!important}
+}
+@media (max-width:480px){
+  .delivery-planning-page-head>.actions.delivery-week-nav{grid-template-columns:42px minmax(0,1fr) 42px}
+  .delivery-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .delivery-stat-grid>.delivery-stat:last-child{grid-column:1/-1!important}
+}

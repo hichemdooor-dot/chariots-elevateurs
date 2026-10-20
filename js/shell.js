@@ -244,6 +244,9 @@ function initSiteGlobalSearch(){
       border-radius:0 0 16px 16px;
       box-shadow:0 7px 22px rgba(16,47,75,.12);
     }
+    /* Hide the SBI logo/brand in every shared page header */
+    header.top .brand,.pro-header .brand{display:none!important}
+    header.top .sbi-global-search-wrap{margin-left:0!important}
     header.top .brand{flex:0 1 220px;min-width:0}
     header.top .sbi-global-search-wrap{flex:1;min-width:120px;max-width:620px}
     header.top .sbi-global-searchbar{border-radius:12px}

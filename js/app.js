@@ -140,7 +140,8 @@ document.addEventListener('submit',()=>{SBI_GLOBAL_FORM_SUBMIT_UNTIL=Date.now()+
 document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='visible'){
     sbiRunPendingRefresh();
-    if(SBI_GLOBAL_REALTIME_STARTED)pollSbiGlobalSnapshot();
+    // The full-table fingerprint is only needed when Realtime fallback polling is active.
+    if(SBI_GLOBAL_POLL_TIMER)pollSbiGlobalSnapshot();
   }
 });
 
@@ -158,7 +159,7 @@ function startSbiRealtime(onChange, tables=['chariots','maintenance']){
           window.__SBI_LAST_REALTIME_EVENT={table,event:event.event};
           // Keep the polling fallback baseline aligned after a page-specific
           // refresh, so it does not cause a second, unnecessary page reload.
-          if(SBI_GLOBAL_REALTIME_STARTED)readSbiGlobalFingerprint().then(fp=>{SBI_GLOBAL_FINGERPRINT=fp}).catch(()=>{});
+          if(SBI_GLOBAL_POLL_TIMER)readSbiGlobalFingerprint().then(fp=>{SBI_GLOBAL_FINGERPRINT=fp}).catch(()=>{});
         }).catch(e=>console.warn('SBI realtime callback',e));
       }catch(e){console.warn('SBI realtime callback',e)}
     });
@@ -213,13 +214,24 @@ function startSbiGlobalRealtime(){
     });
   });
   channel.subscribe(status=>{
-    if(status==='SUBSCRIBED')console.info('SBI Realtime global connecté');
-    if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')console.warn('SBI Realtime global indisponible; contrôle périodique de secours actif.');
+    if(status==='SUBSCRIBED'){
+      console.info('SBI Realtime global connecté');
+      // Realtime already delivers changes, so avoid duplicate full-table reads.
+      if(SBI_GLOBAL_POLL_TIMER){clearInterval(SBI_GLOBAL_POLL_TIMER);SBI_GLOBAL_POLL_TIMER=null;}
+      SBI_GLOBAL_POLL_BUSY=false;
+      SBI_GLOBAL_FINGERPRINT=null;
+    }
+    if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){
+      console.warn('SBI Realtime global indisponible; contrôle périodique de secours actif.');
+      // Use the expensive fingerprint query only when the live channel is unavailable.
+      if(!SBI_GLOBAL_POLL_TIMER){
+        SBI_GLOBAL_FINGERPRINT=null;
+        pollSbiGlobalSnapshot();
+        SBI_GLOBAL_POLL_TIMER=setInterval(pollSbiGlobalSnapshot,20000);
+      }
+    }
   });
   window.__SBI_GLOBAL_REALTIME_CHANNEL=channel;
-  // Establish a baseline, then check every 20 seconds if Realtime is unavailable.
-  pollSbiGlobalSnapshot();
-  if(!SBI_GLOBAL_POLL_TIMER)SBI_GLOBAL_POLL_TIMER=setInterval(pollSbiGlobalSnapshot,20000);
 }
 function startSbiGlobalSync(){startSbiGlobalRealtime();}
 

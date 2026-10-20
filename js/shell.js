@@ -390,6 +390,36 @@ function initSiteGlobalSearch(){
       }
     }
   `;
+  /* Force the dashboard account-control styling on every standard page.
+     Page-specific styles previously overrode the shared button background and spacing. */
+  s.textContent += `
+    header.top .user-menu-wrap{display:flex!important;align-items:center!important;flex:0 0 auto!important;margin-left:auto!important;position:relative!important}
+    header.top .user-menu-button{
+      display:flex!important;align-items:center!important;justify-content:flex-start!important;
+      gap:9px!important;min-width:0!important;min-height:42px!important;height:42px!important;
+      padding:4px 12px 4px 7px!important;border:1px solid rgba(255,255,255,.18)!important;
+      border-radius:999px!important;background:rgba(255,255,255,.08)!important;
+      color:#fff!important;box-shadow:none!important;line-height:normal!important;
+    }
+    header.top .user-menu-button:hover,
+    header.top .user-menu-button:focus-visible{background:rgba(255,255,255,.13)!important;border-color:rgba(255,255,255,.30)!important}
+    header.top .user-menu-button .user-circle{
+      display:grid!important;place-items:center!important;flex:0 0 36px!important;
+      width:36px!important;height:36px!important;min-width:36px!important;min-height:36px!important;
+      margin:0!important;border:0!important;border-radius:50%!important;background:#1689e8!important;
+      color:#fff!important;font-size:17px!important;font-weight:800!important;
+    }
+    header.top .user-menu-button .user-menu-name{display:flex!important;flex-direction:column!important;gap:2px!important;min-width:0!important}
+    header.top .user-menu-button .user-menu-name b{display:block!important;color:#fff!important;font-size:13px!important;line-height:1.2!important;font-weight:750!important}
+    header.top .user-menu-button .user-menu-name small{display:block!important;color:#c1d3e3!important;font-size:10px!important;line-height:1.2!important}
+    header.top .user-menu-button .user-menu-chevron{display:inline-block!important;color:#dce9f5!important;font-size:14px!important;margin-left:4px!important}
+    header.top .user-menu{z-index:1500!important}
+    @media(max-width:800px){
+      header.top .user-menu-button{height:42px!important;min-height:42px!important;padding:3px 7px!important}
+      header.top .user-menu-button .user-menu-name,
+      header.top .user-menu-button .user-menu-chevron{display:none!important}
+    }
+  `;
   (document.head||document.documentElement).appendChild(s);
 })();
 

@@ -1882,8 +1882,9 @@ function openDeliveryConfirmation(c,plan){
     const now=new Date(),today=localISODateGlobal(now),time=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
     const entryDate=today;
     const entryTime=time;
-    const entryDriver='';
-    const entryDestination='';
+    // Reuse the chauffeur and destination already saved in the delivery plan.
+    const entryDriver=String(plan?.driver||'').trim();
+    const entryDestination=String(plan?.destination||'').trim();
     const entryClient=String(c?.client||'').trim();
     const escv=v=>esc(String(v||''));
     const backdrop=document.createElement('div');backdrop.id='sbiDeliveryModal';backdrop.className='sbi-delivery-modal-backdrop';

@@ -247,6 +247,35 @@ function initSiteGlobalSearch(){
     header.top .brand{flex:0 1 220px;min-width:0}
     header.top .sbi-global-search-wrap{flex:1;min-width:120px;max-width:620px}
     header.top .sbi-global-searchbar{border-radius:12px}
+    header.top .sbi-global-search-wrap{box-sizing:border-box}
+    header.top .sbi-global-searchbar{
+      display:flex;align-items:center;min-width:0;width:100%;height:42px;
+      overflow:hidden;border:1px solid rgba(164,202,232,.62);
+      background:rgba(255,255,255,.10);box-shadow:inset 0 1px 2px rgba(0,0,0,.08)
+    }
+    header.top .sbi-global-searchbar input{
+      flex:1 1 auto;min-width:0;width:100%;height:100%;padding:0 13px;
+      border:0!important;outline:0!important;border-radius:0!important;
+      background:transparent!important;color:#fff!important;font-size:14px!important;
+      box-shadow:none!important
+    }
+    header.top .sbi-global-searchbar input::placeholder{color:rgba(255,255,255,.76)}
+    header.top .sbi-global-searchbar .sbi-global-submit,
+    header.top .sbi-global-searchbar .sbi-global-date-btn{
+      display:grid;place-items:center;flex:0 0 40px;width:40px;height:100%;
+      margin:0;padding:0;border:0;border-left:1px solid rgba(255,255,255,.15);
+      border-radius:0;background:transparent;color:#fff;cursor:pointer
+    }
+    header.top .sbi-global-searchbar svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    @media(max-width:800px){
+      header.top{gap:8px;padding:9px 12px;flex-wrap:wrap}
+      header.top .brand{flex:0 1 auto;max-width:42%}
+      header.top .sbi-global-search-wrap{order:3;flex:1 1 100%;width:100%;max-width:none;margin:3px 0 0}
+      header.top .sbi-global-searchbar{height:48px;border-radius:12px}
+      header.top .sbi-global-searchbar input{font-size:16px!important;padding:0 14px}
+      header.top .sbi-global-searchbar .sbi-global-submit,
+      header.top .sbi-global-searchbar .sbi-global-date-btn{flex-basis:44px;width:44px}
+    }
     header.top .user-menu-wrap{margin-left:0}
     header.top .user-menu-button,
     .professional-dashboard .user-menu-button{

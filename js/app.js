@@ -2173,10 +2173,40 @@ function nextQr(){let n=Math.max(0,...CHARIOTS.map(c=>Number(String(c.qr_id||'')
 async function newPage(){
   if(!await session())return;
   if(!requireAdmin()){location.replace('dashboard.html');return}
-  await loadChariots();
   const params=new URLSearchParams(location.search);
   const id=params.get('id');
   const chassisPrefill=String(params.get('chassis')||'').trim().toUpperCase();
+
+  // Editing needs one forklift record, not a full download of the entire fleet.
+  // Hydrate the local fleet cache first for duplicate checks and suggestions.
+  if(id){
+    if(!Array.isArray(CHARIOTS)||!CHARIOTS.length)hydrateCachedChariots();
+    let cachedOld=CHARIOTS.find(c=>String(c.qr_id)===String(id));
+    try{
+      const result=await withTimeout(
+        supabaseClient.from('chariots').select('*').eq('qr_id',id).maybeSingle(),
+        8000
+      );
+      const {data,error}=result||{};
+      if(error)throw error;
+      if(data){
+        cachedOld=data;
+        const index=CHARIOTS.findIndex(c=>String(c.qr_id)===String(id));
+        if(index>=0)CHARIOTS[index]=data;else CHARIOTS.push(data);
+      }else if(!cachedOld){
+        await loadChariots();
+      }
+    }catch(error){
+      // Keep editing available from the local cache if the single-row request fails.
+      if(!cachedOld){
+        await loadChariots();
+      }else{
+        console.warn('Actualisation de la fiche chariot impossible; données en cache utilisées.',error);
+      }
+    }
+  }else{
+    await loadChariots();
+  }
   const old=CHARIOTS.find(c=>String(c.qr_id)===String(id));
   if(old&&!isAdmin()){location.href='chariot.html?id='+encodeURIComponent(old.qr_id);return}
   if(old){editingQrId=old.qr_id;$('#formTitle').textContent='Modifier '+old.qr_id;for(const [k,v] of Object.entries(old)){const el=document.querySelector(`[name="${k}"]`);if(el)el.value=v??''}}

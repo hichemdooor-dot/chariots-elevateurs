@@ -326,66 +326,64 @@ function initSiteGlobalSearch(){
     }
 
 
-    /* Unified clean white global search across every page header */
+    /* Compact, understated search field for the shared header */
     header.top .sbi-global-search-wrap,
     .pro-header .dashboard-search-shell{
       flex:1 1 320px!important;min-width:180px!important;max-width:680px!important;
-      height:48px!important;margin:0 12px!important;box-sizing:border-box!important;
+      height:42px!important;margin:0 10px!important;box-sizing:border-box!important;
     }
     header.top .sbi-global-searchbar,
     .pro-header .dashboard-search-shell{
-      background:#fff!important;border:1px solid #cbd8e5!important;
-      border-radius:14px!important;box-shadow:0 2px 8px rgba(8,36,60,.10)!important;
+      display:flex!important;align-items:center!important;overflow:hidden!important;
+      background:#f5f8fc!important;border:1px solid #9fb7cc!important;
+      border-radius:10px!important;box-shadow:none!important;
     }
     header.top .sbi-global-searchbar input,
     .pro-header .dashboard-search-shell #dashboardSearch{
-      color:#173b58!important;font-size:16px!important;font-weight:500!important;
-      background:transparent!important;min-width:0!important;
+      color:#173b58!important;font-size:14px!important;font-weight:400!important;
+      background:transparent!important;min-width:0!important;padding:0 12px!important;
     }
     header.top .sbi-global-searchbar input::placeholder,
     .pro-header .dashboard-search-shell #dashboardSearch::placeholder{
-      color:#7b8b9b!important;opacity:1!important;font-size:14px!important;
+      color:#687f93!important;opacity:1!important;font-size:13px!important;font-weight:400!important;
     }
     header.top .sbi-global-searchbar .sbi-global-submit,
     header.top .sbi-global-searchbar .sbi-global-date-btn,
     .pro-header .dashboard-search-shell .search-action,
     .pro-header .dashboard-search-shell .sbi-global-date-btn{
-      flex:0 0 44px!important;width:44px!important;
-      border-left:1px solid #e1e8ef!important;background:transparent!important;
-      color:#285a82!important;
+      flex:0 0 38px!important;width:38px!important;min-width:38px!important;
+      border-left:1px solid #d8e2eb!important;background:transparent!important;color:#285a82!important;
     }
     header.top .sbi-global-searchbar .sbi-global-submit:hover,
     header.top .sbi-global-searchbar .sbi-global-date-btn:hover,
     .pro-header .dashboard-search-shell .search-action:hover,
-    .pro-header .dashboard-search-shell .sbi-global-date-btn:hover{
-      background:#edf6ff!important;
-    }
+    .pro-header .dashboard-search-shell .sbi-global-date-btn:hover{background:#e7f0f8!important}
     header.top .sbi-global-searchbar svg,
     .pro-header .dashboard-search-shell .search-action svg,
     .pro-header .dashboard-search-shell .sbi-global-date-btn svg{
-      width:20px!important;height:20px!important;color:#285a82!important;
+      width:17px!important;height:17px!important;color:#285a82!important;
     }
     @media(max-width:800px){
       header.top{flex-wrap:wrap!important}
       header.top .sbi-global-search-wrap,
       .pro-header .dashboard-search-shell{
         order:20!important;flex:1 1 100%!important;width:100%!important;
-        min-width:0!important;max-width:none!important;height:50px!important;
-        margin:4px 0 2px!important;
+        min-width:0!important;max-width:none!important;height:42px!important;
+        margin:2px 0 0!important;
       }
       header.top .sbi-global-searchbar,
-      .pro-header .dashboard-search-shell{height:50px!important}
+      .pro-header .dashboard-search-shell{height:42px!important}
       header.top .sbi-global-searchbar input,
       .pro-header .dashboard-search-shell #dashboardSearch{
-        font-size:16px!important;padding:0 14px!important;
+        font-size:14px!important;padding:0 12px!important;
       }
       header.top .sbi-global-searchbar input::placeholder,
-      .pro-header .dashboard-search-shell #dashboardSearch::placeholder{font-size:14px!important}
+      .pro-header .dashboard-search-shell #dashboardSearch::placeholder{font-size:13px!important}
       header.top .sbi-global-searchbar .sbi-global-submit,
       header.top .sbi-global-searchbar .sbi-global-date-btn,
       .pro-header .dashboard-search-shell .search-action,
       .pro-header .dashboard-search-shell .sbi-global-date-btn{
-        flex-basis:46px!important;width:46px!important;
+        flex-basis:38px!important;width:38px!important;min-width:38px!important;
       }
     }
   `;

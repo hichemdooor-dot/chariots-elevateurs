@@ -498,6 +498,9 @@ document.addEventListener('DOMContentLoaded',()=>{
     wrap.innerHTML=`<button class="user-menu-button" type="button" onclick="toggleUserMenu();event.stopPropagation()" aria-label="Menu utilisateur"><span class="user-circle" id="userTopAvatar">U</span><span class="user-menu-name"><b id="userTopName">Utilisateur</b><small id="userTopRole">Utilisateur</small></span><span class="user-menu-chevron">⌄</span></button><div id="userMenu" class="user-menu hidden"><a href="profile.html">👤&nbsp; Mon profil</a><a id="userMenuAdmin" class="hidden" href="gestion.html">👥&nbsp; Gestion utilisateurs</a><button type="button" onclick="logout()">↪&nbsp; Déconnexion</button></div>`;
     el.replaceWith(wrap);
   });
+  // The shared header is created after the initial auth render on non-dashboard pages.
+  // Populate its newly-created user fields from the active session and role.
+  if(typeof renderConnectedUser==='function')renderConnectedUser();
   nav();
   initDashboardHoverSidebar();
   document.querySelectorAll('.overlay').forEach(ov=>{

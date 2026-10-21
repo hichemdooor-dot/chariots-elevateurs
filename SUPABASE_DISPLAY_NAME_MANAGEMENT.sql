@@ -12,6 +12,7 @@ as $$
 declare
   v_email text;
   v_app_role text;
+  v_status jsonb;
 begin
   if auth.uid() is null then
     raise exception 'Authentication required';
@@ -23,8 +24,11 @@ begin
     from auth.users u
    where u.id = auth.uid();
 
+  select to_jsonb(public.get_my_sbi_status()) into v_status;
+
   if lower(coalesce(v_email, '')) <> 'hichemdooor@gmail.com'
-     and lower(coalesce(v_app_role, '')) <> 'admin' then
+     and lower(coalesce(v_app_role, '')) <> 'admin'
+     and lower(coalesce(v_status ->> 'role', '')) <> 'admin' then
     raise exception 'Administrator access required';
   end if;
 
@@ -53,6 +57,7 @@ as $$
 declare
   v_email text;
   v_app_role text;
+  v_status jsonb;
   v_name text;
 begin
   if auth.uid() is null then
@@ -70,8 +75,11 @@ begin
     from auth.users u
    where u.id = auth.uid();
 
+  select to_jsonb(public.get_my_sbi_status()) into v_status;
+
   if lower(coalesce(v_email, '')) <> 'hichemdooor@gmail.com'
-     and lower(coalesce(v_app_role, '')) <> 'admin' then
+     and lower(coalesce(v_app_role, '')) <> 'admin'
+     and lower(coalesce(v_status ->> 'role', '')) <> 'admin' then
     raise exception 'Administrator access required';
   end if;
 

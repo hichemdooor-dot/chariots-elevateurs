@@ -418,6 +418,16 @@ function initSiteGlobalSearch(){
       header.top .user-menu-button{height:42px!important;min-height:42px!important;padding:3px 7px!important}
       header.top .user-menu-button .user-menu-name,
       header.top .user-menu-button .user-menu-chevron{display:none!important}
+      /* Keep the account menu compact and anchored to the profile button on phones. */
+      header.top .user-menu-wrap{position:relative!important;z-index:1600!important}
+      header.top .user-menu-wrap .user-menu{
+        position:absolute!important;top:calc(100% + 8px)!important;right:0!important;left:auto!important;
+        width:min(220px,calc(100vw - 24px))!important;min-width:0!important;max-width:calc(100vw - 24px)!important;
+        max-height:calc(100dvh - 110px)!important;overflow-y:auto!important;box-sizing:border-box!important;
+        margin:0!important;z-index:1600!important;border-radius:12px!important;
+      }
+      header.top .user-menu-wrap .user-menu a,
+      header.top .user-menu-wrap .user-menu button{box-sizing:border-box!important;white-space:normal!important}
     }
   `;
   (document.head||document.documentElement).appendChild(s);

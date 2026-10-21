@@ -11,7 +11,6 @@ set search_path = public, auth
 as $$
 declare
   v_email text;
-  v_user_role text;
   v_app_role text;
 begin
   if auth.uid() is null then
@@ -19,14 +18,12 @@ begin
   end if;
 
   select u.email,
-         coalesce(u.raw_user_meta_data ->> 'sbi_role', ''),
          coalesce(u.raw_app_meta_data ->> 'sbi_role', '')
-    into v_email, v_user_role, v_app_role
+    into v_email, v_app_role
     from auth.users u
    where u.id = auth.uid();
 
   if lower(coalesce(v_email, '')) <> 'hichemdooor@gmail.com'
-     and lower(coalesce(v_user_role, '')) <> 'admin'
      and lower(coalesce(v_app_role, '')) <> 'admin' then
     raise exception 'Administrator access required';
   end if;
@@ -55,7 +52,6 @@ set search_path = public, auth
 as $$
 declare
   v_email text;
-  v_user_role text;
   v_app_role text;
   v_name text;
 begin
@@ -69,14 +65,12 @@ begin
   end if;
 
   select u.email,
-         coalesce(u.raw_user_meta_data ->> 'sbi_role', ''),
          coalesce(u.raw_app_meta_data ->> 'sbi_role', '')
-    into v_email, v_user_role, v_app_role
+    into v_email, v_app_role
     from auth.users u
    where u.id = auth.uid();
 
   if lower(coalesce(v_email, '')) <> 'hichemdooor@gmail.com'
-     and lower(coalesce(v_user_role, '')) <> 'admin'
      and lower(coalesce(v_app_role, '')) <> 'admin' then
     raise exception 'Administrator access required';
   end if;

@@ -97,6 +97,10 @@ let SBI_GLOBAL_POLL_TIMER=null;
 let SBI_GLOBAL_POLL_BUSY=false;
 let SBI_GLOBAL_FINGERPRINT=null;
 let SBI_GLOBAL_RELOAD_TIMER=null;
+let SBI_GLOBAL_REALTIME_CHECK_TIMER=null;
+let SBI_GLOBAL_REALTIME_EVENT_AT=0;
+let SBI_GLOBAL_FINGERPRINT_SYNC_TIMER=null;
+let SBI_GLOBAL_FINGERPRINT_SYNC_BUSY=false;
 let SBI_GLOBAL_RELOAD_PENDING=false;
 let SBI_GLOBAL_FORM_SUBMIT_UNTIL=0;
 let SBI_GLOBAL_LAST_REFRESH_REQUEST=0;
@@ -159,7 +163,7 @@ function startSbiRealtime(onChange, tables=['chariots','maintenance']){
           window.__SBI_LAST_REALTIME_EVENT={table,event:event.event};
           // Keep the polling fallback baseline aligned after a page-specific
           // refresh, so it does not cause a second, unnecessary page reload.
-          if(SBI_GLOBAL_POLL_TIMER)readSbiGlobalFingerprint().then(fp=>{SBI_GLOBAL_FINGERPRINT=fp}).catch(()=>{});
+          if(SBI_GLOBAL_POLL_TIMER)scheduleSbiGlobalFingerprintSync();
         }).catch(e=>console.warn('SBI realtime callback',e));
       }catch(e){console.warn('SBI realtime callback',e)}
     });
@@ -182,8 +186,23 @@ async function readSbiGlobalFingerprint(){
   const stableRows=rows=>(Array.isArray(rows)?rows:[]).map(row=>JSON.stringify(row)).sort();
   return JSON.stringify({chariots:stableRows(fleetResult?.data),maintenance:stableRows(historyResult?.data)});
 }
+function scheduleSbiGlobalFingerprintSync(){
+  if(!SBI_GLOBAL_POLL_TIMER)return;
+  clearTimeout(SBI_GLOBAL_FINGERPRINT_SYNC_TIMER);
+  SBI_GLOBAL_FINGERPRINT_SYNC_TIMER=setTimeout(async()=>{
+    SBI_GLOBAL_FINGERPRINT_SYNC_TIMER=null;
+    if(!SBI_GLOBAL_POLL_TIMER)return;
+    if(SBI_GLOBAL_POLL_BUSY||SBI_GLOBAL_FINGERPRINT_SYNC_BUSY){
+      SBI_GLOBAL_FINGERPRINT_SYNC_TIMER=setTimeout(scheduleSbiGlobalFingerprintSync,500);
+      return;
+    }
+    SBI_GLOBAL_FINGERPRINT_SYNC_BUSY=true;
+    try{SBI_GLOBAL_FINGERPRINT=await readSbiGlobalFingerprint()}catch(_){}
+    finally{SBI_GLOBAL_FINGERPRINT_SYNC_BUSY=false;}
+  },500);
+}
 async function pollSbiGlobalSnapshot(){
-  if(SBI_GLOBAL_POLL_BUSY||document.visibilityState==='hidden'||!currentUser)return;
+  if(SBI_GLOBAL_POLL_BUSY||SBI_GLOBAL_FINGERPRINT_SYNC_BUSY||SBI_GLOBAL_FINGERPRINT_SYNC_TIMER||document.visibilityState==='hidden'||!currentUser)return;
   SBI_GLOBAL_POLL_BUSY=true;
   try{
     const fingerprint=await readSbiGlobalFingerprint();
@@ -204,13 +223,15 @@ function startSbiGlobalRealtime(){
   ['chariots','maintenance'].forEach(table=>{
     channel=channel.on('postgres_changes',{event:'*',schema:'public',table},payload=>{
       if(document.visibilityState==='hidden'){SBI_GLOBAL_RELOAD_PENDING=true;return;}
-      const eventAt=Date.now();
-      setTimeout(()=>{
+      SBI_GLOBAL_REALTIME_EVENT_AT=Date.now();
+      clearTimeout(SBI_GLOBAL_REALTIME_CHECK_TIMER);
+      SBI_GLOBAL_REALTIME_CHECK_TIMER=setTimeout(()=>{
+        SBI_GLOBAL_REALTIME_CHECK_TIMER=null;
         if(document.visibilityState==='hidden'){SBI_GLOBAL_RELOAD_PENDING=true;return;}
-        // A page-local listener may have refreshed its own content already.
-        if(Number(window.__SBI_LAST_REALTIME_HANDLED_AT||0)>=eventAt-100)return;
+        // Give asynchronous page-local listeners time to finish before deciding a reload is needed.
+        if(Number(window.__SBI_LAST_REALTIME_HANDLED_AT||0)>=SBI_GLOBAL_REALTIME_EVENT_AT-100)return;
         sbiRequestAutoRefresh('realtime');
-      },1400);
+      },2600);
     });
   });
   channel.subscribe(status=>{
@@ -218,6 +239,8 @@ function startSbiGlobalRealtime(){
       console.info('SBI Realtime global connecté');
       // Realtime already delivers changes, so avoid duplicate full-table reads.
       if(SBI_GLOBAL_POLL_TIMER){clearInterval(SBI_GLOBAL_POLL_TIMER);SBI_GLOBAL_POLL_TIMER=null;}
+      clearTimeout(SBI_GLOBAL_FINGERPRINT_SYNC_TIMER);SBI_GLOBAL_FINGERPRINT_SYNC_TIMER=null;
+      SBI_GLOBAL_FINGERPRINT_SYNC_BUSY=false;
       SBI_GLOBAL_POLL_BUSY=false;
       SBI_GLOBAL_FINGERPRINT=null;
     }

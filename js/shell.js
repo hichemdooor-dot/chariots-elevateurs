@@ -672,3 +672,120 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initSmartFilters,{once:true});
   else initSmartFilters();
 })();
+
+
+/* ProPanel premium sidebar — shared responsive navigation skin */
+(function initPremiumProPanelSkin(){
+  if(document.getElementById('sbiPremiumProPanelSkin')) return;
+  const style=document.createElement('style');
+  style.id='sbiPremiumProPanelSkin';
+  style.textContent=`
+    :root{--pro-purple:#7255d8;--pro-purple-deep:#5740b4;--pro-purple-soft:#f0edff;--pro-sidebar-bg:#17152a;--pro-sidebar-muted:#aaa6c7}
+    .professional-dashboard .dash-sidebar,
+    body:not(.professional-dashboard) .layout>.side.desktop{
+      background:linear-gradient(180deg,#1c1933 0%,#151326 100%)!important;
+      color:#f7f5ff!important;border:0!important;
+      box-shadow:8px 0 30px rgba(25,18,56,.10);
+      transition:width .22s ease,transform .22s ease,box-shadow .22s ease;
+      overflow-x:hidden;
+    }
+    .professional-dashboard .dash-logo{background:rgba(255,255,255,.04)!important;border-bottom:1px solid rgba(255,255,255,.09)!important}
+    .professional-dashboard .dash-logo img{background:#fff;border-radius:12px;padding:5px}
+    .dash-menu .nav-group{margin:5px 0 9px!important;border-radius:12px!important}
+    .dash-menu .nav-group-toggle{min-height:40px!important;padding:9px 11px!important;color:#aaa6c7!important;border-radius:10px!important;font-size:10px!important;letter-spacing:.09em!important}
+    .dash-menu .nav-group-toggle:hover,.dash-menu .nav-group-toggle:focus-visible,
+    .dash-menu .nav-group.is-open>.nav-group-toggle{background:rgba(133,108,255,.13)!important;color:#d4caff!important}
+    .dash-menu .nav-group-chevron{width:15px;height:15px;transition:transform .18s ease;opacity:.8}
+    .dash-menu .nav-group.is-open .nav-group-chevron{transform:rotate(180deg)}
+    .dash-menu .nav-group-items{display:none;padding:3px 0 5px}
+    .dash-menu .nav-group.is-open .nav-group-items{display:block}
+    .dash-menu a,.layout>.side.desktop .nav a{
+      display:flex;align-items:center;gap:12px;min-height:43px;margin:3px 0;padding:10px 12px;
+      border:1px solid transparent;border-radius:11px;color:#d1cee4!important;
+      font-size:13px;font-weight:650;line-height:1.3;transition:background .16s ease,color .16s ease,border-color .16s ease;
+    }
+    .dash-menu a:hover,.layout>.side.desktop .nav a:hover{
+      background:rgba(255,255,255,.07)!important;color:#fff!important;border-color:rgba(255,255,255,.05)
+    }
+    .dash-menu a.active,.layout>.side.desktop .nav a.active{
+      color:#fff!important;background:linear-gradient(105deg,#7659e8,#6246ce)!important;
+      box-shadow:0 7px 18px rgba(98,70,206,.28);border-color:rgba(255,255,255,.12)
+    }
+    .dash-menu .nav-svg{width:19px;height:19px;flex:0 0 19px;opacity:.94}
+    .dash-menu .nav-separator,.layout>.side.desktop .nav-separator{background:rgba(255,255,255,.12)!important}
+    .dash-menu .logout-link{color:#ff9da8!important}
+    .dash-menu .logout-link:hover{background:rgba(226,68,79,.14)!important}
+    .professional-dashboard .sidebar-promo{margin:auto 12px 10px;border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,.1)}
+    .professional-dashboard .sidebar-promo img{display:block;width:100%;height:auto;max-height:145px;object-fit:cover}
+    .professional-dashboard .sidebar-foot{padding:12px 15px;color:#aaa6c7;border-top:1px solid rgba(255,255,255,.09);font-size:11px}
+    .professional-dashboard .dash-main{transition:margin-left .22s ease}
+    body.dashboard-page.sidebar-rail .dash-sidebar{width:72px!important;flex-basis:72px!important}
+    body.dashboard-page.sidebar-rail .dash-main{margin-left:72px!important}
+    body.dashboard-page.sidebar-rail .pro-site-footer{margin-left:72px!important;width:calc(100% - 72px)!important}
+    body.dashboard-page.sidebar-rail .dash-logo{height:76px!important;padding:9px!important}
+    body.dashboard-page.sidebar-rail .dash-logo img{width:48px!important;height:48px!important;object-fit:contain}
+    body.dashboard-page.sidebar-rail .dash-menu .nav-group-toggle{display:none!important}
+    body.dashboard-page.sidebar-rail .dash-menu .nav-group{margin:4px 0!important}
+    body.dashboard-page.sidebar-rail .dash-menu .nav-group-items{display:block!important;padding:0!important}
+    body.dashboard-page.sidebar-rail .dash-menu a{justify-content:center!important;gap:0!important;padding:12px 0!important;min-height:45px!important;font-size:0!important}
+    body.dashboard-page.sidebar-rail .dash-menu a .nav-svg{width:21px!important;height:21px!important;flex-basis:21px!important}
+    body.dashboard-page.sidebar-rail .dash-menu a span{display:none!important}
+    body.dashboard-page.sidebar-rail .sidebar-promo,
+    body.dashboard-page.sidebar-rail .sidebar-foot{display:none!important}
+    body.dashboard-page.sidebar-rail.sidebar-hover-expanded .dash-sidebar,
+    body.dashboard-page.sidebar-pinned .dash-sidebar{width:274px!important;flex-basis:274px!important;box-shadow:12px 0 32px rgba(14,10,38,.22)}
+    body.dashboard-page.sidebar-rail.sidebar-hover-expanded .dash-main,
+    body.dashboard-page.sidebar-pinned .dash-main{margin-left:274px!important}
+    body.dashboard-page.sidebar-rail.sidebar-hover-expanded .pro-site-footer,
+    body.dashboard-page.sidebar-pinned .pro-site-footer{margin-left:274px!important;width:calc(100% - 274px)!important}
+    body.dashboard-page.sidebar-rail.sidebar-hover-expanded .dash-logo,
+    body.dashboard-page.sidebar-pinned .dash-logo{height:108px!important;padding:10px 18px!important}
+    body.dashboard-page.sidebar-rail.sidebar-hover-expanded .dash-logo img,
+    body.dashboard-page.sidebar-pinned .dash-logo img{width:100%!important;height:88px!important}
+    body.dashboard-page.sidebar-rail.sidebar-hover-expanded .dash-menu .nav-group-toggle,
+    body.dashboard-page.sidebar-pinned .dash-menu .nav-group-toggle{display:flex!important}
+    body.dashboard-page.sidebar-rail.sidebar-hover-expanded .dash-menu .nav-group-items,
+    body.dashboard-page.sidebar-pinned .dash-menu .nav-group-items{display:none!important}
+    body.dashboard-page.sidebar-rail.sidebar-hover-expanded .dash-menu .nav-group.is-open .nav-group-items,
+    body.dashboard-page.sidebar-pinned .dash-menu .nav-group.is-open .nav-group-items{display:block!important}
+    body.dashboard-page.sidebar-rail.sidebar-hover-expanded .dash-menu a,
+    body.dashboard-page.sidebar-pinned .dash-menu a{justify-content:flex-start!important;gap:12px!important;padding:10px 12px!important;font-size:13px!important}
+    body.dashboard-page.sidebar-rail.sidebar-hover-expanded .dash-menu a span,
+    body.dashboard-page.sidebar-pinned .dash-menu a span{display:inline!important}
+    body.dashboard-page.sidebar-rail.sidebar-hover-expanded .sidebar-promo,
+    body.dashboard-page.sidebar-pinned .sidebar-promo,
+    body.dashboard-page.sidebar-rail.sidebar-hover-expanded .sidebar-foot,
+    body.dashboard-page.sidebar-pinned .sidebar-foot{display:block!important}
+    body.sidebar-rail:not(.professional-dashboard) .layout>.side.desktop{width:68px!important;flex-basis:68px!important;padding:12px 7px!important}
+    body.sidebar-rail:not(.professional-dashboard) .layout>.side.desktop .nav a{justify-content:center!important;gap:0!important;padding:11px 0!important;font-size:0!important}
+    body.sidebar-rail:not(.professional-dashboard) .layout>.side.desktop .nav a .nav-svg{width:21px;height:21px}
+    body.sidebar-rail:not(.professional-dashboard) .layout>.side.desktop .nav a span{display:none!important}
+    body.sidebar-rail:not(.professional-dashboard) .layout>.side.desktop .nav-group-toggle{display:none!important}
+    body.sidebar-rail:not(.professional-dashboard) .layout>.side.desktop .nav-group-items{display:block!important}
+    body.sidebar-rail:not(.professional-dashboard) .layout>.side.desktop .nav-group{margin:0 0 3px!important}
+    body.sidebar-rail.sidebar-hover-expanded:not(.professional-dashboard) .layout>.side.desktop{width:248px!important;flex-basis:248px!important;z-index:60;box-shadow:12px 0 32px rgba(14,10,38,.22)}
+    body.sidebar-rail.sidebar-hover-expanded:not(.professional-dashboard) .layout>.side.desktop .nav a{justify-content:flex-start!important;gap:12px!important;padding:10px 12px!important;font-size:13px!important}
+    body.sidebar-rail.sidebar-hover-expanded:not(.professional-dashboard) .layout>.side.desktop .nav a span{display:inline!important}
+    body.sidebar-rail.sidebar-hover-expanded:not(.professional-dashboard) .layout>.side.desktop .nav-group-toggle{display:flex!important}
+    body.sidebar-rail.sidebar-hover-expanded:not(.professional-dashboard) .layout>.side.desktop .nav-group-items{display:none!important}
+    body.sidebar-rail.sidebar-hover-expanded:not(.professional-dashboard) .layout>.side.desktop .nav-group.is-open .nav-group-items{display:block!important}
+    @media(max-width:800px){
+      .professional-dashboard .dash-sidebar{display:none!important}
+      .professional-dashboard .overlay.open{display:block!important;position:fixed!important;inset:0!important;background:rgba(10,8,25,.55)!important;backdrop-filter:blur(2px);z-index:1000!important}
+      .professional-dashboard .overlay .side{display:block!important;position:absolute!important;inset:0 auto 0 0!important;width:min(84vw,310px)!important;height:100%!important;padding:14px 12px!important;background:linear-gradient(180deg,#1c1933,#151326)!important;color:#f7f5ff!important;overflow-y:auto!important;box-shadow:14px 0 35px rgba(0,0,0,.25)!important}
+      .professional-dashboard .overlay .dash-menu a{min-height:44px!important;font-size:14px!important}
+      .professional-dashboard .overlay .dash-menu a span{display:inline!important}
+      .professional-dashboard .overlay .dash-menu .nav-group-toggle{display:flex!important;font-size:10px!important}
+      .professional-dashboard .overlay .dash-menu .nav-group-items{display:none!important}
+      .professional-dashboard .overlay .dash-menu .nav-group.is-open .nav-group-items{display:block!important}
+      body.sidebar-rail:not(.professional-dashboard) .layout>.side.desktop{display:none!important}
+      body.sidebar-rail:not(.professional-dashboard) .overlay.open{display:block!important;position:fixed!important;inset:0!important;background:rgba(10,8,25,.55)!important;backdrop-filter:blur(2px);z-index:1000!important}
+      body.sidebar-rail:not(.professional-dashboard) .overlay .side{display:block!important;position:absolute!important;inset:0 auto 0 0!important;width:min(84vw,310px)!important;height:100%!important;background:linear-gradient(180deg,#1c1933,#151326)!important;color:#f7f5ff!important;overflow-y:auto!important;box-shadow:14px 0 35px rgba(0,0,0,.25)!important}
+      .professional-dashboard .dash-main{margin-left:0!important}
+      .professional-dashboard .pro-site-footer{margin-left:0!important;width:100%!important}
+      .professional-dashboard .dash-header .pro-menu-btn{display:grid;place-items:center;flex:0 0 40px;width:40px;height:40px;border-radius:11px;background:rgba(114,85,216,.16);color:#fff}
+    }
+    @media(prefers-reduced-motion:reduce){.professional-dashboard .dash-sidebar,body:not(.professional-dashboard) .layout>.side.desktop{transition:none!important}}
+  `;
+  document.head.appendChild(style);
+})();

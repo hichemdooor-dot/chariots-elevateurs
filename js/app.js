@@ -2354,7 +2354,8 @@ function setupEngineNumberPrefix(){
     MITSUBISHI:'S4S-',
     ISUZU:'C240-',
     GPL:'CK25-',
-    YANMAR:''
+    YANMAR:'',
+    'ÉLECTRIQUE':''
   };
   numberField.dataset.enginePrefixReady='1';
   numberField.dataset.enginePrefixes=JSON.stringify(prefixes);
@@ -2418,7 +2419,7 @@ function applyEngineNumberPrefix(){
   const engineField=document.querySelector('[name="engine"]');
   const numberField=document.querySelector('[name="engine_number"]');
   if(!engineField||!numberField)return;
-  const prefixes={XINCHAI:'2606',MITSUBISHI:'S4S-',ISUZU:'C240-',GPL:'CK25-',YANMAR:''};
+  const prefixes={XINCHAI:'2606',MITSUBISHI:'S4S-',ISUZU:'C240-',GPL:'CK25-',YANMAR:'','ÉLECTRIQUE':''};
   const knownPrefixes=Object.values(prefixes).filter(Boolean).sort((a,b)=>b.length-a.length);
   const prefix=prefixes[String(engineField.value||'').trim().toUpperCase()]||'';
   let value=String(numberField.value||'').toUpperCase().trim();

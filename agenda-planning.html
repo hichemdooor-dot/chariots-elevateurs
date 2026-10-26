@@ -150,13 +150,11 @@
       <div class="agenda-field full"><label for="agendaKind">Type d’activité *</label><select id="agendaKind" class="agenda-select" required><option value="preparation">Préparation des chariots</option><option value="livraison">Livraison des chariots</option><option value="depannage">Dépannage — camion dépanneur</option></select></div>
       <div class="agenda-field"><label for="agendaDate">Date *</label><input id="agendaDate" class="agenda-input" type="date" required></div>
       <div class="agenda-field"><label for="agendaTitleInput">Intitulé de l’activité *</label><input id="agendaTitleInput" class="agenda-input" maxlength="140" required placeholder="Ex. Préparation chariot client"></div>
-      <div class="agenda-field"><label for="agendaStart">Heure de début *</label><input id="agendaStart" class="agenda-input" type="time" required value="08:00"></div>
-      <div class="agenda-field"><label for="agendaEnd">Heure de fin *</label><input id="agendaEnd" class="agenda-input" type="time" required value="09:00"></div>
+      <div class="agenda-field"><label for="agendaStart">Heure prévue *</label><input id="agendaStart" class="agenda-input" type="time" required value="08:00"></div>
       <div class="agenda-field"><label for="agendaChariot">N° châssis / chariot</label><div class="agenda-chariot-picker"><input id="agendaChariot" class="agenda-input" type="search" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="120" placeholder="Rechercher un chariot existant" aria-autocomplete="list" aria-controls="agendaChariotOptions" aria-expanded="false"><div id="agendaChariotOptions" class="agenda-chariot-options" role="listbox" hidden></div></div></div>
       <div class="agenda-field"><label for="agendaClient">Client</label><input id="agendaClient" class="agenda-input" maxlength="140" placeholder="Nom du client"></div>
       <div class="agenda-field"><label for="agendaDestination">Lieu / destination</label><div class="agenda-chariot-picker"><input id="agendaDestination" class="agenda-input" type="search" autocomplete="off" autocapitalize="words" spellcheck="false" maxlength="180" placeholder="Rechercher une wilaya ou saisir une adresse" aria-autocomplete="list" aria-controls="agendaWilayaOptions" aria-expanded="false"><div id="agendaWilayaOptions" class="agenda-chariot-options" role="listbox" hidden></div></div></div>
-      <div class="agenda-field"><label for="agendaDriver">Chauffeur</label><input id="agendaDriver" class="agenda-input" maxlength="100" list="agendaDriverOptions" placeholder="Nom du chauffeur"><datalist id="agendaDriverOptions"><option value="AISSA"><option value="YOUNES"><option value="BILLAL"><option value="HAMZA"></datalist></div>
-      <div class="agenda-field" id="agendaTruckField"><label for="agendaTruck">Camion dépanneur</label><input id="agendaTruck" class="agenda-input" maxlength="100" list="agendaTruckOptions" placeholder="Immatriculation / identifiant"><datalist id="agendaTruckOptions"></datalist></div>
+      <div class="agenda-field"><label for="agendaDriver">Chauffeur</label><select id="agendaDriver" class="agenda-select"><option value="">Sélectionner un chauffeur</option><option value="AISSA">AISSA</option><option value="YOUNES">YOUNES</option><option value="BILLAL">BILLAL</option><option value="HAMZA">HAMZA</option></select></div>
       <div class="agenda-field" id="agendaOwnerField"><label for="agendaOwner">Responsable de préparation</label><input id="agendaOwner" class="agenda-input" maxlength="100" placeholder="Nom du responsable"></div>
       <div class="agenda-field"><label for="agendaStatus">Statut</label><select id="agendaStatus" class="agenda-select"><option>À planifier</option><option selected>Planifiée</option><option>En cours</option><option>Prêt / Terminé</option><option>Reportée</option><option>Annulée</option></select></div>
       <div class="agenda-field full"><label for="agendaNotes">Observations / détails</label><textarea id="agendaNotes" class="agenda-textarea" maxlength="1500" placeholder="Instructions, panne signalée, précisions pour le chauffeur…"></textarea></div>
@@ -190,10 +188,10 @@ function active(i){return i.status!=="Annulée"&&i.status!=="Reportée"&&i.statu
 function fmtDay(d){return d.toLocaleDateString("fr-FR",{day:"2-digit",month:"short"})}
 function fmtLong(s){return parseISO(s).toLocaleDateString("fr-FR",{weekday:"long",day:"2-digit",month:"long",year:"numeric"})}
 function ordered(a,b){return (a.time||"99:99").localeCompare(b.time||"99:99")||String(a.title||"").localeCompare(String(b.title||""),"fr")}
-function getFiltered(){const q=$("agendaSearch").value.trim().toLocaleLowerCase("fr");const kind=$("agendaKindFilter").value;const status=$("agendaStatusFilter").value;return items.filter(i=>(!kind||i.kind===kind)&&(!status||i.status===status)&&(!q||[i.title,i.chassis,i.client,i.destination,i.driver,i.truck,i.owner,i.notes,kinds[i.kind]?.label].join(" ").toLocaleLowerCase("fr").includes(q)))}
+function getFiltered(){const q=$("agendaSearch").value.trim().toLocaleLowerCase("fr");const kind=$("agendaKindFilter").value;const status=$("agendaStatusFilter").value;return items.filter(i=>(!kind||i.kind===kind)&&(!status||i.status===status)&&(!q||[i.title,i.chassis,i.client,i.destination,i.driver,i.owner,i.notes,kinds[i.kind]?.label].join(" ").toLocaleLowerCase("fr").includes(q)))}
 function eventStatusClass(s){if(s==="Prêt / Terminé")return "done";if(s==="En cours")return "progress";if(s==="Annulée")return "cancelled";return "planned"}
-function eventMeta(i){return [i.client,i.chassis,i.destination,i.driver?("Chauffeur : "+i.driver):"",i.truck?("Camion : "+i.truck):"",i.owner?("Responsable : "+i.owner):""].filter(Boolean).join(" · ")}
-function eventHtml(i,compact){const kind=kinds[i.kind]||kinds.preparation;return '<button type="button" class="agenda-event" style="--event-color:'+kind.color+'" data-edit="'+safe(i.id)+'" aria-label="Modifier '+safe(i.title)+'"><div class="agenda-event-time">'+safe(i.time||"—")+(i.endTime?" – "+safe(i.endTime):"")+'</div><div class="agenda-event-title">'+safe(i.title||kind.label)+'</div>'+(!compact&&eventMeta(i)?'<div class="agenda-event-meta">'+safe(eventMeta(i))+'</div>':"")+'<span class="agenda-status '+eventStatusClass(i.status)+'">'+safe(i.status||"Planifiée")+'</span></button>'}
+function eventMeta(i){return [i.client,i.chassis,i.destination,i.driver?("Chauffeur : "+i.driver):"",i.owner?("Responsable : "+i.owner):""].filter(Boolean).join(" · ")}
+function eventHtml(i,compact){const kind=kinds[i.kind]||kinds.preparation;return '<button type="button" class="agenda-event" style="--event-color:'+kind.color+'" data-edit="'+safe(i.id)+'" aria-label="Modifier '+safe(i.title)+'"><div class="agenda-event-time">'+safe(i.time||"—")+'</div><div class="agenda-event-title">'+safe(i.title||kind.label)+'</div>'+(!compact&&eventMeta(i)?'<div class="agenda-event-meta">'+safe(eventMeta(i))+'</div>':"")+'<span class="agenda-status '+eventStatusClass(i.status)+'">'+safe(i.status||"Planifiée")+'</span></button>'}
 function renderStats(){
  const today=toISO(new Date()),ws=toISO(startWeek(new Date())),we=toISO(addDays(startWeek(new Date()),6));
  $("statToday").textContent=items.filter(i=>i.date===today&&i.status!=="Annulée").length;
@@ -213,7 +211,7 @@ function renderWeek(){
 }
 function renderRows(list){
  if(!list.length)return '<div class="agenda-empty-state"><strong>Aucune activité pour cette période.</strong>Ajoutez une préparation, une livraison ou une mission de camion dépanneur.</div>';
- return '<div class="agenda-list">'+list.map(i=>'<div class="agenda-list-row"><div class="agenda-list-time">'+safe(i.time||"—")+(i.endTime?"<br><span class=\"agenda-muted\">"+safe(i.endTime)+"</span>":"")+'</div><div class="agenda-list-copy"><div class="agenda-list-title"><i class="agenda-dot" style="background:'+(kinds[i.kind]||kinds.preparation).color+';vertical-align:middle;margin-right:5px"></i>'+safe(i.title)+'</div><div class="agenda-list-meta">'+safe(fmtLong(i.date))+' · '+safe((kinds[i.kind]||kinds.preparation).label)+'<br>'+safe(eventMeta(i)||"Aucun détail supplémentaire")+(i.notes?"<br>"+safe(i.notes):"")+'</div><span class="agenda-status '+eventStatusClass(i.status)+'">'+safe(i.status||"Planifiée")+'</span></div><div class="agenda-list-actions"><button class="agenda-mini-btn" type="button" data-edit="'+safe(i.id)+'">Modifier</button></div></div>').join("")+'</div>';
+ return '<div class="agenda-list">'+list.map(i=>'<div class="agenda-list-row"><div class="agenda-list-time">'+safe(i.time||"—")+'</div><div class="agenda-list-copy"><div class="agenda-list-title"><i class="agenda-dot" style="background:'+(kinds[i.kind]||kinds.preparation).color+';vertical-align:middle;margin-right:5px"></i>'+safe(i.title)+'</div><div class="agenda-list-meta">'+safe(fmtLong(i.date))+' · '+safe((kinds[i.kind]||kinds.preparation).label)+'<br>'+safe(eventMeta(i)||"Aucun détail supplémentaire")+(i.notes?"<br>"+safe(i.notes):"")+'</div><span class="agenda-status '+eventStatusClass(i.status)+'">'+safe(i.status||"Planifiée")+'</span></div><div class="agenda-list-actions"><button class="agenda-mini-btn" type="button" data-edit="'+safe(i.id)+'">Modifier</button></div></div>').join("")+'</div>';
 }
 function renderDay(){
  const list=getFiltered().filter(i=>i.date===selectedDate).sort(ordered);
@@ -252,15 +250,20 @@ function populateChariotOptions(query){
 function showToast(message){const el=$("agendaToast");el.textContent=message;el.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.hidden=true,3600)}
 function showAlert(message){$("agendaFormAlert").textContent=message;$("agendaFormAlert").classList.add("visible")}
 function clearAlert(){$("agendaFormAlert").textContent="";$("agendaFormAlert").classList.remove("visible")}
-const WILAYAS=["Adrar","Chlef","Laghouat","Oum El Bouaghi","Batna","Béjaïa","Biskra","Béchar","Blida","Bouira","Tamanrasset","Tébessa","Tlemcen","Tiaret","Tizi Ouzou","Alger","Djelfa","Jijel","Sétif","Saïda","Skikda","Sidi Bel Abbès","Annaba","Guelma","Constantine","Médéa","Mostaganem","M’Sila","Mascara","Ouargla","Oran","El Bayadh","Illizi","Bordj Bou Arréridj","Boumerdès","El Tarf","Tindouf","Tissemsilt","El Oued","Khenchela","Souk Ahras","Tipaza","Mila","Aïn Defla","Naâma","Aïn Témouchent","Ghardaïa","Relizane","Timimoun","Bordj Badji Mokhtar","Ouled Djellal","Béni Abbès","In Salah","In Guezzam","Touggourt","Djanet","El M’Ghair","El Meniaa"];
-function populateWilayaOptions(){const input=$("agendaDestination"),box=$("agendaWilayaOptions"),q=input.value.trim().toLocaleLowerCase("fr");const list=WILAYAS.filter(w=>!q||w.toLocaleLowerCase("fr").includes(q));box.innerHTML=list.length?list.map(w=>'<button type="button" class="agenda-chariot-option" role="option" data-wilaya="'+safe(w)+'"><strong>'+safe(w)+'</strong><span>Wilaya d’Algérie</span></button>').join(""):'<div class="agenda-chariot-empty">Aucune wilaya trouvée. Vous pouvez saisir une adresse libre.</div>';box.hidden=false;input.setAttribute("aria-expanded","true")}
+const WILAYAS=[["01","Adrar"],["02","Chlef"],["03","Laghouat"],["04","Oum El Bouaghi"],["05","Batna"],["06","Béjaïa"],["07","Biskra"],["08","Béchar"],["09","Blida"],["10","Bouira"],["11","Tamanrasset"],["12","Tébessa"],["13","Tlemcen"],["14","Tiaret"],["15","Tizi Ouzou"],["16","Alger"],["17","Djelfa"],["18","Jijel"],["19","Sétif"],["20","Saïda"],["21","Skikda"],["22","Sidi Bel Abbès"],["23","Annaba"],["24","Guelma"],["25","Constantine"],["26","Médéa"],["27","Mostaganem"],["28","M'Sila"],["29","Mascara"],["30","Ouargla"],["31","Oran"],["32","El Bayadh"],["33","Illizi"],["34","Bordj Bou Arréridj"],["35","Boumerdès"],["36","El Tarf"],["37","Tindouf"],["38","Tissemsilt"],["39","El Oued"],["40","Khenchela"],["41","Souk Ahras"],["42","Tipaza"],["43","Mila"],["44","Aïn Defla"],["45","Naâma"],["46","Aïn Témouchent"],["47","Ghardaïa"],["48","Relizane"],["49","Timimoun"],["50","Bordj Badji Mokhtar"],["51","Ouled Djellal"],["52","Béni Abbès"],["53","In Salah"],["54","In Guezzam"],["55","Touggourt"],["56","Djanet"],["57","El M'Ghair"],["58","El Meniaa"],["59","Aflou"],["60","Barika"],["61","El Kantara"],["62","Bir El Ater"],["63","El Aricha"],["64","Ksar Chellala"],["65","Aïn Oussara"],["66","Messaad"],["67","Ksar El Boukhari"],["68","Bou Saâda"],["69","El Abiodh Sidi Cheikh"]];
+const DEFAULT_AGENDA_DRIVERS=["AISSA","YOUNES","BILLAL","HAMZA"],AGENDA_DRIVER_CONFIG_TYPE="Configuration chauffeurs",AGENDA_DRIVER_CACHE_KEY="sbi_delivery_drivers_v1";
+let agendaDrivers=[...DEFAULT_AGENDA_DRIVERS];
+function normalizeAgendaDrivers(values){const out=[],seen=new Set();(Array.isArray(values)?values:[]).forEach(value=>{const name=String(value||"").trim().replace(/\s+/g," ").toLocaleUpperCase("fr"),key=name.toLocaleLowerCase("fr");if(name&&!seen.has(key)){seen.add(key);out.push(name)}});return out}
+function renderAgendaDrivers(preferredValue){const select=$("agendaDriver");if(!select)return;const chosen=preferredValue===undefined?select.value:String(preferredValue||"");select.innerHTML='<option value="">Sélectionner un chauffeur</option>'+agendaDrivers.map(name=>'<option value="'+safe(name)+'">'+safe(name)+'</option>').join("");if(chosen&&!agendaDrivers.includes(chosen)){const option=document.createElement("option");option.value=chosen;option.textContent=chosen;select.appendChild(option)}select.value=chosen||""}
+function cachedAgendaDrivers(){try{const parsed=JSON.parse(localStorage.getItem(AGENDA_DRIVER_CACHE_KEY)||"null");return Array.isArray(parsed)?normalizeAgendaDrivers(parsed):null}catch(_){return null}}
+async function loadAgendaDrivers(){try{const {data,error}=await supabaseClient.from("maintenance").select("travaux,created_at").eq("qr_id","SYSTEM").eq("type",AGENDA_DRIVER_CONFIG_TYPE).order("created_at",{ascending:false}).limit(1);if(error)throw error;let names=null;if(data&&data.length){try{const payload=JSON.parse(String(data[0].travaux||"{}"));if(Array.isArray(payload))names=payload;else if(Array.isArray(payload.drivers))names=payload.drivers}catch(_){}}if(names===null){const cached=cachedAgendaDrivers();names=cached===null?DEFAULT_AGENDA_DRIVERS:cached}agendaDrivers=normalizeAgendaDrivers(names);try{localStorage.setItem(AGENDA_DRIVER_CACHE_KEY,JSON.stringify(agendaDrivers))}catch(_){}}catch(error){agendaDrivers=cachedAgendaDrivers()||[...DEFAULT_AGENDA_DRIVERS];console.warn("Liste des chauffeurs non chargée depuis Supabase",error)}renderAgendaDrivers()}
+function populateWilayaOptions(){const input=$("agendaDestination"),box=$("agendaWilayaOptions"),q=input.value.trim().toLocaleLowerCase("fr");const list=WILAYAS.filter(([code,name])=>!q||(code+" "+name+" "+code+" - "+name).toLocaleLowerCase("fr").includes(q));box.innerHTML=list.length?list.map(([code,name])=>{const label=code+" - "+name;return '<button type="button" class="agenda-chariot-option" role="option" data-wilaya="'+safe(label)+'"><strong>'+safe(label)+'</strong><span>Wilaya d’Algérie</span></button>'}).join(""):'<div class="agenda-chariot-empty">Aucune wilaya trouvée. Vous pouvez saisir une adresse libre.</div>';box.hidden=false;input.setAttribute("aria-expanded","true")}
 function showFields(){
  const kind=$("agendaKind").value;
- $("agendaTruckField").style.display=kind==="depannage"?"flex":"none";
  $("agendaOwnerField").style.display=kind==="preparation"?"flex":"none";
  if(kind==="preparation")$("agendaDestination").placeholder="Zone de préparation / atelier";
- else if(kind==="livraison")$("agendaDestination").placeholder="Wilaya ou adresse de livraison";
- else $("agendaDestination").placeholder="Lieu de panne / destination";
+ else if(kind==="livraison")$("agendaDestination").placeholder="Wilaya (numéro) ou adresse de livraison";
+ else $("agendaDestination").placeholder="Wilaya (numéro), adresse ou lieu de panne";
  $("agendaChariot").placeholder=kind==="depannage"?"Chariot / véhicule concerné (facultatif)":"Rechercher un chariot existant";
  $("agendaDriver").placeholder=kind==="preparation"?"Chauffeur (facultatif)":"Nom du chauffeur";
  $("agendaDriver").parentElement.style.display=kind==="preparation"?"none":"flex";
@@ -273,13 +276,11 @@ function openForm(item){
  $("agendaDate").value=item?.date||selectedDate||toISO(new Date());
  $("agendaTitleInput").value=item?.title||"";
  $("agendaStart").value=item?.time||"08:00";
- $("agendaEnd").value=item?.endTime||"09:00";
- $("agendaChariot").value=item?.chassis||"";
+  $("agendaChariot").value=item?.chassis||"";
  $("agendaClient").value=item?.client||"";
  $("agendaDestination").value=item?.destination||"";
  $("agendaDriver").value=item?.driver||"";
- $("agendaTruck").value=item?.truck||"";
- $("agendaOwner").value=item?.owner||"";
+  $("agendaOwner").value=item?.owner||"";
  $("agendaStatus").value=item?.status||"Planifiée";
  $("agendaNotes").value=item?.notes||"";
  $("agendaSave").textContent=item?"Enregistrer les modifications":"Enregistrer l’activité";
@@ -294,15 +295,15 @@ function inferMachine(){
 }
 function getFormItem(){
  const kind=$("agendaKind").value;
- return {id:editingId||uuid(),kind:kind,date:$("agendaDate").value,time:$("agendaStart").value,endTime:$("agendaEnd").value,title:$("agendaTitleInput").value.trim(),chassis:$("agendaChariot").value.trim(),client:$("agendaClient").value.trim(),destination:$("agendaDestination").value.trim(),driver:$("agendaDriver").value.trim(),truck:kind==="depannage"?$("agendaTruck").value.trim():"",owner:kind==="preparation"?$("agendaOwner").value.trim():"",status:$("agendaStatus").value,notes:$("agendaNotes").value.trim(),updatedAt:new Date().toISOString()}}
+ return {id:editingId||uuid(),kind:kind,date:$("agendaDate").value,time:$("agendaStart").value,endTime:"",title:$("agendaTitleInput").value.trim(),chassis:$("agendaChariot").value.trim(),client:$("agendaClient").value.trim(),destination:$("agendaDestination").value.trim(),driver:$("agendaDriver").value.trim(),truck:"",owner:kind==="preparation"?$("agendaOwner").value.trim():"",status:$("agendaStatus").value,notes:$("agendaNotes").value.trim(),updatedAt:new Date().toISOString()}}
+function effectiveEndTime(item){if(item.endTime)return item.endTime;const parts=String(item.time||"00:00").split(":").map(Number);const total=Math.min(1439,(parts[0]||0)*60+(parts[1]||0)+60);return String(Math.floor(total/60)).padStart(2,"0")+":"+String(total%60).padStart(2,"0")}
 function conflictFor(next){
  if(next.status==="Annulée")return "";
  for(const old of items){
   if(old.id===next.id||old.date!==next.date||!active(old)||next.status==="Prêt / Terminé")continue;
-  const start=next.time||"00:00",end=next.endTime||"23:59",oldStart=old.time||"00:00",oldEnd=old.endTime||"23:59";
+  const start=next.time||"00:00",end=effectiveEndTime(next),oldStart=old.time||"00:00",oldEnd=effectiveEndTime(old);
   if(start>=oldEnd||oldStart>=end)continue;
   if(next.driver&&old.driver&&next.driver.toLocaleLowerCase("fr")===old.driver.toLocaleLowerCase("fr"))return "Conflit : le chauffeur "+next.driver+" est déjà affecté à « "+old.title+" » de "+oldStart+" à "+oldEnd+".";
-  if(next.kind==="depannage"&&old.kind==="depannage"&&next.truck&&old.truck&&next.truck.toLocaleLowerCase("fr")===old.truck.toLocaleLowerCase("fr"))return "Conflit : le camion dépanneur "+next.truck+" est déjà affecté à « "+old.title+" » de "+oldStart+" à "+oldEnd+".";
  }
  return "";
 }
@@ -341,9 +342,8 @@ function openNew(){openForm(null)}
 async function saveForm(e){
  e.preventDefault();if(saveBusy)return;clearAlert();
  const item=getFormItem();
- if(!item.date||!item.time||!item.endTime||!item.title){showAlert("Veuillez renseigner le type, la date, l’intitulé et les heures.");return}
- if(item.endTime<=item.time){showAlert("L’heure de fin doit être postérieure à l’heure de début.");return}
- const conflict=conflictFor(item);if(conflict){showAlert(conflict+" Modifiez l’horaire ou affectez un autre chauffeur/camion.");return}
+ if(!item.date||!item.time||!item.title){showAlert("Veuillez renseigner le type, la date, l’intitulé et l’heure prévue.");return}
+ const conflict=conflictFor(item);if(conflict){showAlert(conflict+" Modifiez l’heure prévue ou affectez un autre chauffeur.");return}
  saveBusy=true;$("agendaSave").disabled=true;$("agendaSave").textContent="Enregistrement…";
  try{
   await persist(item);selectedDate=item.date;weekShift=Math.round((startWeek(parseISO(item.date))-startWeek(new Date()))/(7*86400000));view="day";closeForm();render();showToast(DEMO?"Activité enregistrée dans l’aperçu.":"Activité enregistrée dans l’agenda partagé.");
@@ -352,8 +352,8 @@ async function saveForm(e){
 }
 function exportCsv(){
  const rows=getFiltered().sort((a,b)=>a.date.localeCompare(b.date)||ordered(a,b));
- const headers=["Date","Début","Fin","Type","Intitulé","Châssis / véhicule","Client","Lieu / destination","Chauffeur","Camion dépanneur","Responsable préparation","Statut","Observations"];
- const values=rows.map(i=>[i.date,i.time,i.endTime,kinds[i.kind]?.label||i.kind,i.title,i.chassis,i.client,i.destination,i.driver,i.truck,i.owner,i.status,i.notes]);
+ const headers=["Date","Heure prévue","Type","Intitulé","Châssis / véhicule","Client","Lieu / destination","Chauffeur","Responsable préparation","Statut","Observations"];
+ const values=rows.map(i=>[i.date,i.time,kinds[i.kind]?.label||i.kind,i.title,i.chassis,i.client,i.destination,i.driver,i.owner,i.status,i.notes]);
  const csv="\uFEFF"+[headers,...values].map(row=>row.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(";")).join("\r\n");
  const blob=new Blob([csv],{type:"text/csv;charset=utf-8"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="SBI_agenda_"+toISO(new Date())+".csv";document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
 }
@@ -375,6 +375,7 @@ async function page(){
  if(!await session())return;
  try{await loadChariots();machines=Array.isArray(CHARIOTS)?CHARIOTS:[]}catch(err){machines=[];console.warn("Liste des chariots indisponible dans Agenda",err)}
  try{await loadShared()}catch(err){sharedLoadError=typeof friendlySupabaseError==="function"?friendlySupabaseError(err):(err?.message||String(err));items=[];}
+ await loadAgendaDrivers();
  bind();render();
  document.addEventListener("visibilitychange",async()=>{if(document.visibilityState!=="visible"||DEMO)return;try{await loadShared();render()}catch(e){}});
  window.setInterval(async()=>{if(document.visibilityState!=="visible"||$("agendaModal").hidden===false)return;try{const before=JSON.stringify(items);await loadShared();if(JSON.stringify(items)!==before)render()}catch(e){}},45000);
@@ -382,7 +383,7 @@ async function page(){
 function demoPage(){
  $("agendaDemoBanner").style.display="block";
  try{const parsed=JSON.parse(localStorage.getItem(STORE)||"null");items=Array.isArray(parsed)?parsed:sampleItems()}catch(e){items=sampleItems()}
- machines=[];bind();render();
+ machines=[];renderAgendaDrivers();bind();render();
 }
 if(DEMO)demoPage();else if(typeof initPage==="function")initPage(page());
 })();

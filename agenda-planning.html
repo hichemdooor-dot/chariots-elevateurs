@@ -34,6 +34,7 @@
 .agenda-filters{display:grid;grid-template-columns:minmax(220px,1fr) 210px 185px;gap:10px;padding:13px 14px;border-bottom:1px solid #e8edf2}
 .agenda-input,.agenda-select,.agenda-textarea{box-sizing:border-box;width:100%;min-width:0;min-height:42px;padding:10px 12px;border:1px solid #d6e1eb;border-radius:10px;background:#fff;color:#173b5a;font:inherit;font-size:14px;outline:none}
 .agenda-input:focus,.agenda-select:focus,.agenda-textarea:focus{border-color:#4b9bd7;box-shadow:0 0 0 3px rgba(59,146,208,.14)}
+.agenda-chariot-picker{position:relative;width:100%;min-width:0}.agenda-chariot-options{position:absolute;left:0;right:0;top:calc(100% + 5px);z-index:10020;max-height:min(42vh,320px);overflow:auto;background:#fff;border:1px solid #cbd9e5;border-radius:12px;box-shadow:0 10px 28px rgba(15,45,70,.2);overscroll-behavior:contain}.agenda-chariot-options[hidden]{display:none}.agenda-chariot-option{display:block;width:100%;padding:12px;text-align:left;border:0;border-bottom:1px solid #edf1f5;background:#fff;color:#173b5a;font:inherit;cursor:pointer}.agenda-chariot-option:last-child{border-bottom:0}.agenda-chariot-option:active,.agenda-chariot-option:focus{background:#eaf4ff;outline:0}.agenda-chariot-option strong{display:block;font-size:14px}.agenda-chariot-option span{display:block;margin-top:3px;font-size:12px;color:#61778a}.agenda-chariot-empty{padding:13px;color:#65798b;font-size:13px}
 .agenda-week-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:9px;padding:14px}
 .agenda-day{min-width:0;border:1px solid #e1e9f0;background:#fbfdff;border-radius:13px;overflow:hidden;min-height:235px}
 .agenda-day.selected{border-color:#3a8bc9;box-shadow:0 0 0 2px rgba(58,139,201,.12)}
@@ -144,7 +145,7 @@
       <div class="agenda-field"><label for="agendaTitleInput">Intitulé de l’activité *</label><input id="agendaTitleInput" class="agenda-input" maxlength="140" required placeholder="Ex. Préparation chariot client"></div>
       <div class="agenda-field"><label for="agendaStart">Heure de début *</label><input id="agendaStart" class="agenda-input" type="time" required value="08:00"></div>
       <div class="agenda-field"><label for="agendaEnd">Heure de fin *</label><input id="agendaEnd" class="agenda-input" type="time" required value="09:00"></div>
-      <div class="agenda-field"><label for="agendaChariot">N° châssis / chariot</label><input id="agendaChariot" class="agenda-input" list="agendaChariotOptions" maxlength="120" placeholder="Rechercher un chariot existant"><datalist id="agendaChariotOptions"></datalist></div>
+      <div class="agenda-field"><label for="agendaChariot">N° châssis / chariot</label><div class="agenda-chariot-picker"><input id="agendaChariot" class="agenda-input" type="search" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="120" placeholder="Rechercher un chariot existant" aria-autocomplete="list" aria-controls="agendaChariotOptions" aria-expanded="false"><div id="agendaChariotOptions" class="agenda-chariot-options" role="listbox" hidden></div></div></div>
       <div class="agenda-field"><label for="agendaClient">Client</label><input id="agendaClient" class="agenda-input" maxlength="140" placeholder="Nom du client"></div>
       <div class="agenda-field"><label for="agendaDestination">Lieu / destination</label><input id="agendaDestination" class="agenda-input" maxlength="180" placeholder="Wilaya, adresse ou lieu de panne"></div>
       <div class="agenda-field"><label for="agendaDriver">Chauffeur</label><input id="agendaDriver" class="agenda-input" maxlength="100" list="agendaDriverOptions" placeholder="Nom du chauffeur"><datalist id="agendaDriverOptions"><option value="AISSA"><option value="YOUNES"><option value="BILLAL"><option value="HAMZA"></datalist></div>
@@ -234,9 +235,12 @@ function render(){
  if(view==="week")renderWeek();else if(view==="day")renderDay();else renderList();
  populateChariotOptions();
 }
-function populateChariotOptions(){
- const options=machines.map(c=>{const key=String(c.chassis||c.qr_id||"").trim();return key?'<option value="'+safe(key)+'">'+safe([c.client,c.capacity,c.engine].filter(Boolean).join(" · "))+'</option>':""}).join("");
- $("agendaChariotOptions").innerHTML=options;
+function populateChariotOptions(query){
+ const box=$("agendaChariotOptions"),q=String(query??$("agendaChariot").value??"").trim().toLocaleLowerCase("fr");
+ const seen=new Set();
+ const matches=machines.map(c=>({c,key:String(c.chassis||c.qr_id||c.serial_number||"").trim()})).filter(x=>x.key&&!seen.has(x.key)&&seen.add(x.key)).filter(x=>!q||[x.key,x.c.client,x.c.capacity,x.c.engine,x.c.qr_id,x.c.serial_number].some(v=>String(v||"").toLocaleLowerCase("fr").includes(q))).slice(0,100);
+ box.innerHTML=matches.length?matches.map(({c,key})=>'<button type="button" class="agenda-chariot-option" role="option" data-chariot-value="'+safe(key)+'"><strong>'+safe(key)+'</strong><span>'+safe([c.client,c.capacity,c.engine].filter(Boolean).join(" · ")||"Chariot SBI")+'</span></button>').join(""):'<div class="agenda-chariot-empty">Aucun chariot correspondant.</div>';
+ box.hidden=false;$("agendaChariot").setAttribute("aria-expanded","true");
 }
 function showToast(message){const el=$("agendaToast");el.textContent=message;el.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.hidden=true,3600)}
 function showAlert(message){$("agendaFormAlert").textContent=message;$("agendaFormAlert").classList.add("visible")}
@@ -347,7 +351,7 @@ function exportCsv(){
 function bind(){
  $("agendaAdd").addEventListener("click",openNew);
  $("agendaClose").addEventListener("click",closeForm);$("agendaCancel").addEventListener("click",closeForm);$("agendaForm").addEventListener("submit",saveForm);
- $("agendaKind").addEventListener("change",showFields);$("agendaChariot").addEventListener("change",inferMachine);
+ $("agendaKind").addEventListener("change",showFields);$("agendaChariot").addEventListener("focus",()=>populateChariotOptions());$("agendaChariot").addEventListener("input",()=>populateChariotOptions());$("agendaChariot").addEventListener("change",inferMachine);$("agendaChariotOptions").addEventListener("click",e=>{const option=e.target.closest("[data-chariot-value]");if(!option)return;$("agendaChariot").value=option.dataset.chariotValue;$("agendaChariotOptions").hidden=true;$("agendaChariot").setAttribute("aria-expanded","false");inferMachine();$("agendaChariot").focus({preventScroll:true})});document.addEventListener("click",e=>{if(!e.target.closest(".agenda-chariot-picker")){$("agendaChariotOptions").hidden=true;$("agendaChariot").setAttribute("aria-expanded","false")}});
  $("agendaExport").addEventListener("click",exportCsv);
  $("agendaPrev").addEventListener("click",()=>{if(view==="day")selectedDate=toISO(addDays(parseISO(selectedDate),-1));else{weekShift--;selectedDate=toISO(mondayOfCurrentWeek())}render()});
  $("agendaNext").addEventListener("click",()=>{if(view==="day")selectedDate=toISO(addDays(parseISO(selectedDate),1));else{weekShift++;selectedDate=toISO(mondayOfCurrentWeek())}render()});

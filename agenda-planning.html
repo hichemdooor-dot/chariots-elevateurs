@@ -141,7 +141,7 @@
     <form id="agendaForm" class="agenda-form">
       <div class="agenda-field full"><label for="agendaKind">Type d’activité *</label><select id="agendaKind" class="agenda-select" required><option value="preparation">Préparation des chariots</option><option value="livraison">Livraison des chariots</option><option value="depannage">Dépannage — camion dépanneur</option></select></div>
       <div class="agenda-field"><label for="agendaDate">Date *</label><input id="agendaDate" class="agenda-input" type="date" required></div>
-      <div class="agenda-field"><label for="agendaTitleInput">Intitulé / client *</label><input id="agendaTitleInput" class="agenda-input" maxlength="140" required placeholder="Ex. Préparation chariot client"></div>
+      <div class="agenda-field"><label for="agendaTitleInput">Intitulé de l’activité *</label><input id="agendaTitleInput" class="agenda-input" maxlength="140" required placeholder="Ex. Préparation chariot client"></div>
       <div class="agenda-field"><label for="agendaStart">Heure de début *</label><input id="agendaStart" class="agenda-input" type="time" required value="08:00"></div>
       <div class="agenda-field"><label for="agendaEnd">Heure de fin *</label><input id="agendaEnd" class="agenda-input" type="time" required value="09:00"></div>
       <div class="agenda-field"><label for="agendaChariot">N° châssis / chariot</label><input id="agendaChariot" class="agenda-input" list="agendaChariotOptions" maxlength="120" placeholder="Rechercher un chariot existant"><datalist id="agendaChariotOptions"></datalist></div>
@@ -178,7 +178,7 @@ function mondayOfCurrentWeek(){return addDays(startWeek(new Date()),weekShift*7)
 function sameDate(a,b){return String(a)===String(b)}
 function safe(v){return String(v==null?"":v).replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]))}
 function uuid(){return (crypto&&crypto.randomUUID)?crypto.randomUUID():"agenda_"+Date.now()+"_"+Math.random().toString(36).slice(2,9)}
-function active(i){return i.status!=="Annulée"&&i.status!=="Prêt / Terminé"}
+function active(i){return i.status!=="Annulée"&&i.status!=="Reportée"&&i.status!=="Prêt / Terminé"}
 function fmtDay(d){return d.toLocaleDateString("fr-FR",{day:"2-digit",month:"short"})}
 function fmtLong(s){return parseISO(s).toLocaleDateString("fr-FR",{weekday:"long",day:"2-digit",month:"long",year:"numeric"})}
 function ordered(a,b){return (a.time||"99:99").localeCompare(b.time||"99:99")||String(a.title||"").localeCompare(String(b.title||""),"fr")}
@@ -250,6 +250,7 @@ function showFields(){
  else $("agendaDestination").placeholder="Lieu de panne / destination";
  $("agendaChariot").placeholder=kind==="depannage"?"Chariot / véhicule concerné (facultatif)":"Rechercher un chariot existant";
  $("agendaDriver").placeholder=kind==="preparation"?"Chauffeur (facultatif)":"Nom du chauffeur";
+ $("agendaDriver").parentElement.style.display=kind==="preparation"?"none":"flex";
 }
 function openForm(item){
  editingId=item?item.id:null;clearAlert();
@@ -348,8 +349,8 @@ function bind(){
  $("agendaClose").addEventListener("click",closeForm);$("agendaCancel").addEventListener("click",closeForm);$("agendaForm").addEventListener("submit",saveForm);
  $("agendaKind").addEventListener("change",showFields);$("agendaChariot").addEventListener("change",inferMachine);
  $("agendaExport").addEventListener("click",exportCsv);
- $("agendaPrev").addEventListener("click",()=>{if(view==="day")selectedDate=toISO(addDays(parseISO(selectedDate),-1));else weekShift--;render()});
- $("agendaNext").addEventListener("click",()=>{if(view==="day")selectedDate=toISO(addDays(parseISO(selectedDate),1));else weekShift++;render()});
+ $("agendaPrev").addEventListener("click",()=>{if(view==="day")selectedDate=toISO(addDays(parseISO(selectedDate),-1));else{weekShift--;selectedDate=toISO(mondayOfCurrentWeek())}render()});
+ $("agendaNext").addEventListener("click",()=>{if(view==="day")selectedDate=toISO(addDays(parseISO(selectedDate),1));else{weekShift++;selectedDate=toISO(mondayOfCurrentWeek())}render()});
  document.querySelectorAll("[data-agenda-view]").forEach(b=>b.addEventListener("click",()=>{view=b.dataset.agendaView;render()}));
  $("agendaSearch").addEventListener("input",render);$("agendaKindFilter").addEventListener("change",render);$("agendaStatusFilter").addEventListener("change",render);
  $("agendaCalendar").addEventListener("click",e=>{const edit=e.target.closest("[data-edit]");if(edit){const item=items.find(i=>i.id===edit.dataset.edit);if(item)openForm(item);return}const day=e.target.closest("[data-select-day]");if(day){selectedDate=day.dataset.selectDay;render();}});

@@ -200,7 +200,7 @@ function renderStats(){
  $("statTow").textContent=items.filter(i=>i.kind==="depannage"&&i.status!=="Annulée"&&i.status!=="Prêt / Terminé").length;
 }
 function renderWeek(){
- const base=mondayOfCurrentWeek(),filtered=getFiltered().sort(ordered);
+ const base=addDays(mondayOfCurrentWeek(),-2),filtered=getFiltered().sort(ordered);
  $("agendaPeriod").textContent=base.toLocaleDateString("fr-FR",{day:"2-digit",month:"short"})+" – "+fmtDay(addDays(base,6))+" "+base.getFullYear();
  $("agendaCalendar").className="agenda-week-grid";
  $("agendaSelected").hidden=true;

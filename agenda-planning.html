@@ -312,7 +312,7 @@ async function loadShared(){
  if(error)throw error;
  sharedLoadError="";
  const map=new Map();
- (data||[]).forEach(row=>{try{const p=JSON.parse(String(row.travaux||"{}"));if(!p.id)return;const stamp=String(p.updatedAt||row.created_at||"");const prev=map.get(String(p.id));if(!prev||stamp>=prev._stamp)map.set(String(p.id),{...p,_stamp:stamp})}catch(e){}});
+ (data||[]).forEach(row=>{try{const p=JSON.parse(String(row.travaux||"{}"));if(!p.id)return;const stamp=String(row.created_at||p.updatedAt||"");const prev=map.get(String(p.id));if(!prev||stamp>=prev._stamp)map.set(String(p.id),{...p,_stamp:stamp})}catch(e){}});
  items=Array.from(map.values()).map(({_stamp,...p})=>p).filter(i=>i.date&&i.kind);
 }
 function sampleItems(){

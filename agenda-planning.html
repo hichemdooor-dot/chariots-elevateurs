@@ -169,7 +169,7 @@ const TYPE="Agenda opérationnelle";
 const STORE="sbi_agenda_preview_demo_v1";
 const $=id=>document.getElementById(id);
 const kinds={preparation:{label:"Préparation",color:"#287ab5"},livraison:{label:"Livraison",color:"#15945a"},depannage:{label:"Camion dépanneur",color:"#d97706"}};
-let items=[],machines=[],selectedDate=toISO(new Date()),weekShift=0,view="week",editingId=null,saveBusy=false,toastTimer=null;
+let items=[],machines=[],selectedDate=toISO(new Date()),weekShift=0,view="week",editingId=null,saveBusy=false,toastTimer=null,sharedLoadError="";
 function toISO(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 function parseISO(s){const p=String(s||"").split("-").map(Number);return new Date(p[0]||2000,(p[1]||1)-1,p[2]||1)}
 function addDays(d,n){const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.setDate(x.getDate()+n);return x}
@@ -226,6 +226,11 @@ function renderList(){
 function render(){
  renderStats();
  document.querySelectorAll("[data-agenda-view]").forEach(b=>b.classList.toggle("active",b.dataset.agendaView===view));
+ if(sharedLoadError&&!DEMO){
+  $("agendaCalendar").className="";
+  $("agendaCalendar").innerHTML='<div class="agenda-empty-state"><strong>Impossible de charger les activités partagées.</strong>'+safe(sharedLoadError)+'<br>Vérifiez votre connexion et les autorisations, puis rechargez la page.</div>';
+  $("agendaSelected").hidden=true;populateChariotOptions();return;
+ }
  if(view==="week")renderWeek();else if(view==="day")renderDay();else renderList();
  populateChariotOptions();
 }
@@ -297,12 +302,14 @@ async function persist(item){
  const row={qr_id:"AGENDA",date:item.date,technicien:(typeof getUserDisplayName==="function"?getUserDisplayName():"SBI"),type:TYPE,travaux:JSON.stringify(payload),created_by:typeof currentUser!=="undefined"?(currentUser?.id||null):null};
  const result=await supabaseClient.from("maintenance").insert(row);
  if(result.error)throw result.error;
+ sharedLoadError="";
  const idx=items.findIndex(i=>i.id===item.id);
  if(idx>=0)items[idx]=item;else items.push(item);
 }
 async function loadShared(){
  const {data,error}=await supabaseClient.from("maintenance").select("id,qr_id,date,technicien,type,travaux,created_at,created_by").eq("type",TYPE).order("created_at",{ascending:true}).limit(1500);
  if(error)throw error;
+ sharedLoadError="";
  const map=new Map();
  (data||[]).forEach(row=>{try{const p=JSON.parse(String(row.travaux||"{}"));if(!p.id)return;const stamp=String(p.updatedAt||row.created_at||"");const prev=map.get(String(p.id));if(!prev||stamp>=prev._stamp)map.set(String(p.id),{...p,_stamp:stamp})}catch(e){}});
  items=Array.from(map.values()).map(({_stamp,...p})=>p).filter(i=>i.date&&i.kind);
@@ -352,8 +359,8 @@ function bind(){
 }
 async function page(){
  if(!await session())return;
- await loadChariots();machines=Array.isArray(CHARIOTS)?CHARIOTS:[];
- try{await loadShared()}catch(err){$("agendaCalendar").innerHTML='<div class="agenda-empty-state"><strong>Impossible de charger les activités partagées.</strong>'+safe(typeof friendlySupabaseError==="function"?friendlySupabaseError(err):err?.message||String(err))+'<br>Vérifiez la connexion et les autorisations.</div>';items=[];}
+ try{await loadChariots();machines=Array.isArray(CHARIOTS)?CHARIOTS:[]}catch(err){machines=[];console.warn("Liste des chariots indisponible dans Agenda",err)}
+ try{await loadShared()}catch(err){sharedLoadError=typeof friendlySupabaseError==="function"?friendlySupabaseError(err):(err?.message||String(err));items=[];}
  bind();render();
  document.addEventListener("visibilitychange",async()=>{if(document.visibilityState!=="visible"||DEMO)return;try{await loadShared();render()}catch(e){}});
  window.setInterval(async()=>{if(document.visibilityState!=="visible"||$("agendaModal").hidden===false)return;try{const before=JSON.stringify(items);await loadShared();if(JSON.stringify(items)!==before)render()}catch(e){}},45000);

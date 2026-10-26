@@ -244,7 +244,8 @@ function populateChariotOptions(query){
  $("agendaWilayaOptions").hidden=true;$("agendaDestination").setAttribute("aria-expanded","false");
  const box=$("agendaChariotOptions"),q=String(query??$("agendaChariot").value??"").trim().toLocaleLowerCase("fr");
  const seen=new Set();
- const matches=machines.map(c=>({c,key:String(c.chassis||c.qr_id||c.serial_number||"").trim()})).filter(x=>x.key&&!seen.has(x.key)&&seen.add(x.key)).filter(x=>!q||[x.key,x.c.client,x.c.capacity,x.c.engine,x.c.qr_id,x.c.serial_number].some(v=>String(v||"").toLocaleLowerCase("fr").includes(q))).slice(0,100);
+ const isDelivered=c=>{const status=String(c.statut||c.status||c.etat||c.statut_livraison||"").trim().toLocaleLowerCase("fr");return ["livré","livree","livrée","delivered","livré au client"].includes(status)||Boolean(c.date_livraison||c.delivery_date)&&!["en stock","stock","réservé","reserve","en cours de fabrication"].includes(status)};
+ const matches=machines.map(c=>({c,key:String(c.chassis||c.qr_id||c.serial_number||"").trim()})).filter(x=>x.key&&!isDelivered(x.c)&&!seen.has(x.key)&&seen.add(x.key)).filter(x=>!q||[x.key,x.c.client,x.c.capacity,x.c.engine,x.c.qr_id,x.c.serial_number].some(v=>String(v||"").toLocaleLowerCase("fr").includes(q))).slice(0,100);
  box.innerHTML=matches.length?matches.map(({c,key})=>'<button type="button" class="agenda-chariot-option" role="option" data-chariot-value="'+safe(key)+'"><strong>'+safe(key)+'</strong><span>'+safe([c.client,c.capacity,c.engine].filter(Boolean).join(" · ")||"Chariot SBI")+'</span></button>').join(""):'<div class="agenda-chariot-empty">Aucun chariot correspondant.</div>';
  box.hidden=false;$("agendaChariot").setAttribute("aria-expanded","true");
 }

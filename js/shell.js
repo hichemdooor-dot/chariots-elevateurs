@@ -31,7 +31,8 @@ function menuHTML(){
       link('chariots-prevus-livraison.html','Chariots prévus livraison','<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M7 2v4M17 2v4M3 9h18"/><path d="M8 13h3M8 17h5"/>')+
       link('fiche-livraison.html','Fiche de livraison','<path d="M6 3h9l4 4v14H6z"/><path d="M15 3v5h4M9 12h7M9 16h7"/>')+
       link('planning-livraisons.html','Planning des livraisons','<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M7 2v4M17 2v4M3 9h18"/><path d="M8 13h2M12 13h2M16 13h0M8 17h2M12 17h2"/>')+
-      link('livres.html','Chariots livrés','<path d="M4 5h12v14H4z"/><path d="M8 8h5M8 12h5M8 16h3"/><path d="M16 8h4v11h-4"/>'))}
+      link('agenda-planning.html','Agenda & Planning','<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M7 2v4M17 2v4M3 9h18M8 13h3M8 17h5"/>')+
+            link('livres.html','Chariots livrés','<path d="M4 5h12v14H4z"/><path d="M8 8h5M8 12h5M8 16h3"/><path d="M16 8h4v11h-4"/>'))}
     ${group('sav','SAV & retours',
       link('retours-clients.html','Pannes & retours clients','<path d="M3 12h4l3 8 4-16 3 8h4"/><circle cx="12" cy="12" r="10"/>'))}
     ${group('administration','Administration',

@@ -109,7 +109,7 @@
  .agenda-form{grid-template-columns:1fr;padding:14px}.agenda-field.full,.agenda-form-actions{grid-column:1}.agenda-modal{padding:0;align-items:flex-end}.agenda-dialog{width:100%;max-height:94vh;border-radius:18px 18px 0 0}.agenda-dialog-head{padding:15px}.agenda-dialog-head h2{font-size:18px}
 }
 @media(max-width:420px){.agenda-week-grid{grid-template-columns:1fr}.agenda-day{min-height:0}.agenda-day-body{grid-template-columns:repeat(2,minmax(0,1fr))}.agenda-day-body .agenda-empty-day{grid-column:1/-1}.agenda-stat-label{font-size:11px}.agenda-stat-note{font-size:11px}}
- .agenda-event-client{font-weight:700;color:#526a80;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}.agenda-event-client:empty{display:none}</style>
+ .agenda-event-client{font-weight:700;color:#526a80;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}.agenda-event-client:empty{display:none}.agenda-event-creator{font-size:10px;color:#77899b;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}</style>
 </head>
 <body>
 <header class="top"><button class="menu-btn mobile-only" type="button" onclick="toggleMenu()" aria-label="Ouvrir le menu">☰</button><div class="brand">SBI</div><div class="avatar">S</div></header>
@@ -191,7 +191,7 @@ function ordered(a,b){return (a.time||"99:99").localeCompare(b.time||"99:99")||S
 function getFiltered(){const q=$("agendaSearch").value.trim().toLocaleLowerCase("fr");const kind=$("agendaKindFilter").value;const status=$("agendaStatusFilter").value;return items.filter(i=>(!kind||i.kind===kind)&&(!status||i.status===status)&&(!q||[i.title,i.chassis,i.client,i.destination,i.driver,i.owner,i.notes,kinds[i.kind]?.label].join(" ").toLocaleLowerCase("fr").includes(q)))}
 function eventStatusClass(s){if(s==="Prêt / Terminé")return "done";if(s==="En cours")return "progress";if(s==="Annulée")return "cancelled";return "planned"}
 function eventMeta(i){return [i.client,i.chassis,i.destination,i.driver?("Chauffeur : "+i.driver):"",i.owner?("Responsable : "+i.owner):""].filter(Boolean).join(" · ")}
-function eventHtml(i,compact){const kind=kinds[i.kind]||kinds.preparation;return '<button type="button" class="agenda-event" style="--event-color:'+kind.color+'" data-edit="'+safe(i.id)+'" aria-label="Modifier '+safe(i.title)+'"><div class="agenda-event-time">'+safe(i.time||"—")+'</div><div class="agenda-event-title">'+safe(i.title||kind.label)+'</div>'+(i.client?'<div class="agenda-event-meta agenda-event-client">'+safe(i.client)+'</div>':"")+( !compact&&eventMeta(i)?'<div class="agenda-event-meta">'+safe(eventMeta(i))+'</div>':"")+'<span class="agenda-status '+eventStatusClass(i.status)+'">'+safe(i.status||"Planifiée")+'</span></button>'}
+function eventHtml(i,compact){const kind=kinds[i.kind]||kinds.preparation;return '<button type="button" class="agenda-event" style="--event-color:'+kind.color+'" data-edit="'+safe(i.id)+'" aria-label="Modifier '+safe(i.title)+'"><div class="agenda-event-time">'+safe(i.time||"—")+'</div><div class="agenda-event-title">'+safe(i.title||kind.label)+'</div>'+(i.client?'<div class="agenda-event-meta agenda-event-client">'+safe(i.client)+'</div>':"")+(i.createdByName?'<div class="agenda-event-meta agenda-event-creator">Ajouté par : '+safe(i.createdByName)+'</div>':"")+( !compact&&eventMeta(i)?'<div class="agenda-event-meta">'+safe(eventMeta(i))+'</div>':"")+'<span class="agenda-status '+eventStatusClass(i.status)+'">'+safe(i.status||"Planifiée")+'</span></button>'}
 function renderStats(){
  const today=toISO(new Date()),ws=toISO(startWeek(new Date())),we=toISO(addDays(startWeek(new Date()),6));
  $("statToday").textContent=items.filter(i=>i.date===today&&i.status!=="Annulée").length;
@@ -315,7 +315,7 @@ async function persist(item){
   if(idx>=0)items[idx]=item;else items.push(item);
   localStorage.setItem(STORE,JSON.stringify(items));return;
  }
- const payload={...item,createdBy:item.createdBy||(typeof currentUser!=="undefined"?(currentUser?.id||null):null)};
+ const payload={...item,createdBy:item.createdBy||(typeof currentUser!=="undefined"?(currentUser?.id||null):null),createdByName:item.createdByName||(typeof getUserDisplayName==="function"?getUserDisplayName():"Utilisateur")};
  const row={qr_id:"SYSTEM",date:item.date,technicien:(typeof getUserDisplayName==="function"?getUserDisplayName():"SBI"),type:TYPE,travaux:JSON.stringify(payload),created_by:typeof currentUser!=="undefined"?(currentUser?.id||null):null};
  const result=await supabaseClient.from("maintenance").insert(row);
  if(result.error)throw result.error;
@@ -328,7 +328,7 @@ async function loadShared(){
  if(error)throw error;
  sharedLoadError="";
  const map=new Map();
- (data||[]).forEach(row=>{try{const p=JSON.parse(String(row.travaux||"{}"));if(!p.id)return;const stamp=String(row.created_at||p.updatedAt||"");const prev=map.get(String(p.id));if(!prev||stamp>=prev._stamp)map.set(String(p.id),{...p,createdBy:p.createdBy||row.created_by||null,_stamp:stamp})}catch(e){}});
+ (data||[]).forEach(row=>{try{const p=JSON.parse(String(row.travaux||"{}"));if(!p.id)return;const stamp=String(row.created_at||p.updatedAt||"");const prev=map.get(String(p.id));if(!prev||stamp>=prev._stamp)map.set(String(p.id),{...p,createdBy:p.createdBy||row.created_by||null,createdByName:p.createdByName||row.technicien||"",_stamp:stamp})}catch(e){}});
  items=Array.from(map.values()).map(({_stamp,...p})=>p).filter(i=>i.date&&i.kind&&!i.deleted);
 }
 function sampleItems(){

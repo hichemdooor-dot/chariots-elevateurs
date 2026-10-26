@@ -300,7 +300,7 @@ async function persist(item){
   localStorage.setItem(STORE,JSON.stringify(items));return;
  }
  const payload={...item};
- const row={qr_id:"AGENDA",date:item.date,technicien:(typeof getUserDisplayName==="function"?getUserDisplayName():"SBI"),type:TYPE,travaux:JSON.stringify(payload),created_by:typeof currentUser!=="undefined"?(currentUser?.id||null):null};
+ const row={qr_id:"SYSTEM",date:item.date,technicien:(typeof getUserDisplayName==="function"?getUserDisplayName():"SBI"),type:TYPE,travaux:JSON.stringify(payload),created_by:typeof currentUser!=="undefined"?(currentUser?.id||null):null};
  const result=await supabaseClient.from("maintenance").insert(row);
  if(result.error)throw result.error;
  sharedLoadError="";

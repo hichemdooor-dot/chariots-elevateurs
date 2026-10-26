@@ -87,7 +87,7 @@
 .agenda-field.full{grid-column:1/-1}
 .agenda-field label{font-size:12px;font-weight:800;color:#3e5a72}
 .agenda-textarea{min-height:84px;resize:vertical}
-.agenda-form-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:9px;padding-top:8px;border-top:1px solid #e8edf2}
+.agenda-form-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:9px;padding-top:8px;border-top:1px solid #e8edf2}.agenda-btn.danger{margin-right:auto;border-color:#e7b6b3;color:#a12622;background:#fff7f6}.agenda-btn.danger:hover{background:#ffe9e7}
 .agenda-alert{display:none;margin:0 18px 15px;padding:11px 12px;border-radius:10px;border:1px solid #f1c6c3;background:#fff0ef;color:#982b26;font-size:13px;line-height:1.45}
 .agenda-alert.visible{display:block}
 .agenda-toast{position:fixed;right:18px;bottom:18px;z-index:10000;background:#123b5c;color:#fff;padding:12px 16px;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.22);max-width:min(420px,calc(100vw - 36px));font-size:13px}
@@ -158,7 +158,7 @@
       <div class="agenda-field" id="agendaOwnerField"><label for="agendaOwner">Responsable de préparation</label><input id="agendaOwner" class="agenda-input" maxlength="100" placeholder="Nom du responsable"></div>
       <div class="agenda-field"><label for="agendaStatus">Statut</label><select id="agendaStatus" class="agenda-select"><option>À planifier</option><option selected>Planifiée</option><option>En cours</option><option>Prêt / Terminé</option><option>Reportée</option><option>Annulée</option></select></div>
       <div class="agenda-field full"><label for="agendaNotes">Observations / détails</label><textarea id="agendaNotes" class="agenda-textarea" maxlength="1500" placeholder="Instructions, panne signalée, précisions pour le chauffeur…"></textarea></div>
-      <div class="agenda-form-actions"><button id="agendaCancel" class="agenda-btn" type="button">Annuler</button><button id="agendaSave" class="agenda-btn primary" type="submit">Enregistrer l’activité</button></div>
+      <div class="agenda-form-actions"><button id="agendaDelete" class="agenda-btn danger" type="button" hidden>Supprimer</button><button id="agendaCancel" class="agenda-btn" type="button">Annuler</button><button id="agendaSave" class="agenda-btn primary" type="submit">Enregistrer l’activité</button></div>
     </form>
   </section>
 </div>
@@ -284,7 +284,7 @@ function openForm(item){
   $("agendaOwner").value=item?.owner||"";
  $("agendaStatus").value=item?.status||"Planifiée";
  $("agendaNotes").value=item?.notes||"";
- $("agendaSave").textContent=item?"Enregistrer les modifications":"Enregistrer l’activité";
+ $("agendaSave").textContent=item?"Enregistrer les modifications":"Enregistrer l’activité";$("agendaDelete").hidden=!item;
  showFields();$("agendaModal").hidden=false;document.body.style.overflow="hidden";setTimeout(()=>$("agendaKind").focus(),50);
 }
 function closeForm(){$("agendaModal").hidden=true;document.body.style.overflow="";editingId=null;clearAlert()}
@@ -328,7 +328,7 @@ async function loadShared(){
  sharedLoadError="";
  const map=new Map();
  (data||[]).forEach(row=>{try{const p=JSON.parse(String(row.travaux||"{}"));if(!p.id)return;const stamp=String(row.created_at||p.updatedAt||"");const prev=map.get(String(p.id));if(!prev||stamp>=prev._stamp)map.set(String(p.id),{...p,_stamp:stamp})}catch(e){}});
- items=Array.from(map.values()).map(({_stamp,...p})=>p).filter(i=>i.date&&i.kind);
+ items=Array.from(map.values()).map(({_stamp,...p})=>p).filter(i=>i.date&&i.kind&&!i.deleted);
 }
 function sampleItems(){
  const base=startWeek(new Date());
@@ -340,6 +340,23 @@ function sampleItems(){
  ];
 }
 function openNew(){openForm(null)}
+async function deleteCurrentActivity(){
+ if(!editingId||saveBusy)return;
+ const item=items.find(i=>i.id===editingId);if(!item)return;
+ if(!confirm("Supprimer définitivement cette activité de l’agenda partagé ?"))return;
+ saveBusy=true;$("agendaDelete").disabled=true;$("agendaDelete").textContent="Suppression…";
+ try{
+  if(DEMO){items=items.filter(i=>i.id!==editingId);localStorage.setItem(STORE,JSON.stringify(items));}
+  else{
+   const tombstone={...item,deleted:true,updatedAt:new Date().toISOString()};
+   const row={qr_id:"SYSTEM",date:item.date,technicien:(typeof getUserDisplayName==="function"?getUserDisplayName():"SBI"),type:TYPE,travaux:JSON.stringify(tombstone),created_by:typeof currentUser!=="undefined"?(currentUser?.id||null):null};
+   const result=await supabaseClient.from("maintenance").insert(row);if(result.error)throw result.error;
+   items=items.filter(i=>i.id!==editingId);
+  }
+  closeForm();render();showToast(DEMO?"Activité supprimée de l’aperçu.":"Activité supprimée de l’agenda partagé.");
+ }catch(err){console.error(err);showAlert("Suppression impossible : "+(typeof friendlySupabaseError==="function"?friendlySupabaseError(err):(err?.message||String(err)))+". Vérifiez vos droits d’écriture.");}
+ finally{saveBusy=false;$("agendaDelete").disabled=false;$("agendaDelete").textContent="Supprimer";}
+}
 async function saveForm(e){
  e.preventDefault();if(saveBusy)return;clearAlert();
  const item=getFormItem();
@@ -360,7 +377,7 @@ function exportCsv(){
 }
 function bind(){
  $("agendaAdd").addEventListener("click",openNew);
- $("agendaClose").addEventListener("click",closeForm);$("agendaCancel").addEventListener("click",closeForm);$("agendaForm").addEventListener("submit",saveForm);
+ $("agendaClose").addEventListener("click",closeForm);$("agendaCancel").addEventListener("click",closeForm);$("agendaDelete").addEventListener("click",deleteCurrentActivity);$("agendaForm").addEventListener("submit",saveForm);
  $("agendaKind").addEventListener("change",showFields);$("agendaDestination").addEventListener("focus",populateWilayaOptions);$("agendaDestination").addEventListener("input",populateWilayaOptions);$("agendaWilayaOptions").addEventListener("click",e=>{const option=e.target.closest("[data-wilaya]");if(!option)return;$("agendaDestination").value=option.dataset.wilaya;$("agendaWilayaOptions").hidden=true;$("agendaDestination").setAttribute("aria-expanded","false");$("agendaChariotOptions").hidden=true;$("agendaChariot").setAttribute("aria-expanded","false")});$("agendaChariot").addEventListener("focus",()=>populateChariotOptions());$("agendaChariot").addEventListener("input",()=>populateChariotOptions());$("agendaChariot").addEventListener("change",inferMachine);$("agendaChariotOptions").addEventListener("click",e=>{const option=e.target.closest("[data-chariot-value]");if(!option)return;$("agendaChariot").value=option.dataset.chariotValue;$("agendaChariotOptions").hidden=true;$("agendaChariot").setAttribute("aria-expanded","false");$("agendaWilayaOptions").hidden=true;$("agendaDestination").setAttribute("aria-expanded","false");inferMachine()});document.addEventListener("click",e=>{if(!e.target.closest(".agenda-chariot-picker")){$("agendaChariotOptions").hidden=true;$("agendaChariot").setAttribute("aria-expanded","false");$("agendaWilayaOptions").hidden=true;$("agendaDestination").setAttribute("aria-expanded","false")}});
  $("agendaExport").addEventListener("click",exportCsv);
  $("agendaPrev").addEventListener("click",()=>{if(view==="day")selectedDate=toISO(addDays(parseISO(selectedDate),-1));else{weekShift--;selectedDate=toISO(mondayOfCurrentWeek())}render()});

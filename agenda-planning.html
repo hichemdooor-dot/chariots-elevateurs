@@ -284,7 +284,7 @@ function openForm(item){
   $("agendaOwner").value=item?.owner||"";
  $("agendaStatus").value=item?.status||"Planifiée";
  $("agendaNotes").value=item?.notes||"";
- $("agendaSave").textContent=item?"Enregistrer les modifications":"Enregistrer l’activité";$("agendaDelete").hidden=!item;
+ $("agendaSave").textContent=item?"Enregistrer les modifications":"Enregistrer l’activité";$("agendaDelete").hidden=!item||!canDeleteActivity(item);
  showFields();$("agendaModal").hidden=false;document.body.style.overflow="hidden";setTimeout(()=>$("agendaKind").focus(),50);
 }
 function closeForm(){$("agendaModal").hidden=true;document.body.style.overflow="";editingId=null;clearAlert()}
@@ -314,7 +314,7 @@ async function persist(item){
   if(idx>=0)items[idx]=item;else items.push(item);
   localStorage.setItem(STORE,JSON.stringify(items));return;
  }
- const payload={...item};
+ const payload={...item,createdBy:item.createdBy||(typeof currentUser!=="undefined"?(currentUser?.id||null):null)};
  const row={qr_id:"SYSTEM",date:item.date,technicien:(typeof getUserDisplayName==="function"?getUserDisplayName():"SBI"),type:TYPE,travaux:JSON.stringify(payload),created_by:typeof currentUser!=="undefined"?(currentUser?.id||null):null};
  const result=await supabaseClient.from("maintenance").insert(row);
  if(result.error)throw result.error;
@@ -327,7 +327,7 @@ async function loadShared(){
  if(error)throw error;
  sharedLoadError="";
  const map=new Map();
- (data||[]).forEach(row=>{try{const p=JSON.parse(String(row.travaux||"{}"));if(!p.id)return;const stamp=String(row.created_at||p.updatedAt||"");const prev=map.get(String(p.id));if(!prev||stamp>=prev._stamp)map.set(String(p.id),{...p,_stamp:stamp})}catch(e){}});
+ (data||[]).forEach(row=>{try{const p=JSON.parse(String(row.travaux||"{}"));if(!p.id)return;const stamp=String(row.created_at||p.updatedAt||"");const prev=map.get(String(p.id));if(!prev||stamp>=prev._stamp)map.set(String(p.id),{...p,createdBy:p.createdBy||row.created_by||null,_stamp:stamp})}catch(e){}});
  items=Array.from(map.values()).map(({_stamp,...p})=>p).filter(i=>i.date&&i.kind&&!i.deleted);
 }
 function sampleItems(){
@@ -340,15 +340,17 @@ function sampleItems(){
  ];
 }
 function openNew(){openForm(null)}
+function canDeleteActivity(item){if(!item)return false;if(DEMO)return true;const userId=typeof currentUser!=="undefined"?(currentUser?.id||null):null;return !!userId&&((typeof isAdmin==="function"&&isAdmin())||String(item.createdBy||"")===String(userId))}
 async function deleteCurrentActivity(){
  if(!editingId||saveBusy)return;
  const item=items.find(i=>i.id===editingId);if(!item)return;
+ if(!canDeleteActivity(item)){showAlert("Vous pouvez supprimer uniquement les activités que vous avez créées. Un administrateur peut supprimer toutes les activités.");return}
  if(!confirm("Supprimer définitivement cette activité de l’agenda partagé ?"))return;
  saveBusy=true;$("agendaDelete").disabled=true;$("agendaDelete").textContent="Suppression…";
  try{
   if(DEMO){items=items.filter(i=>i.id!==editingId);localStorage.setItem(STORE,JSON.stringify(items));}
   else{
-   const tombstone={...item,deleted:true,updatedAt:new Date().toISOString()};
+   const tombstone={...item,createdBy:item.createdBy||currentUser.id,deleted:true,updatedAt:new Date().toISOString()};
    const row={qr_id:"SYSTEM",date:item.date,technicien:(typeof getUserDisplayName==="function"?getUserDisplayName():"SBI"),type:TYPE,travaux:JSON.stringify(tombstone),created_by:typeof currentUser!=="undefined"?(currentUser?.id||null):null};
    const result=await supabaseClient.from("maintenance").insert(row);if(result.error)throw result.error;
    items=items.filter(i=>i.id!==editingId);

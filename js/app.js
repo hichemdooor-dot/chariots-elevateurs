@@ -3104,7 +3104,7 @@ async function deliveryPlanningPage(){
           if(!ok){failed.push(c?.chassis||p.qr);continue}
           delivered++;
           try{
-            await saveDeliveryConfirmationToStock(p.qr,p,{date:deliveryDate,time:String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0'),driver:p.driver||'',destination:p.destination||'',client:'',note:p.note||''});
+            await saveDeliveryConfirmationToStock(p.qr,p,{date:String(p.date||deliveryDate).slice(0,10),time:String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0'),driver:p.driver||'',destination:p.destination||'',client:'',note:p.note||''});
           }catch(error){
             console.warn('Informations de livraison non enregistrées pour '+p.qr,error);
             stockWarnings.push(c?.chassis||p.qr);

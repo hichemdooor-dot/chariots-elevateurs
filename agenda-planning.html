@@ -365,8 +365,10 @@ async function saveForm(e){
  e.preventDefault();if(saveBusy)return;clearAlert();
  const item=getFormItem();
  if(!item.date||!item.time||!item.title){showAlert("Veuillez renseigner le type, la date, l’intitulé et l’heure prévue.");return}
- const dailyTypeCount=items.filter(existing=>!existing.deleted&&existing.date===item.date&&existing.kind===item.kind&&String(existing.id)!==String(editingId||"")).length;
- if(dailyTypeCount>=6){const typeLabel=(kinds[item.kind]||kinds.preparation).label;showAlert("Limite atteinte : 6 activités maximum pour « "+typeLabel+" » le "+formatDate(item.date)+". Choisissez une autre date ou modifiez une activité existante.");return}
+ if(item.kind==="preparation"){
+  const dailyPreparationCount=items.filter(existing=>!existing.deleted&&existing.date===item.date&&existing.kind==="preparation"&&String(existing.id)!==String(editingId||"")).length;
+  if(dailyPreparationCount>=6){showAlert("Limite atteinte : 6 préparations de chariots maximum le "+formatDate(item.date)+". Choisissez une autre date ou modifiez une préparation existante.");return}
+ }
  const conflict=conflictFor(item);if(conflict){showAlert(conflict+" Modifiez l’heure prévue ou affectez un autre chauffeur.");return}
  saveBusy=true;$("agendaSave").disabled=true;$("agendaSave").textContent="Enregistrement…";
  try{

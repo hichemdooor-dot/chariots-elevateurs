@@ -957,11 +957,12 @@ async function transitionChariotStatus(qrId,nextStatus,reason='',options={}){
   if(!c){alert('Chariot introuvable.');return false}
   const from=normalizeStatus(c.status),to=normalizeStatus(nextStatus);
   if(from===to)return true;
-  if(to==='livre'&&from!=='pret a livrer'){alert('Le chariot doit être en « Prêt à livrer » avant de passer à « Livré ».');return false}
+  const directDelivery=to==='livre'&&options?.allowDirectDelivery===true&&isAdmin();
+  if(to==='livre'&&from!=='pret a livrer'&&!directDelivery){alert('Le chariot doit être en « Prêt à livrer » avant de passer à « Livré ».');return false}
   const blockedRecovery=from==='bloque / non conforme'&&isAdmin()&&['en stock','reserve'].includes(to);
   if(!isAdmin()&&['reserve','preparation livraison','pret a livrer'].includes(to)){alert('Cette action est réservée à l’administrateur.');return false}
-  if(AUTO_WORKFLOW_FORWARD[from]!==nextStatus&&!(isAdmin()&&to==='bloque / non conforme')&&!blockedRecovery){alert(`Transition non autorisée : ${c.status||'—'} → ${nextStatus}.`);return false}
-  if(from==='bloque / non conforme'&&!blockedRecovery){alert('Un chariot bloqué doit être réintégré au stock par un administrateur.');return false}
+  if(AUTO_WORKFLOW_FORWARD[from]!==nextStatus&&!(isAdmin()&&to==='bloque / non conforme')&&!blockedRecovery&&!directDelivery){alert(`Transition non autorisée : ${c.status||'—'} → ${nextStatus}.`);return false}
+  if(from==='bloque / non conforme'&&!blockedRecovery&&!directDelivery){alert('Un chariot bloqué doit être réintégré au stock par un administrateur.');return false}
   const now=new Date(),updatedAt=now.toISOString(),payload={status:nextStatus,updated_at:updatedAt};
   // Workflow: dès qu'un chariot atteint Préparation livraison ou Prêt à livrer,
   // son emplacement de stock devient automatiquement STOCK1.
@@ -3084,23 +3085,22 @@ async function deliveryPlanningPage(){
       if(!requireAdminForDelivery())return;
       const targetDate=String(selectedDate||localDateISO(new Date())).slice(0,10);
       const targetPlans=plans.filter(p=>String(p.date||'').slice(0,10)===targetDate&&!isDelivered(getMachine(p.qr)));
-      const ready=targetPlans.filter(p=>{const c=getMachine(p.qr);return c&&normalizeStatus(c.status)==='pret a livrer'});
-      const notReady=targetPlans.filter(p=>{const c=getMachine(p.qr);return !c||normalizeStatus(c.status)!=='pret a livrer'});
-      if(!ready.length){
-        alert(notReady.length?'Aucun chariot planifié pour le '+formatLong(targetDate)+' n’est au statut « Prêt à livrer ». Les chariots non prêts n’ont pas été modifiés.':'Aucun chariot à livrer n’est planifié pour le '+formatLong(targetDate)+'.');
+      const deliverable=targetPlans.filter(p=>getMachine(p.qr));
+      if(!deliverable.length){
+        alert('Aucun chariot à livrer n’est planifié pour le '+formatLong(targetDate)+'.');
         return;
       }
-      const labels=ready.map(p=>getMachine(p.qr)?.chassis||p.qr).join(', ');
-      if(!confirm('Confirmer la livraison de '+ready.length+' chariot(s) planifié(s) pour le '+formatLong(targetDate)+' ?\n\n'+labels+'\n\nLa date et l’heure actuelles seront utilisées. Chauffeur et destination reprendront les informations du planning. '+(notReady.length?'\n\n'+notReady.length+' chariot(s) non « Prêt à livrer » seront ignorés.':'')))return;
+      const labels=deliverable.map(p=>{const c=getMachine(p.qr);return (c?.chassis||p.qr)+' — '+(c?.status||'statut inconnu')}).join(', ');
+      if(!confirm('Confirmer la livraison de TOUS les '+deliverable.length+' chariot(s) planifié(s) pour le '+formatLong(targetDate)+' ?\\n\\n'+labels+'\\n\\nLes statuts actuels ne bloqueront pas cette action. Vérifiez que chaque chariot est réellement livré. La date de planification de chaque chariot sera conservée.'))return;
       deliverAllTodayBtn.disabled=true;
       const originalText=deliverAllTodayBtn.textContent;
       let delivered=0,failed=[],stockWarnings=[];
       try{
-        for(let index=0;index<ready.length;index++){
-          const p=ready[index],c=getMachine(p.qr);
-          deliverAllTodayBtn.textContent='Livraison '+(index+1)+'/'+ready.length+'…';
+        for(let index=0;index<deliverable.length;index++){
+          const p=deliverable[index],c=getMachine(p.qr);
+          deliverAllTodayBtn.textContent='Livraison '+(index+1)+'/'+deliverable.length+'…';
           const now=new Date(),deliveryDate=localISODateGlobal(now);
-          const ok=await transitionChariotStatus(p.qr,'Livré','Workflow livraison — livraison groupée',{deliveryDate});
+          const ok=await transitionChariotStatus(p.qr,'Livré','Workflow livraison — livraison groupée',{deliveryDate,allowDirectDelivery:true});
           if(!ok){failed.push(c?.chassis||p.qr);continue}
           delivered++;
           try{
@@ -3112,8 +3112,7 @@ async function deliveryPlanningPage(){
         }
         try{await loadDeliveryPlans();syncPlans(DELIVERY_PLANS)}catch(error){console.warn('Actualisation du planning après livraison groupée',error)}
         refreshChariotOptions();renderWeek();renderList();
-        let message='Livraisons confirmées : '+delivered+'/'+ready.length+'.';
-        if(notReady.length)message+='\nIgnorés (statut différent de « Prêt à livrer ») : '+notReady.map(p=>getMachine(p.qr)?.chassis||p.qr).join(', ')+'.';
+        let message='Livraisons confirmées : '+delivered+'/'+deliverable.length+'.';
         if(failed.length)message+='\nÉchec de transition : '+failed.join(', ')+'.';
         if(stockWarnings.length)message+='\nAttention : statut livré, mais informations de livraison non enregistrées pour : '+stockWarnings.join(', ')+'.';
         alert(message);

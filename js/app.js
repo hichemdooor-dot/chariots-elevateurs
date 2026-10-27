@@ -3016,14 +3016,8 @@ async function deliveryPlanningPage(){
       const note=els.note.value.trim();
       if(!qr){alert('Veuillez sélectionner un chariot.');return}
       const edit=String(els.form.dataset.edit||'');
-      // Refresh shared plans before checking so this form does not rely on a stale list.
-      try{
-        await loadDeliveryPlans();
-        syncPlans(DELIVERY_PLANS);
-      }catch(loadError){
-        alert('Impossible de vérifier le planning partagé. Rien n’a été enregistré. '+friendlySupabaseError(loadError));
-        return;
-      }
+      // Use the already-loaded shared plan list for immediate validation.
+      // Avoid an extra Supabase read on every save; Realtime keeps this list current.
       const machine=getMachine(qr);
       if(!machine){alert('Chariot introuvable. Actualisez la page puis réessayez.');return}
       if(!edit&&isDelivered(machine)){alert('Un chariot déjà livré ne peut pas être planifié.');return}
@@ -3056,9 +3050,20 @@ async function deliveryPlanningPage(){
           if(historyError)console.warn('Historique modification planification non enregistré',historyError);
         }catch(historyError){console.warn('Historique modification planification non enregistré',historyError)}
       }
-      try{await loadDeliveryPlans()}
-      catch(refreshError){alert('Planification enregistrée mais actualisation impossible : '+friendlySupabaseError(refreshError))}
-      syncPlans(DELIVERY_PLANS);
+      // Update the screen from the successful insert response path without waiting
+      // for a second full planning query. Refresh shared data in the background.
+      if(edit){
+        plans=plans.map(p=>String(p.id)===edit?payload:p);
+      }else{
+        plans=[...plans.filter(p=>String(p.id)!==logicalId),payload];
+      }
+      syncPlans(plans);
+      loadDeliveryPlans().then(remote=>{
+        syncPlans(remote);
+        renderWeek();
+        renderList();
+        refreshChariotOptions();
+      }).catch(refreshError=>console.warn('Actualisation du planning en arrière-plan',refreshError));
       selectedDate=date;
       weekStart=startOfWeek(parseDate(date));
       closeModal();

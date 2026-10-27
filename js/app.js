@@ -3082,16 +3082,16 @@ async function deliveryPlanningPage(){
     deliverAllTodayBtn.style.display=isAdmin()?'':'none';
     deliverAllTodayBtn.addEventListener('click',async()=>{
       if(!requireAdminForDelivery())return;
-      const today=localDateISO(new Date());
-      const todaysPlans=plans.filter(p=>String(p.date||'').slice(0,10)===today&&!isDelivered(getMachine(p.qr)));
-      const ready=todaysPlans.filter(p=>{const c=getMachine(p.qr);return c&&normalizeStatus(c.status)==='pret a livrer'});
-      const notReady=todaysPlans.filter(p=>{const c=getMachine(p.qr);return !c||normalizeStatus(c.status)!=='pret a livrer'});
+      const targetDate=String(selectedDate||localDateISO(new Date())).slice(0,10);
+      const targetPlans=plans.filter(p=>String(p.date||'').slice(0,10)===targetDate&&!isDelivered(getMachine(p.qr)));
+      const ready=targetPlans.filter(p=>{const c=getMachine(p.qr);return c&&normalizeStatus(c.status)==='pret a livrer'});
+      const notReady=targetPlans.filter(p=>{const c=getMachine(p.qr);return !c||normalizeStatus(c.status)!=='pret a livrer'});
       if(!ready.length){
-        alert(notReady.length?'Aucun chariot planifié aujourd’hui n’est au statut « Prêt à livrer ». Les chariots non prêts n’ont pas été modifiés.':'Aucun chariot à livrer n’est planifié pour aujourd’hui.');
+        alert(notReady.length?'Aucun chariot planifié pour le '+formatLong(targetDate)+' n’est au statut « Prêt à livrer ». Les chariots non prêts n’ont pas été modifiés.':'Aucun chariot à livrer n’est planifié pour le '+formatLong(targetDate)+'.');
         return;
       }
       const labels=ready.map(p=>getMachine(p.qr)?.chassis||p.qr).join(', ');
-      if(!confirm('Confirmer la livraison de '+ready.length+' chariot(s) planifié(s) aujourd’hui ?\n\n'+labels+'\n\nLa date et l’heure actuelles seront utilisées. Chauffeur et destination reprendront les informations du planning. '+(notReady.length?'\n\n'+notReady.length+' chariot(s) non « Prêt à livrer » seront ignorés.':'')))return;
+      if(!confirm('Confirmer la livraison de '+ready.length+' chariot(s) planifié(s) pour le '+formatLong(targetDate)+' ?\n\n'+labels+'\n\nLa date et l’heure actuelles seront utilisées. Chauffeur et destination reprendront les informations du planning. '+(notReady.length?'\n\n'+notReady.length+' chariot(s) non « Prêt à livrer » seront ignorés.':'')))return;
       deliverAllTodayBtn.disabled=true;
       const originalText=deliverAllTodayBtn.textContent;
       let delivered=0,failed=[],stockWarnings=[];

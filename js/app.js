@@ -3077,6 +3077,52 @@ async function deliveryPlanningPage(){
       if(submitButton){submitButton.disabled=false;submitButton.textContent=previousSubmitText}
     }
   };
+  const deliverAllTodayBtn=document.getElementById('deliverAllTodayBtn');
+  if(deliverAllTodayBtn){
+    deliverAllTodayBtn.style.display=isAdmin()?'':'none';
+    deliverAllTodayBtn.addEventListener('click',async()=>{
+      if(!requireAdminForDelivery())return;
+      const today=localDateISO(new Date());
+      const todaysPlans=plans.filter(p=>String(p.date||'').slice(0,10)===today&&!isDelivered(getMachine(p.qr)));
+      const ready=todaysPlans.filter(p=>{const c=getMachine(p.qr);return c&&normalizeStatus(c.status)==='pret a livrer'});
+      const notReady=todaysPlans.filter(p=>{const c=getMachine(p.qr);return !c||normalizeStatus(c.status)!=='pret a livrer'});
+      if(!ready.length){
+        alert(notReady.length?'Aucun chariot planifié aujourd’hui n’est au statut « Prêt à livrer ». Les chariots non prêts n’ont pas été modifiés.':'Aucun chariot à livrer n’est planifié pour aujourd’hui.');
+        return;
+      }
+      const labels=ready.map(p=>getMachine(p.qr)?.chassis||p.qr).join(', ');
+      if(!confirm('Confirmer la livraison de '+ready.length+' chariot(s) planifié(s) aujourd’hui ?\n\n'+labels+'\n\nLa date et l’heure actuelles seront utilisées. Chauffeur et destination reprendront les informations du planning. '+(notReady.length?'\n\n'+notReady.length+' chariot(s) non « Prêt à livrer » seront ignorés.':'')))return;
+      deliverAllTodayBtn.disabled=true;
+      const originalText=deliverAllTodayBtn.textContent;
+      let delivered=0,failed=[],stockWarnings=[];
+      try{
+        for(let index=0;index<ready.length;index++){
+          const p=ready[index],c=getMachine(p.qr);
+          deliverAllTodayBtn.textContent='Livraison '+(index+1)+'/'+ready.length+'…';
+          const now=new Date(),deliveryDate=localISODateGlobal(now);
+          const ok=await transitionChariotStatus(p.qr,'Livré','Workflow livraison — livraison groupée',{deliveryDate});
+          if(!ok){failed.push(c?.chassis||p.qr);continue}
+          delivered++;
+          try{
+            await saveDeliveryConfirmationToStock(p.qr,p,{date:deliveryDate,time:String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0'),driver:p.driver||'',destination:p.destination||'',client:'',note:p.note||''});
+          }catch(error){
+            console.warn('Informations de livraison non enregistrées pour '+p.qr,error);
+            stockWarnings.push(c?.chassis||p.qr);
+          }
+        }
+        try{await loadDeliveryPlans();syncPlans(DELIVERY_PLANS)}catch(error){console.warn('Actualisation du planning après livraison groupée',error)}
+        refreshChariotOptions();renderWeek();renderList();
+        let message='Livraisons confirmées : '+delivered+'/'+ready.length+'.';
+        if(notReady.length)message+='\nIgnorés (statut différent de « Prêt à livrer ») : '+notReady.map(p=>getMachine(p.qr)?.chassis||p.qr).join(', ')+'.';
+        if(failed.length)message+='\nÉchec de transition : '+failed.join(', ')+'.';
+        if(stockWarnings.length)message+='\nAttention : statut livré, mais informations de livraison non enregistrées pour : '+stockWarnings.join(', ')+'.';
+        alert(message);
+      }finally{
+        deliverAllTodayBtn.disabled=false;
+        deliverAllTodayBtn.textContent=originalText;
+      }
+    });
+  }
   if(els.plan){els.plan.style.display=isAdmin()?'':'none'}
   els.cancel.onclick=closeModal;document.querySelectorAll('#deliveryViewFilters [data-view-mode]').forEach(b=>{b.addEventListener('click',()=>setViewMode(b.dataset.viewMode))});els.planSearch?.addEventListener('input',renderList);els.planDateFrom?.addEventListener('change',renderList);els.planDateTo?.addEventListener('change',renderList);els.clearPlanFilters?.addEventListener('click',()=>{if(els.planSearch)els.planSearch.value='';if(els.planDateFrom)els.planDateFrom.value='';if(els.planDateTo)els.planDateTo.value='';renderList();els.planSearch?.focus()});els.close?.addEventListener('click',closeModal);els.clearSearch?.addEventListener('click',()=>{els.search.value='';renderSearchResults();els.search.focus()});els.modal.addEventListener('click',e=>{if(e.target===els.modal)closeModal()});els.search?.addEventListener('input',renderSearchResults);els.search?.addEventListener('search',renderSearchResults);els.chariot?.addEventListener('change',()=>{if(els.search){els.search.value='';els.searchResults.innerHTML=''}});els.note?.addEventListener('input',updateNoteCount);document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(els.driverManager&&!els.driverManager.classList.contains('hidden')){closeDriverManager();return}if(!els.modal.classList.contains('hidden'))closeModal()});els.plan.onclick=()=>openModal(selectedDate, new URLSearchParams(location.search).get('qr')||'');els.today.onclick=()=>{selectedDate=localDateISO(new Date());weekStart=startOfWeek(new Date());setViewMode('today');renderWeek();renderList()};els.prev.onclick=()=>{weekStart=addDays(weekStart,-7);setViewMode('day');renderWeek();renderList()};els.next.onclick=()=>{weekStart=addDays(weekStart,7);setViewMode('day');renderWeek();renderList()};
   window.addEventListener('focus',refreshFromServer);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refreshFromServer()});

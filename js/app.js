@@ -3012,9 +3012,9 @@ async function deliveryPlanningPage(){
   function selectPlannedChariot(qr){
     const id=String(qr||'').trim();
     if(!id||!els.chariot)return;
+    const c=getMachine(id);
     let option=[...els.chariot.options].find(o=>String(o.value)===id);
     if(!option){
-      const c=getMachine(id);
       option=document.createElement('option');
       option.value=id;
       option.textContent=c
@@ -3023,6 +3023,17 @@ async function deliveryPlanningPage(){
       els.chariot.appendChild(option);
     }
     els.chariot.value=id;
+    // The visible searchable input is separate from the hidden select; keep both in sync
+    // when opening an existing delivery for editing.
+    const searchInput=document.getElementById('deliveryChariotSearch');
+    const optionsList=document.getElementById('deliveryChariotOptions');
+    if(searchInput){
+      searchInput.value=c
+        ? `${c.chassis||c.qr_id||id} · ${c.engine_number||'—'} · ${c.engine||'—'} · ${fmtCapacity(c.capacity)||'—'} · ${c.client||'Sans client'}`
+        : `Chariot planifié · ${id}`;
+      searchInput.setAttribute('aria-expanded','false');
+    }
+    if(optionsList)optionsList.hidden=true;
   }
   function openModal(date=selectedDate,qr=''){if(!requireAdmin())return;refreshChariotOptions();fillDeliverySuggestions();els.form.dataset.edit='';els.date.value=date;els.time.value='';els.driver.value='';els.destination.value='';els.note.value='';updateNoteCount();els.chariot.value=qr||'';if(qr)selectPlannedChariot(qr);els.search.value='';els.searchResults.innerHTML='';els.modal.classList.remove('hidden');setTimeout(()=>els.search.focus(),20)}
   function openEdit(id){if(!requireAdmin())return;const p=plans.find(x=>String(x.id)===String(id));if(!p){console.warn('Livraison à modifier introuvable',id,plans.map(x=>x.id));alert('Cette livraison n’a pas été retrouvée dans le planning. Actualisez la page et réessayez.');return}try{refreshChariotOptions(p.qr);selectPlannedChariot(p.qr);fillDeliverySuggestions();els.form.dataset.edit=String(id);els.date.value=String(p.date||'');els.time.value=p.time||'';els.note.value=p.note||'';updateNoteCount();setSelectValue(els.driver,p.driver,'Ancien chauffeur');setSelectValue(els.destination,p.destination,'Ancienne destination');els.search.value='';els.searchResults.innerHTML='';els.modal.classList.remove('hidden');setTimeout(()=>els.date.focus(),20)}catch(error){console.error('Ouverture de la modification impossible',error);alert('Impossible d’ouvrir la modification : '+friendlySupabaseError(error))}}

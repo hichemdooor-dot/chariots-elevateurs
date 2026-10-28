@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#102f4b">
-<link rel="stylesheet" href="css/style.css?v=agenda-20261026-v4">
+<link rel="stylesheet" href="css/style.css?v=agenda-20261028-v5">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <title>SBI — Agenda opérationnel</title>
 <style>
@@ -164,9 +164,9 @@
 </div>
 <div id="agendaToast" class="agenda-toast" role="status" hidden></div>
 <footer>Agenda opérationnel SBI · Données enregistrées dans l’application · © 2026 BENOUATAS INDUSTRIE</footer>
-<script src="js/shell.js?v=agenda-20261026-v4"></script>
-<script src="maintenance-config.js?v=agenda-20261026-v4"></script>
-<script src="js/app.js?v=agenda-20261026-v4"></script>
+<script src="js/shell.js?v=agenda-20261028-v5"></script>
+<script src="maintenance-config.js?v=agenda-20261028-v5"></script>
+<script src="js/app.js?v=agenda-20261028-v5"></script>
 <script>
 (function(){
 "use strict";
@@ -324,6 +324,21 @@ async function persist(item){
  sharedLoadError="";
  const idx=items.findIndex(i=>i.id===item.id);
  if(idx>=0)items[idx]=item;else items.push(item);
+ if(item.kind==="livraison")await syncAgendaDeliveryToPlanning(item);
+}
+async function syncAgendaDeliveryToPlanning(item){
+ const wanted=String(item.chassis||"").trim().toLocaleLowerCase("fr");
+ const normalize=value=>String(value||"").trim().toLocaleLowerCase("fr");
+ const machine=machines.find(c=>[c.chassis,c.qr_id,c.serial_number,c.numero_chassis].some(v=>normalize(v)===wanted));
+ if(!machine||!machine.qr_id)throw new Error("Le chariot sélectionné n’a pas pu être associé à un QR ID. La livraison n’a pas été ajoutée au Planning des livraisons.");
+ const logicalId="agenda_"+String(item.id);
+ const payload={id:logicalId,qr:String(machine.qr_id),date:String(item.date),time:String(item.time||""),driver:String(item.driver||""),destination:String(item.destination||""),note:[item.title,item.notes].filter(Boolean).join(" — "),source:"agenda-planning",agendaId:String(item.id)};
+ const result=await supabaseClient.from("maintenance").insert({
+  qr_id:String(machine.qr_id),date:String(item.date),technicien:(typeof getUserDisplayName==="function"?getUserDisplayName():"SBI"),
+  type:"Planification livraison",travaux:JSON.stringify(payload),
+  created_by:typeof currentUser!=="undefined"?(currentUser?.id||null):null
+ });
+ if(result.error)throw result.error;
 }
 async function loadShared(){
  const {data,error}=await supabaseClient.from("maintenance").select("id,qr_id,date,technicien,type,travaux,created_at,created_by").eq("type",TYPE).order("created_at",{ascending:true}).limit(1500);
@@ -366,6 +381,7 @@ async function saveForm(e){
  e.preventDefault();if(saveBusy)return;clearAlert();
  const item=getFormItem();
  if(!item.date||!item.time||!item.title){showAlert("Veuillez renseigner le type, la date, l’intitulé et l’heure prévue.");return}
+ if(item.kind==="livraison"&&!item.chassis){showAlert("Sélectionnez un chariot pour ajouter automatiquement cette livraison dans « Planning des livraisons ».");return}
  if(item.kind==="preparation"){
   const dailyPreparationCount=items.filter(existing=>!existing.deleted&&existing.date===item.date&&existing.kind==="preparation"&&String(existing.id)!==String(editingId||"")).length;
   if(dailyPreparationCount>=6){showAlert("Limite atteinte : 6 préparations de chariots maximum le "+formatDate(item.date)+". Choisissez une autre date ou modifiez une préparation existante.");return}
@@ -415,7 +431,7 @@ function demoPage(){
 if(DEMO)demoPage();else if(typeof initPage==="function")initPage(page());
 })();
 </script>
-<script src="js/button-icons.js?v=agenda-20261026-v4"></script>
-<script src="js/search-suggestions.js?v=agenda-20261026-v4"></script>
-<script src="js/mobile-fiche-popup.js?v=agenda-20261026-v4"></script>
+<script src="js/button-icons.js?v=agenda-20261028-v5"></script>
+<script src="js/search-suggestions.js?v=agenda-20261028-v5"></script>
+<script src="js/mobile-fiche-popup.js?v=agenda-20261028-v5"></script>
 </body></html>

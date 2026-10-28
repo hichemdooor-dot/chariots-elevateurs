@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#102f4b">
-<link rel="stylesheet" href="css/style.css?v=agenda-20261028-v5">
+<link rel="stylesheet" href="css/style.css?v=agenda-20261028-v6">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <title>SBI — Agenda opérationnel</title>
 <style>
@@ -164,9 +164,9 @@
 </div>
 <div id="agendaToast" class="agenda-toast" role="status" hidden></div>
 <footer>Agenda opérationnel SBI · Données enregistrées dans l’application · © 2026 BENOUATAS INDUSTRIE</footer>
-<script src="js/shell.js?v=agenda-20261028-v5"></script>
-<script src="maintenance-config.js?v=agenda-20261028-v5"></script>
-<script src="js/app.js?v=agenda-20261028-v5"></script>
+<script src="js/shell.js?v=agenda-20261028-v6"></script>
+<script src="maintenance-config.js?v=agenda-20261028-v6"></script>
+<script src="js/app.js?v=agenda-20261028-v6"></script>
 <script>
 (function(){
 "use strict";
@@ -340,6 +340,38 @@ async function syncAgendaDeliveryToPlanning(item){
  });
  if(result.error)throw result.error;
 }
+async function syncExistingAgendaDeliveriesToPlanning(){
+ if(DEMO||!items.length||!machines.length)return;
+ const pending=items.filter(item=>item.kind==="livraison"&&item.chassis&&item.date);
+ if(!pending.length)return;
+ const {data,error}=await supabaseClient.from("maintenance").select("type,travaux").in("type",["Planification livraison","Annulation planification livraison"]).limit(1000);
+ if(error)throw error;
+ const existingById=new Map();
+ for(const row of data||[]){
+  try{
+   const p=JSON.parse(String(row.travaux||"{}"));
+   if(!p.id)continue;
+   if(String(row.type)==="Annulation planification livraison")existingById.delete(String(p.id));
+   else if(p.qr)existingById.set(String(p.id),{qr:String(p.qr),date:String(p.date||"")});
+  }catch(_){}
+ }
+ const existingIds=new Set(existingById.keys());
+ const existingQrDates=new Set(Array.from(existingById.values()).map(p=>p.qr+"|"+p.date));
+ for(const item of pending){
+  const logicalId="agenda_"+String(item.id);
+  if(existingIds.has(logicalId))continue;
+  const wanted=String(item.chassis||"").trim().toLocaleLowerCase("fr");
+  const normalize=value=>String(value||"").trim().toLocaleLowerCase("fr");
+  const machine=machines.find(c=>[c.chassis,c.qr_id,c.serial_number,c.numero_chassis].some(v=>normalize(v)===wanted));
+  if(!machine||!machine.qr_id){console.warn("Agenda : chariot introuvable pour synchronisation de livraison",item.chassis);continue}
+  const qr=String(machine.qr_id),date=String(item.date);
+  if(existingQrDates.has(qr+"|"+date))continue;
+  const payload={id:logicalId,qr,date,time:String(item.time||""),driver:String(item.driver||""),destination:String(item.destination||""),note:[item.title,item.notes].filter(Boolean).join(" — "),source:"agenda-planning",agendaId:String(item.id)};
+  const result=await supabaseClient.from("maintenance").insert({qr_id:qr,date,technicien:(typeof getUserDisplayName==="function"?getUserDisplayName():"SBI"),type:"Planification livraison",travaux:JSON.stringify(payload),created_by:typeof currentUser!=="undefined"?(currentUser?.id||null):null});
+  if(result.error)throw result.error;
+  existingIds.add(logicalId);existingQrDates.add(qr+"|"+date);
+ }
+}
 async function loadShared(){
  const {data,error}=await supabaseClient.from("maintenance").select("id,qr_id,date,technicien,type,travaux,created_at,created_by").eq("type",TYPE).order("created_at",{ascending:true}).limit(1500);
  if(error)throw error;
@@ -418,6 +450,7 @@ async function page(){
  if(!await session())return;
  try{await loadChariots();machines=Array.isArray(CHARIOTS)?CHARIOTS:[]}catch(err){machines=[];console.warn("Liste des chariots indisponible dans Agenda",err)}
  try{await loadShared()}catch(err){sharedLoadError=typeof friendlySupabaseError==="function"?friendlySupabaseError(err):(err?.message||String(err));items=[];}
+ try{await syncExistingAgendaDeliveriesToPlanning()}catch(err){console.warn("Synchronisation des livraisons existantes de l’agenda impossible",err)}
  await loadAgendaDrivers();
  bind();render();
  document.addEventListener("visibilitychange",async()=>{if(document.visibilityState!=="visible"||DEMO)return;try{await loadShared();render()}catch(e){}});
@@ -431,7 +464,7 @@ function demoPage(){
 if(DEMO)demoPage();else if(typeof initPage==="function")initPage(page());
 })();
 </script>
-<script src="js/button-icons.js?v=agenda-20261028-v5"></script>
-<script src="js/search-suggestions.js?v=agenda-20261028-v5"></script>
-<script src="js/mobile-fiche-popup.js?v=agenda-20261028-v5"></script>
+<script src="js/button-icons.js?v=agenda-20261028-v6"></script>
+<script src="js/search-suggestions.js?v=agenda-20261028-v6"></script>
+<script src="js/mobile-fiche-popup.js?v=agenda-20261028-v6"></script>
 </body></html>

@@ -3066,8 +3066,9 @@ async function deliveryPlanningPage(){
       if(duplicate){alert('Ce chariot est déjà planifié pour une livraison.');return}
       planningLocalMutationUntil=Date.now()+4000;
       const logicalId=edit||('dp_'+Date.now()+'_'+Math.random().toString(36).slice(2,8));
-      const payload={id:logicalId,qr,date:String(date),time:String(time||''),driver:String(driver||''),destination:String(destination||''),note:String(note||'')};
       const previous=edit?plans.find(x=>String(x.id)===edit):null;
+      // Preserve the link to the original Agenda activity when editing a synced delivery.
+      const payload={id:logicalId,qr,date:String(date),time:String(time||''),driver:String(driver||''),destination:String(destination||''),note:String(note||''),...(previous?.source==='agenda-planning'?{source:previous.source,agendaId:previous.agendaId}: {})};
       let planHistory='';
       if(previous){
         const changed=[];
@@ -3082,6 +3083,19 @@ async function deliveryPlanningPage(){
         travaux:JSON.stringify(payload),created_by:currentUser?.id||null
       });
       if(error){alert('Erreur : '+friendlySupabaseError(error));return}
+      if(edit&&previous?.source==='agenda-planning'&&previous.agendaId){
+        // Update the Agenda's own logical record as well, so both pages stay in sync.
+        try{
+          const {data:agendaRows,error:agendaReadError}=await supabaseClient.from('maintenance').select('date,technicien,type,travaux,created_by').eq('type','Agenda opérationnelle').order('created_at',{ascending:true}).limit(1500);
+          if(agendaReadError)throw agendaReadError;
+          const matching=(agendaRows||[]).map(row=>{try{return {row,item:JSON.parse(String(row.travaux||'{}'))}}catch(_){return null}}).filter(Boolean).filter(x=>String(x.item.id)===String(previous.agendaId)).pop();
+          if(matching){
+            const agendaItem={...matching.item,date:String(date),time:String(time||''),driver:String(driver||''),destination:String(destination||''),notes:String(note||'')};
+            const {error:agendaWriteError}=await supabaseClient.from('maintenance').insert({qr_id:'SYSTEM',date:String(date),technicien:getUserDisplayName(),type:'Agenda opérationnelle',travaux:JSON.stringify(agendaItem),created_by:currentUser?.id||matching.row.created_by||null});
+            if(agendaWriteError)throw agendaWriteError;
+          }else console.warn('Original Agenda activity not found for delivery',previous.agendaId);
+        }catch(agendaSyncError){console.warn('Synchronisation vers Agenda impossible',agendaSyncError);alert('La livraison a été modifiée dans Planning, mais la mise à jour de l’Agenda a échoué : '+friendlySupabaseError(agendaSyncError))}
+      }
       if(edit&&planHistory){
         try{
           const {error:historyError}=await supabaseClient.from('maintenance').insert({

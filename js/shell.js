@@ -673,3 +673,6 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initSmartFilters,{once:true});
   else initSmartFilters();
 })();
+
+/* SBI AI Assistant — shared floating widget loader */
+(function(){var s=document.createElement('script');s.src='js/ai-assistant.js?v=1';s.defer=true;(document.head||document.documentElement).appendChild(s)})();

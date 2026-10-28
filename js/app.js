@@ -3002,7 +3002,7 @@ async function deliveryPlanningPage(){
     if(!select)return;
     const v=String(value||'');
     if(!v){select.value='';return}
-    const exists=[...select.options].some(o=>String(o.value)===v);
+    const exists=Array.from(select.options||[]).some(o=>String(o.value)===v);
     if(!exists){const opt=document.createElement('option');opt.value=v;opt.textContent=labelPrefix?`${labelPrefix} : ${v}`:v;select.appendChild(opt)}
     select.value=v;
   }
@@ -3013,7 +3013,7 @@ async function deliveryPlanningPage(){
     const id=String(qr||'').trim();
     if(!id||!els.chariot)return;
     const c=getMachine(id);
-    let option=[...els.chariot.options].find(o=>String(o.value)===id);
+    let option=Array.from(els.chariot.options||[]).find(o=>String(o.value)===id);
     if(!option){
       option=document.createElement('option');
       option.value=id;

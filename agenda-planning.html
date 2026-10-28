@@ -175,7 +175,8 @@ const TYPE="Agenda opérationnelle";
 const STORE="sbi_agenda_preview_demo_v1";
 const $=id=>document.getElementById(id);
 const kinds={preparation:{label:"Préparation",color:"#287ab5"},livraison:{label:"Livraison",color:"#15945a"},depannage:{label:"Camion dépanneur",color:"#d97706"}};
-let items=[],machines=[],selectedDate=toISO(new Date()),weekShift=0,view="week",editingId=null,saveBusy=false,toastTimer=null,sharedLoadError="";
+const AGENDA_VIEW_KEY="sbi_agenda_view_v1";
+let items=[],machines=[],selectedDate=toISO(new Date()),weekShift=0,view=(()=>{try{const saved=localStorage.getItem(AGENDA_VIEW_KEY);return ["week","day","list"].includes(saved)?saved:"week"}catch(_){return "week"}})(),editingId=null,saveBusy=false,toastTimer=null,sharedLoadError="";
 function toISO(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 function parseISO(s){const p=String(s||"").split("-").map(Number);return new Date(p[0]||2000,(p[1]||1)-1,p[2]||1)}
 function addDays(d,n){const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.setDate(x.getDate()+n);return x}
@@ -390,7 +391,7 @@ function bind(){
  $("agendaExport").addEventListener("click",exportCsv);
  $("agendaPrev").addEventListener("click",()=>{if(view==="day")selectedDate=toISO(addDays(parseISO(selectedDate),-1));else{weekShift--;selectedDate=toISO(mondayOfCurrentWeek())}render()});
  $("agendaNext").addEventListener("click",()=>{if(view==="day")selectedDate=toISO(addDays(parseISO(selectedDate),1));else{weekShift++;selectedDate=toISO(mondayOfCurrentWeek())}render()});
- document.querySelectorAll("[data-agenda-view]").forEach(b=>b.addEventListener("click",()=>{view=b.dataset.agendaView;render()}));
+ document.querySelectorAll("[data-agenda-view]").forEach(b=>b.addEventListener("click",()=>{view=b.dataset.agendaView;try{localStorage.setItem(AGENDA_VIEW_KEY,view)}catch(_){}render()}));
  $("agendaSearch").addEventListener("input",render);$("agendaKindFilter").addEventListener("change",render);$("agendaStatusFilter").addEventListener("change",render);
  $("agendaCalendar").addEventListener("click",e=>{const edit=e.target.closest("[data-edit]");if(edit){const item=items.find(i=>i.id===edit.dataset.edit);if(item)openForm(item);return}const day=e.target.closest("[data-select-day]");if(day){selectedDate=day.dataset.selectDay;render();}});
  $("agendaSelected").addEventListener("click",e=>{if(e.target.closest("#agendaAddSelected")){openNew();return}const edit=e.target.closest("[data-edit]");if(edit){const item=items.find(i=>i.id===edit.dataset.edit);if(item)openForm(item)}});

@@ -2873,8 +2873,25 @@ async function deliveryPlanningPage(){
     const old=els.chariot.value;
     els.chariot.innerHTML='<option value="">Sélectionner un chariot</option>'+availableChariots(excludeQr).map(c=>`<option value="${esc(c.qr_id)}">${esc(c.chassis||c.qr_id)} · ${esc(c.client||'Sans client')} · ${esc(fmtCapacity(c.capacity))}</option>`).join('');
     if(old&&availableChariots(excludeQr).some(c=>String(c.qr_id)===String(old)))els.chariot.value=old; else if(excludeQr)els.chariot.value=excludeQr;
+    renderDeliveryChariotOptions();
     renderSearchResults();
   }
+  function renderDeliveryChariotOptions(){
+    const input=document.getElementById('deliveryChariotSearch'),list=document.getElementById('deliveryChariotOptions');
+    if(!input||!list||!els.chariot)return;
+    const q=input.value.trim();
+    const tokens=searchTokens(q);
+    const matches=availableChariots().filter(c=>!tokens.length||tokens.every(t=>chariotSearchText(c).includes(t))).sort((a,b)=>String(a.chassis||a.qr_id||'').localeCompare(String(b.chassis||b.qr_id||''),undefined,{numeric:true,sensitivity:'base'})).slice(0,100);
+    list.innerHTML=matches.map(c=>'<button type="button" class="wilaya-option" role="option" data-chariot-qr="'+esc(c.qr_id)+'"><strong>'+esc(c.chassis||c.qr_id||'Chariot')+'</strong><span>N° moteur : '+esc(c.engine_number||'—')+' · '+esc(c.engine||'—')+' · '+esc(fmtCapacity(c.capacity))+'</span><span>'+esc(c.client||'Sans client')+' · '+esc(c.qr_id||'')+'</span></button>').join('')||'<div class="wilaya-option"><strong>Aucun chariot trouvé</strong></div>';
+    list.hidden=matches.length===0;input.setAttribute('aria-expanded',String(!list.hidden));
+  }
+  (()=>{const input=document.getElementById('deliveryChariotSearch'),list=document.getElementById('deliveryChariotOptions');if(!input||!list)return;
+    input.addEventListener('focus',()=>{renderDeliveryChariotOptions();if(!input.value.trim()){list.hidden=false;input.setAttribute('aria-expanded','true')}});
+    input.addEventListener('input',()=>{els.chariot.value='';renderDeliveryChariotOptions()});
+    list.addEventListener('mousedown',e=>{const b=e.target.closest('[data-chariot-qr]');if(!b)return;e.preventDefault();const qr=b.dataset.chariotQr;els.chariot.value=qr;const c=getMachine(qr);input.value=c?((c.chassis||c.qr_id)+' · '+(c.client||'Sans client')+' · '+fmtCapacity(c.capacity)):qr;list.hidden=true;input.setAttribute('aria-expanded','false');els.chariot.dispatchEvent(new Event('change',{bubbles:true}))});
+    document.addEventListener('click',e=>{if(!e.target.closest('.chariot-autocomplete')){list.hidden=true;input.setAttribute('aria-expanded','false')}});
+    input.addEventListener('keydown',e=>{if(e.key==='Escape'){list.hidden=true;input.setAttribute('aria-expanded','false')}});
+  })();
   function renderSearchResults(){
     if(!els.searchResults||!els.search)return;
     const raw=els.search.value.trim();

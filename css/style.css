@@ -3985,9 +3985,3 @@ body.professional-dashboard .dash-logo img{
     gap:7px!important;
   }
 }
-
-/* Temporarily hide unused delivery workflow entries from the sidebar (keep pages available by direct URL). */
-.side a[href="preparation-livraison.html"],
-.side a[href="chariots-prevus-livraison.html"],
-[data-nav] a[href="preparation-livraison.html"],
-[data-nav] a[href="chariots-prevus-livraison.html"]{display:none!important}

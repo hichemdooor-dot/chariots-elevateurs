@@ -82,7 +82,7 @@
 .agenda-dialog-head h2{margin:0;font-size:20px}
 .agenda-dialog-head p{margin:4px 0 0;color:#d0e1ef;font-size:12px}
 .agenda-close{border:0;border-radius:10px;width:38px;height:38px;background:rgba(255,255,255,.12);color:#fff;font-size:25px;cursor:pointer}
-.agenda-form{padding:18px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.agenda-dialog-head{transition:background-color .18s ease}.agenda-kind-indicator{display:flex;align-items:center;gap:9px;margin-top:9px;padding:9px 12px;border:1px solid var(--kind-border,#cfe2f3);border-radius:10px;background:var(--kind-bg,#f2f8ff);color:var(--kind-color,#287ab5);font-size:13px;font-weight:750}.agenda-kind-indicator .kind-icon{display:grid;place-items:center;flex:0 0 30px;width:30px;height:30px;border-radius:8px;background:#fff;font-size:17px}.agenda-dialog[data-kind="preparation"] .agenda-dialog-head{background:#17527b}.agenda-dialog[data-kind="livraison"] .agenda-dialog-head{background:#126b49}.agenda-dialog[data-kind="depannage"] .agenda-dialog-head{background:#98520b}
+.agenda-form{padding:18px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.agenda-dialog-head{transition:background-color .18s ease}.agenda-kind-indicator{display:flex;align-items:center;gap:9px;margin-top:9px;padding:9px 12px;border:1px solid var(--kind-border,#cfe2f3);border-radius:10px;background:var(--kind-bg,#f2f8ff);color:var(--kind-color,#287ab5);font-size:13px;font-weight:750}.agenda-kind-indicator .kind-icon{display:grid;place-items:center;flex:0 0 30px;width:30px;height:30px;border-radius:8px;background:#fff;font-size:17px}.agenda-dialog[data-kind="preparation"] .agenda-dialog-head{background:#17527b}.agenda-dialog[data-kind="modification"] .agenda-dialog-head{background:#6d28d9}.agenda-dialog[data-kind="livraison"] .agenda-dialog-head{background:#126b49}.agenda-dialog[data-kind="depannage"] .agenda-dialog-head{background:#98520b}
 .agenda-field{display:flex;flex-direction:column;gap:6px;min-width:0}
 .agenda-field.full{grid-column:1/-1}
 .agenda-field label{font-size:12px;font-weight:800;color:#3e5a72}
@@ -132,7 +132,7 @@
     </div>
     <div class="agenda-filters">
       <input id="agendaSearch" class="agenda-input" type="search" placeholder="Rechercher client, châssis, chauffeur, camion…" aria-label="Rechercher dans l’agenda">
-      <select id="agendaKindFilter" class="agenda-select" aria-label="Filtrer par activité"><option value="">Toutes les activités</option><option value="preparation">Préparation des chariots</option><option value="livraison">Livraison des chariots</option><option value="depannage">Camions dépanneurs</option></select>
+      <select id="agendaKindFilter" class="agenda-select" aria-label="Filtrer par activité"><option value="">Toutes les activités</option><option value="preparation">Préparation des chariots</option><option value="modification">Modification des chariots</option><option value="livraison">Livraison des chariots</option><option value="depannage">Camions dépanneurs</option></select>
       <select id="agendaStatusFilter" class="agenda-select" aria-label="Filtrer par statut"><option value="">Tous les statuts</option><option>À planifier</option><option>Planifiée</option><option>En cours</option><option>Prêt / Terminé</option><option>Reportée</option><option>Annulée</option></select>
     </div>
     <div id="agendaCalendar" class="agenda-week-grid"><div class="agenda-loading">Chargement du planning…</div></div>
@@ -147,7 +147,7 @@
     <div class="agenda-dialog-head"><div><h2 id="agendaModalTitle">Nouvelle activité</h2><p>Les modifications sont visibles dans le planning partagé après enregistrement.</p><div id="agendaKindIndicator" class="agenda-kind-indicator" aria-live="polite"><span class="kind-icon" id="agendaKindIcon">🔧</span><span id="agendaKindLabel">Préparation des chariots</span></div></div><button id="agendaClose" class="agenda-close" type="button" aria-label="Fermer">×</button></div>
     <div id="agendaFormAlert" class="agenda-alert" role="alert"></div>
     <form id="agendaForm" class="agenda-form">
-      <div class="agenda-field full"><label for="agendaKind">Type d’activité *</label><select id="agendaKind" class="agenda-select" required><option value="preparation">Préparation des chariots</option><option value="livraison">Livraison des chariots</option><option value="depannage">Dépannage — camion dépanneur</option></select></div>
+      <div class="agenda-field full"><label for="agendaKind">Type d’activité *</label><select id="agendaKind" class="agenda-select" required><option value="preparation">Préparation des chariots</option><option value="modification">Modification des chariots</option><option value="livraison">Livraison des chariots</option><option value="depannage">Dépannage — camion dépanneur</option></select></div>
       <div class="agenda-field"><label for="agendaDate">Date *</label><input id="agendaDate" class="agenda-input" type="date" required></div>
       <div class="agenda-field"><label for="agendaTitleInput">Intitulé de l’activité *</label><input id="agendaTitleInput" class="agenda-input" maxlength="140" required placeholder="Ex. Préparation chariot client"></div>
       <div class="agenda-field"><label for="agendaStart">Heure prévue *</label><input id="agendaStart" class="agenda-input" type="time" required value="08:00"></div>
@@ -174,7 +174,7 @@ const DEMO=new URLSearchParams(location.search).get("preview")==="1";
 const TYPE="Agenda opérationnelle";
 const STORE="sbi_agenda_preview_demo_v1";
 const $=id=>document.getElementById(id);
-const kinds={preparation:{label:"Préparation",color:"#287ab5"},livraison:{label:"Livraison",color:"#15945a"},depannage:{label:"Camion dépanneur",color:"#d97706"}};
+const kinds={preparation:{label:"Préparation",color:"#287ab5"},modification:{label:"Modification",color:"#7c3aed"},livraison:{label:"Livraison",color:"#15945a"},depannage:{label:"Camion dépanneur",color:"#d97706"}};
 const AGENDA_VIEW_KEY="sbi_agenda_view_v1";
 let items=[],machines=[],selectedDate=toISO(new Date()),weekShift=0,view=(()=>{try{const saved=localStorage.getItem(AGENDA_VIEW_KEY);return ["week","day","list"].includes(saved)?saved:"week"}catch(_){return "week"}})(),editingId=null,saveBusy=false,toastTimer=null,sharedLoadError="";
 function toISO(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
@@ -265,11 +265,12 @@ function renderAgendaDrivers(preferredValue){const select=$("agendaDriver");if(!
 function cachedAgendaDrivers(){try{const parsed=JSON.parse(localStorage.getItem(AGENDA_DRIVER_CACHE_KEY)||"null");return Array.isArray(parsed)?normalizeAgendaDrivers(parsed):null}catch(_){return null}}
 async function loadAgendaDrivers(){try{const {data,error}=await supabaseClient.from("maintenance").select("travaux,created_at").eq("qr_id","SYSTEM").eq("type",AGENDA_DRIVER_CONFIG_TYPE).order("created_at",{ascending:false}).limit(1);if(error)throw error;let names=null;if(data&&data.length){try{const payload=JSON.parse(String(data[0].travaux||"{}"));if(Array.isArray(payload))names=payload;else if(Array.isArray(payload.drivers))names=payload.drivers}catch(_){}}if(names===null){const cached=cachedAgendaDrivers();names=cached===null?DEFAULT_AGENDA_DRIVERS:cached}agendaDrivers=normalizeAgendaDrivers(names);try{localStorage.setItem(AGENDA_DRIVER_CACHE_KEY,JSON.stringify(agendaDrivers))}catch(_){}}catch(error){agendaDrivers=cachedAgendaDrivers()||[...DEFAULT_AGENDA_DRIVERS];console.warn("Liste des chauffeurs non chargée depuis Supabase",error)}renderAgendaDrivers()}
 function populateWilayaOptions(){$("agendaChariotOptions").hidden=true;$("agendaChariot").setAttribute("aria-expanded","false");const input=$("agendaDestination"),box=$("agendaWilayaOptions"),q=input.value.trim().toLocaleLowerCase("fr");const list=WILAYAS.filter(([code,name])=>!q||(code+" "+name+" "+code+" - "+name).toLocaleLowerCase("fr").includes(q));box.innerHTML=list.length?list.map(([code,name])=>{const label=code+" - "+name;return '<button type="button" class="agenda-chariot-option" role="option" data-wilaya="'+safe(label)+'"><strong>'+safe(label)+'</strong><span>Wilaya d’Algérie</span></button>'}).join(""):'<div class="agenda-chariot-empty">Aucune wilaya trouvée. Vous pouvez saisir une adresse libre.</div>';$("agendaChariotOptions").hidden=true;$("agendaChariot").setAttribute("aria-expanded","false");box.hidden=false;input.setAttribute("aria-expanded","true")}
-function updateKindAppearance(){const kind=$("agendaKind").value;const map={preparation:{label:"Préparation des chariots",icon:"🔧",color:"#287ab5",bg:"#eff7ff",border:"#c6e2fa"},livraison:{label:"Livraison des chariots",icon:"🚚",color:"#15945a",bg:"#effaf4",border:"#bce8d0"},depannage:{label:"Dépannage — camion dépanneur",icon:"🛠️",color:"#d97706",bg:"#fff7ed",border:"#f5d3a8"}};const x=map[kind]||map.preparation;const dialog=document.querySelector(".agenda-dialog");dialog.dataset.kind=kind;const indicator=$("agendaKindIndicator");indicator.style.setProperty("--kind-color",x.color);indicator.style.setProperty("--kind-bg",x.bg);indicator.style.setProperty("--kind-border",x.border);$("agendaKindIcon").textContent=x.icon;$("agendaKindLabel").textContent=x.label;}
+function updateKindAppearance(){const kind=$("agendaKind").value;const map={preparation:{label:"Préparation des chariots",icon:"🔧",color:"#287ab5",bg:"#eff7ff",border:"#c6e2fa"},modification:{label:"Modification des chariots",icon:"🛠️",color:"#7c3aed",bg:"#f5f3ff",border:"#ddd6fe"},livraison:{label:"Livraison des chariots",icon:"🚚",color:"#15945a",bg:"#effaf4",border:"#bce8d0"},depannage:{label:"Dépannage — camion dépanneur",icon:"🛠️",color:"#d97706",bg:"#fff7ed",border:"#f5d3a8"}};const x=map[kind]||map.preparation;const dialog=document.querySelector(".agenda-dialog");dialog.dataset.kind=kind;const indicator=$("agendaKindIndicator");indicator.style.setProperty("--kind-color",x.color);indicator.style.setProperty("--kind-bg",x.bg);indicator.style.setProperty("--kind-border",x.border);$("agendaKindIcon").textContent=x.icon;$("agendaKindLabel").textContent=x.label;}
 function showFields(){
  const kind=$("agendaKind").value;updateKindAppearance();
  $("agendaOwnerField").style.display=kind==="preparation"?"flex":"none";
  if(kind==="preparation")$("agendaDestination").placeholder="Zone de préparation / atelier";
+  else if(kind==="modification")$("agendaDestination").placeholder="Atelier / zone de modification";
  else if(kind==="livraison")$("agendaDestination").placeholder="Wilaya (numéro) ou adresse de livraison";
  else $("agendaDestination").placeholder="Wilaya (numéro), adresse ou lieu de panne";
  $("agendaChariot").placeholder=kind==="depannage"?"Chariot / véhicule concerné (facultatif)":"Rechercher un chariot existant";
@@ -299,7 +300,7 @@ function inferMachine(){
  const value=$("agendaChariot").value.trim().toLocaleLowerCase("fr");
  const c=machines.find(x=>[x.chassis,x.qr_id,x.serial_number].some(v=>String(v||"").trim().toLocaleLowerCase("fr")===value));
  if(c&& !$("agendaClient").value.trim())$("agendaClient").value=c.client||"";
- if(c&& !$("agendaTitleInput").value.trim())$("agendaTitleInput").value=($("agendaKind").value==="preparation"?"Préparation":"Livraison")+" · "+(c.chassis||c.qr_id||"Chariot");
+ if(c&& !$("agendaTitleInput").value.trim())$("agendaTitleInput").value=({preparation:"Préparation",modification:"Modification",livraison:"Livraison",depannage:"Dépannage"}[$("agendaKind").value]||"Activité")+" · "+(c.chassis||c.qr_id||"Chariot");
 }
 function getFormItem(){
  const kind=$("agendaKind").value;

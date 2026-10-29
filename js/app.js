@@ -1449,6 +1449,8 @@ function initDashboardGlobalSearch(){
 
 async function dashboardPage(){
   if(!await session())return;
+  // Initialize dashboard search before any data-loading path can return early.
+  initDashboardGlobalSearch();
   renderConnectedUser();
   if($('#dashDate'))$('#dashDate').textContent=new Date().toLocaleString('fr-FR',{weekday:'long',day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
 
@@ -1539,7 +1541,6 @@ async function dashboardPage(){
     try{await loadDashboardNotifications();}catch(_){}
   },30000);
   initDashboardInteractivity();
-  initDashboardGlobalSearch();
 }
 function renderDashboardWatch(){
   const set=(id,value)=>{const el=$('#'+id);if(el)el.textContent=String(value)};

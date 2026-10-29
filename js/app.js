@@ -698,6 +698,28 @@ async function saveChariotCommercial(qrId,commercial,reason='Affectation automat
   if(error){console.warn('Commercial responsable non enregistré',error);return false}
   return true;
 }
+async function assignClientToChariot(qrId){
+  if(!requireValidLicense()||!currentUser)return;
+  const commercial=getSbiCommercialName();
+  if(!commercial&&!isAdmin()){alert('Cette action est réservée aux commerciaux IDRIS, MOHAMED et DJOUDI.');return}
+  const c=CHARIOTS.find(x=>String(x.qr_id)===String(qrId));
+  if(!c){alert('Chariot introuvable.');return}
+  if(isDelivered(c)){alert('Un chariot déjà livré ne peut pas être affecté à un nouveau client depuis cette action.');return}
+  const client=String(prompt('Nom du client :',String(c.client||''))||'').trim().toUpperCase();
+  if(!client)return;
+  if(!confirm('Affecter le chariot '+(c.chassis||c.qr_id)+' au client '+client+' ?'))return;
+  const payload={client,status:'Réservé',updated_at:new Date().toISOString()};
+  const {error}=await supabaseClient.from('chariots').update(payload).eq('qr_id',qrId);
+  if(error){alert('Affectation impossible : '+friendlySupabaseError(error));return}
+  Object.assign(c,payload);
+  const assignedCommercial=commercial||(await getChariotCommercial(qrId).catch(()=>({name:''}))).name;
+  if(assignedCommercial){
+    const saved=await saveChariotCommercial(qrId,assignedCommercial,'Client affecté : '+client);
+    if(!saved)alert('Le client a été affecté, mais le commercial n’a pas pu être enregistré dans l’historique.');
+  }
+  try{await supabaseClient.from('maintenance').insert({qr_id:qrId,date:new Date().toISOString().slice(0,10),technicien:getUserDisplayName(),type:'Affectation client',travaux:'Client : '+client+' • Commercial : '+(assignedCommercial||'Non renseigné'),created_by:currentUser.id})}catch(e){console.warn('Historique affectation client non enregistré',e)}
+  await detailPage();
+}
 async function editChariotCommercial(qrId){
   if(!requireAdmin())return;
   const choices=['IDRIS','MOHAMED','DJOUDI','Aucun'];
@@ -2235,6 +2257,12 @@ async function detailPage(){
 
   const [identificationGroup,characteristicsGroup,stockGroup,deliveryGroup]=groups;
   $('#detail').innerHTML=`<div class="detail-dashboard-layout detail-layout-compact"><div class="detail-information-grid"><div class="detail-info-column detail-info-column--left">${identificationGroup}${stockGroup}</div><div class="detail-info-column detail-info-column--right">${characteristicsGroup}${deliveryGroup}</div></div><section class="detail-panel detail-panel--observations"><header class="detail-panel-head"><span class="detail-panel-icon">${icon('observations')}</span><h2>Observations</h2></header><div class="detail-observation-text">${esc(current.observations||'Aucune observation enregistrée.')}</div></section></div>`;
+  if(isAdmin()||getSbiCommercialName()){
+    const commercialPanel=document.querySelector('#detail .detail-panel--identification .detail-panel-head');
+    if(commercialPanel&&!document.getElementById('assignClientBtn')&&!isDelivered(current)){
+      const button=document.createElement('button');button.id='assignClientBtn';button.type='button';button.className='btn light';button.textContent=current.client?'Modifier le client':'Affecter un client';button.onclick=()=>assignClientToChariot(current.qr_id);commercialPanel.appendChild(button);
+    }
+  }
   if(isAdmin()){
     const commercialPanel=document.querySelector('#detail .detail-panel--identification .detail-panel-head');
     if(commercialPanel&&!document.getElementById('editCommercialBtn')){

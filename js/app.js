@@ -724,16 +724,63 @@ async function editChariotCommercial(qrId){
   if(!requireAdmin())return;
   const choices=['IDRIS','MOHAMED','DJOUDI','Aucun'];
   const currentCommercial=await getChariotCommercial(qrId).catch(()=>({name:''}));
-  const promptText='Commercial responsable :\\n'+choices.map((name,i)=>(i+1)+'. '+name).join('\\n')+'\\n\\nSaisissez 1, 2, 3 ou 4 :';
-  const answer=prompt(promptText,String(Math.max(1,choices.indexOf(currentCommercial.name)+1)));
-  if(answer===null)return;
-  const index=Number(answer)-1;
-  if(!Number.isInteger(index)||index<0||index>=choices.length){alert('Choix invalide.');return}
-  if(choices[index]==='Aucun'){
-    const {error}=await supabaseClient.from('maintenance').insert({qr_id:qrId,date:new Date().toISOString().slice(0,10),technicien:getUserDisplayName(),type:'Commercial responsable',travaux:JSON.stringify({commercial:'',reason:'Correction administrateur'}),created_by:currentUser?.id||null});
-    if(error){alert('Erreur : '+friendlySupabaseError(error));return}
-  }else if(!await saveChariotCommercial(qrId,choices[index],'Correction administrateur')){alert('Impossible d’enregistrer le commercial.');return}
-  await detailPage();
+  document.getElementById('commercialPickerOverlay')?.remove();
+  const overlay=document.createElement('div');
+  overlay.id='commercialPickerOverlay';
+  overlay.innerHTML=`
+    <style>
+      #commercialPickerOverlay{position:fixed;inset:0;z-index:10050;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(15,23,42,.58);backdrop-filter:blur(5px)}
+      #commercialPickerOverlay .cp-card{width:min(100%,420px);background:var(--card-bg,#fff);color:var(--text,#172033);border:1px solid rgba(148,163,184,.28);border-radius:22px;box-shadow:0 24px 70px rgba(0,0,0,.25);overflow:hidden;font-family:inherit}
+      #commercialPickerOverlay .cp-head{padding:22px 22px 16px;background:linear-gradient(135deg,#102a43,#1d4f73);color:#fff}
+      #commercialPickerOverlay .cp-mark{display:inline-flex;width:42px;height:42px;align-items:center;justify-content:center;border-radius:13px;background:rgba(255,255,255,.15);font-size:21px;margin-bottom:12px}
+      #commercialPickerOverlay .cp-title{margin:0;font-size:20px;font-weight:750;letter-spacing:-.3px}
+      #commercialPickerOverlay .cp-sub{margin:7px 0 0;font-size:13px;line-height:1.5;color:rgba(255,255,255,.78)}
+      #commercialPickerOverlay .cp-body{padding:22px}
+      #commercialPickerOverlay .cp-label{display:block;margin-bottom:9px;font-size:13px;font-weight:700}
+      #commercialPickerOverlay .cp-select{width:100%;min-height:50px;padding:0 14px;border:1px solid #cbd5e1;border-radius:12px;background:var(--input-bg,#fff);color:inherit;font:inherit;font-size:15px;outline:none}
+      #commercialPickerOverlay .cp-select:focus{border-color:#2875a8;box-shadow:0 0 0 3px rgba(40,117,168,.15)}
+      #commercialPickerOverlay .cp-hint{margin:10px 0 0;font-size:12px;color:var(--muted,#64748b);line-height:1.5}
+      #commercialPickerOverlay .cp-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:22px}
+      #commercialPickerOverlay .cp-btn{border:0;border-radius:11px;padding:12px 16px;font:inherit;font-size:14px;font-weight:700;cursor:pointer}
+      #commercialPickerOverlay .cp-cancel{background:#eef2f7;color:#334155}
+      #commercialPickerOverlay .cp-save{background:#176b9a;color:#fff;box-shadow:0 5px 14px rgba(23,107,154,.2)}
+      #commercialPickerOverlay .cp-save:disabled{opacity:.65;cursor:wait}
+      @media(max-width:420px){#commercialPickerOverlay .cp-card{border-radius:18px}#commercialPickerOverlay .cp-body{padding:18px}#commercialPickerOverlay .cp-actions{flex-direction:column-reverse}#commercialPickerOverlay .cp-btn{width:100%}}
+    </style>
+    <section class="cp-card" role="dialog" aria-modal="true" aria-labelledby="cpTitle">
+      <header class="cp-head"><div class="cp-mark" aria-hidden="true">♙</div><h2 class="cp-title" id="cpTitle">Commercial responsable</h2><p class="cp-sub">Choisissez le commercial associé à la vente de ce chariot.</p></header>
+      <div class="cp-body">
+        <label class="cp-label" for="cpCommercialSelect">Nom du commercial</label>
+        <select class="cp-select" id="cpCommercialSelect">
+          <option value="IDRIS">IDRIS</option><option value="MOHAMED">MOHAMED</option><option value="DJOUDI">DJOUDI</option><option value="Aucun">Aucun commercial</option>
+        </select>
+        <p class="cp-hint">Cette modification sera enregistrée dans l’historique du chariot.</p>
+        <div class="cp-actions"><button type="button" class="cp-btn cp-cancel" id="cpCancel">Annuler</button><button type="button" class="cp-btn cp-save" id="cpSave">Enregistrer</button></div>
+      </div>
+    </section>`;
+  document.body.appendChild(overlay);
+  const select=overlay.querySelector('#cpCommercialSelect');
+  select.value=choices.includes(currentCommercial.name)?currentCommercial.name:'Aucun';
+  const close=()=>overlay.remove();
+  overlay.querySelector('#cpCancel').onclick=close;
+  overlay.addEventListener('click',event=>{if(event.target===overlay)close()});
+  const onKey=event=>{if(event.key==='Escape'){close();document.removeEventListener('keydown',onKey)}};
+  document.addEventListener('keydown',onKey);
+  overlay.querySelector('#cpSave').onclick=async()=>{
+    const saveButton=overlay.querySelector('#cpSave');
+    const selected=select.value;
+    saveButton.disabled=true;saveButton.textContent='Enregistrement…';
+    if(selected==='Aucun'){
+      const {error}=await supabaseClient.from('maintenance').insert({qr_id:qrId,date:new Date().toISOString().slice(0,10),technicien:getUserDisplayName(),type:'Commercial responsable',travaux:JSON.stringify({commercial:'',reason:'Correction administrateur'}),created_by:currentUser?.id||null});
+      if(error){alert('Erreur : '+friendlySupabaseError(error));saveButton.disabled=false;saveButton.textContent='Enregistrer';return}
+    }else if(!await saveChariotCommercial(qrId,selected,'Correction administrateur')){
+      alert('Impossible d’enregistrer le commercial.');saveButton.disabled=false;saveButton.textContent='Enregistrer';return;
+    }
+    document.removeEventListener('keydown',onKey);
+    close();
+    await detailPage();
+  };
+  select.focus();
 }
 function getUserRoleLabel(){return isAdmin()?'Administrateur':'Utilisateur'}
 function renderConnectedUser(){

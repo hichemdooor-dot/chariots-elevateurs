@@ -1401,6 +1401,19 @@ function initDashboardGlobalSearch(){
   // stays relative to the phone viewport on every screen size.
   if(box.parentElement!==document.body)document.body.appendChild(box);
   let activeIndex=-1,openVersion=0,loadingSearchData=null;
+  const removeOldSearchResults=()=>{
+    // Remove legacy dropdowns that were rendered by the previous page-specific search.
+    document.querySelectorAll(
+      '.sbi-chassis-create-panel, #dashboardSearchResults, .global-search-results, .site-global-search-results, .search-results-dropdown'
+    ).forEach(old=>{
+      if(old===box)return;
+      old.innerHTML='';
+      old.classList.remove('open','show','active');
+      old.setAttribute('aria-hidden','true');
+      old.style.setProperty('display','none','important');
+    });
+  };
+  removeOldSearchResults();
   const close=()=>{openVersion++;box.classList.remove('open');input.setAttribute('aria-expanded','false');box.setAttribute('aria-hidden','true');activeIndex=-1};
   const fields=(c)=>[c?.qr_id,c?.chassis,c?.engine,c?.engine_number,c?.client,c?.capacity,c?.color,c?.status,c?.serial_number].map(v=>String(v||'').trim()).filter(Boolean);
   const searchColor=(value)=>{
@@ -1479,6 +1492,7 @@ function initDashboardGlobalSearch(){
   window.visualViewport?.addEventListener('resize',positionResults);
   window.visualViewport?.addEventListener('scroll',positionResults);
   const open=async()=>{
+    removeOldSearchResults();
     let q=input.value.trim();
     if(!q){close();return}
     const version=++openVersion;

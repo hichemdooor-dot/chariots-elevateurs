@@ -1469,8 +1469,7 @@ function initDashboardGlobalSearch(){
       const meta=[
         engineCapacity?'<span>'+esc(engineCapacity)+'</span>':'',
         color?'<span style="display:flex;align-items:center;gap:7px"><span aria-hidden="true" style="display:inline-block;flex:0 0 10px;width:10px;height:10px;border-radius:50%;background:'+esc(swatch)+';border:1px solid rgba(30,45,60,.22);box-sizing:border-box"></span><span>Couleur : '+esc(color)+'</span></span>':'',
-        c.client?'<span>Client : '+esc(c.client)+'</span>':'',
-        c.qr_id?'<span>QR ID : '+esc(c.qr_id)+'</span>':''
+        c.client?'<span>Client : '+esc(c.client)+'</span>':''
       ].filter(Boolean);
       return `<button type="button" class="dashboard-search-result ${i===activeIndex?'is-active':''}" role="option" aria-selected="${i===activeIndex?'true':'false'}" data-qr="${esc(c.qr_id||'')}"><span class="dashboard-search-result-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7h11v10H3zM14 11h4l3 3v3h-7z"/><circle cx="7" cy="19" r="2"/><circle cx="18" cy="19" r="2"/></svg></span><span class="dashboard-search-result-main"><span class="dashboard-search-result-title">${esc(title)}</span><span class="dashboard-search-result-meta">${meta.join('')}</span></span><span class="dashboard-search-result-side">${status?`<span class="dashboard-search-result-status">${esc(status)}</span>`:''}<span class="dashboard-search-result-arrow" aria-hidden="true">›</span></span></button>`;
     }).join('')+`<div class="dashboard-search-footer"><span>${rows.length} résultat${rows.length>1?'s':''} affiché${rows.length>1?'s':''}</span><button type="button" id="dashboardSearchAll">Voir tous les résultats →</button></div>`+createAction;

@@ -1521,6 +1521,12 @@ function initDashboardGlobalSearch(){
   input.addEventListener('keydown',(e)=>{if(e.key==='ArrowDown'){e.preventDefault();if(!box.classList.contains('open'))open();const n=box.querySelectorAll('.dashboard-search-result').length;if(n){activeIndex=(activeIndex+1)%n;highlight()}}else if(e.key==='ArrowUp'){e.preventDefault();const n=box.querySelectorAll('.dashboard-search-result').length;if(n){activeIndex=(activeIndex-1+n)%n;highlight()}}else if(e.key==='Enter'){const btn=box.querySelectorAll('.dashboard-search-result')[activeIndex];if(btn){e.preventDefault();btn.click()}}else if(e.key==='Escape'){e.preventDefault();close()}});
   document.addEventListener('click',(e)=>{if(!e.target.closest('.dashboard-search-shell,.sbi-global-search-wrap')&&!box.contains(e.target))close()});
   window.__openDashboardSearch=open;
+  // Close legacy suggestion panels so mobile shows exactly one result dropdown.
+  document.querySelectorAll('.sbi-chassis-create-panel').forEach(panel=>{
+    panel.innerHTML='';
+    panel.classList.remove('open');
+    panel.setAttribute('aria-hidden','true');
+  });
 }
 
 async function dashboardPage(){

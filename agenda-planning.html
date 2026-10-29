@@ -301,6 +301,21 @@ function getFormItem(){
  const kind=$("agendaKind").value;
  return {id:editingId||uuid(),kind:kind,date:$("agendaDate").value,time:$("agendaStart").value,endTime:"",title:$("agendaTitleInput").value.trim(),chassis:$("agendaChariot").value.trim(),client:$("agendaClient").value.trim(),destination:$("agendaDestination").value.trim(),driver:$("agendaDriver").value.trim(),truck:"",owner:kind==="preparation"?$("agendaOwner").value.trim():"",status:$("agendaStatus").value,notes:$("agendaNotes").value.trim(),updatedAt:new Date().toISOString()}}
 function effectiveEndTime(item){if(item.endTime)return item.endTime;const parts=String(item.time||"00:00").split(":").map(Number);const total=Math.min(1439,(parts[0]||0)*60+(parts[1]||0)+60);return String(Math.floor(total/60)).padStart(2,"0")+":"+String(total%60).padStart(2,"0")}
+function duplicateFor(next){
+ if(next.status==="Annulée")return "";
+ const norm=value=>String(value||"").trim().replace(/\\s+/g," ").toLocaleLowerCase("fr");
+ for(const old of items){
+  if(String(old.id)===String(next.id)||old.deleted||old.status==="Annulée"||old.kind!==next.kind||old.date!==next.date)continue;
+  const nextChassis=norm(next.chassis),oldChassis=norm(old.chassis);
+  if(nextChassis&&oldChassis&&nextChassis===oldChassis){
+   return "Doublon interdit : ce chariot (« "+next.chassis+" ») possède déjà une activité de ce type à la date du "+formatDate(next.date)+". Modifiez l’activité existante ou choisissez une autre date.";
+  }
+  if(!nextChassis&&!oldChassis&&norm(old.time)===norm(next.time)&&norm(old.title)===norm(next.title)&&norm(old.client)===norm(next.client)&&norm(old.destination)===norm(next.destination)){
+   return "Doublon interdit : une activité identique existe déjà à cette date et à cette heure. Modifiez l’activité existante au lieu de la recréer.";
+  }
+ }
+ return "";
+}
 function conflictFor(next){
  if(next.status==="Annulée")return "";
  for(const old of items){
@@ -418,6 +433,7 @@ async function saveForm(e){
   const dailyPreparationCount=items.filter(existing=>!existing.deleted&&existing.date===item.date&&existing.kind==="preparation"&&String(existing.id)!==String(editingId||"")).length;
   if(dailyPreparationCount>=6){showAlert("Limite atteinte : 6 préparations de chariots maximum le "+formatDate(item.date)+". Choisissez une autre date ou modifiez une préparation existante.");return}
  }
+ const duplicate=duplicateFor(item);if(duplicate){showAlert(duplicate);return}
  const conflict=conflictFor(item);if(conflict){showAlert(conflict+" Modifiez l’heure prévue ou affectez un autre chauffeur.");return}
  saveBusy=true;$("agendaSave").disabled=true;$("agendaSave").textContent="Enregistrement…";
  try{

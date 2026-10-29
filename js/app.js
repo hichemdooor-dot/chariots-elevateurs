@@ -578,7 +578,6 @@ function exportMachineRows(){
     'Statut':exportSafeText(c.status),
     'Stock':exportSafeText(c.stock),
     'Client':exportSafeText(c.client),
-    'Commercial responsable':exportSafeText(c.commercial_responsable),
     'Date de livraison':exportSafeText(c.delivery_date),
     'Observations':exportSafeText(c.observations),
     'Créé le':exportSafeText(c.created_at),

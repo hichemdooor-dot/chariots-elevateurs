@@ -5,7 +5,7 @@
   const SEARCH_FIELDS = [
     '#search', '#stockSearch', '#plSearch', '#deliveredSearch',
     '#modSearch', '#affSearch', '#prepSearch',
-    '#historySearch', '#siteGlobalSearchInput'
+    '#historySearch'
   ];
   const CLIENT_SELECTOR = 'input[name="client"]';
   const MAX_RESULTS = 8;

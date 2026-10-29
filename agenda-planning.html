@@ -277,6 +277,8 @@ function showFields(){
  $("agendaDriver").placeholder=kind==="preparation"?"Chauffeur (facultatif)":"Nom du chauffeur";
  $("agendaDriver").parentElement.style.display=(kind==="preparation"||kind==="modification")?"none":"flex";
  $("agendaClient").parentElement.style.display=kind==="preparation"?"none":"flex";
+ $("agendaDestination").parentElement.parentElement.style.display=kind==="preparation"?"none":"flex";
+ $("agendaStatus").parentElement.style.display=kind==="preparation"?"none":"flex";
 }
 function openForm(item){
  editingId=item?item.id:null;clearAlert();

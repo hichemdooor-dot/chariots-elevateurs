@@ -274,10 +274,11 @@ function showFields(){
  else $("agendaDestination").placeholder="Wilaya (numéro), adresse ou lieu de panne";
  $("agendaChariot").placeholder=kind==="depannage"?"Chariot / véhicule concerné (facultatif)":"Rechercher un chariot existant";
  $("agendaDriver").placeholder=kind==="preparation"?"Chauffeur (facultatif)":"Nom du chauffeur";
- $("agendaDriver").parentElement.style.display=(kind==="preparation"||kind==="modification")?"none":"flex";
- $("agendaClient").parentElement.style.display=kind==="preparation"?"none":"flex";
- $("agendaDestination").parentElement.parentElement.style.display=kind==="preparation"?"none":"flex";
- $("agendaStatus").parentElement.style.display=kind==="preparation"?"none":"flex";
+ const hideDetails=kind==="preparation"||kind==="modification";
+ $("agendaDriver").parentElement.style.display=hideDetails?"none":"flex";
+ $("agendaClient").parentElement.style.display=hideDetails?"none":"flex";
+ $("agendaDestination").parentElement.parentElement.style.display=hideDetails?"none":"flex";
+ $("agendaStatus").parentElement.style.display=hideDetails?"none":"flex";
 }
 function openForm(item){
  editingId=item?item.id:null;clearAlert();

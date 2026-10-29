@@ -1391,6 +1391,27 @@ function initDashboardGlobalSearch(){
   let activeIndex=-1;
   const close=()=>{box.classList.remove('open');input.setAttribute('aria-expanded','false');activeIndex=-1};
   const fields=(c)=>[c?.qr_id,c?.chassis,c?.engine,c?.engine_number,c?.client,c?.capacity,c?.color,c?.status,c?.serial_number].map(v=>String(v||'').trim()).filter(Boolean);
+  const dashboardSearchColor=(value)=>{
+    const raw=String(value||'').trim();
+    if(!raw)return '#9ca3af';
+    if(/^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(raw))return raw;
+    const key=raw.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[-_]+/g,' ').replace(/\s+/g,' ').trim();
+    const colors={
+      'orange':'#f58220','orange clair':'#ffad60','orange fonce':'#d95d00',
+      'rouge':'#e53935','rouge clair':'#ff6b6b','rouge fonce':'#a61b1b','red':'#e53935','dark red':'#a61b1b',
+      'jaune':'#facc15','yellow':'#facc15','jaune clair':'#fde68a',
+      'vert':'#22a447','verte':'#22a447','green':'#22a447','vert clair':'#86c96b','vert fonce':'#176b36','vert pomme':'#8bc34a',
+      'bleu':'#2878d0','blue':'#2878d0','bleu clair':'#7ec8e3','bleu fonce':'#174a8b','bleu marine':'#142e52',
+      'noir':'#171717','black':'#171717','blanc':'#ffffff','white':'#ffffff','blanc casse':'#f5f0e6',
+      'gris':'#858b93','gray':'#858b93','grey':'#858b93','gris clair':'#d1d5db','gris fonce':'#4b5563','anthracite':'#383d42',
+      'marron':'#855b3a','brown':'#855b3a','beige':'#d9c5a0','creme':'#f3e8d0','ivoire':'#fffff0',
+      'rose':'#ec80a8','pink':'#ec80a8','violet':'#8055a5','purple':'#8055a5','bordeaux':'#722f37',
+      'argente':'#b7bec7','argent':'#b7bec7','silver':'#b7bec7','dore':'#c8a23a','or':'#c8a23a','gold':'#c8a23a'
+    };
+    if(colors[key])return colors[key];
+    if(!/[;{}<>]/.test(raw)&&window.CSS?.supports?.('color',raw))return raw;
+    return '#9ca3af';
+  };
   const matches=(q)=>{
     const n=norm(q);
     if(!n)return[];
@@ -1438,7 +1459,21 @@ function initDashboardGlobalSearch(){
     activeIndex=rows.length?0:-1;
     const createAction=dashboardChassisCreateActionHTML(q);
     if(!rows.length){box.innerHTML='<div class="dashboard-search-empty">Aucun chariot correspondant.</div>'+createAction;box.classList.add('open');input.setAttribute('aria-expanded','true');positionResults();return}
-    box.innerHTML=rows.map((x,i)=>{const c=x.c;const title=c.chassis||c.qr_id||'Chariot';const status=String(c.status||'').trim();const meta=[c.engine?'Moteur : '+c.engine:'',c.capacity?fmtCapacity(c.capacity):'',c.color?'Couleur : '+c.color:'',c.client?'Client : '+c.client:'',c.qr_id?'QR ID : '+c.qr_id:''].filter(Boolean);return `<button type="button" class="dashboard-search-result ${i===activeIndex?'is-active':''}" role="option" aria-selected="${i===activeIndex?'true':'false'}" data-qr="${esc(c.qr_id||'')}"><span class="dashboard-search-result-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7h11v10H3zM14 11h4l3 3v3h-7z"/><circle cx="7" cy="19" r="2"/><circle cx="18" cy="19" r="2"/></svg></span><span class="dashboard-search-result-main"><span class="dashboard-search-result-title">${esc(title)}</span><span class="dashboard-search-result-meta">${meta.map(v=>`<span>${esc(v)}</span>`).join('')}</span></span><span class="dashboard-search-result-side">${status?`<span class="dashboard-search-result-status">${esc(status)}</span>`:''}<span class="dashboard-search-result-arrow" aria-hidden="true">›</span></span></button>`}).join('')+`<div class="dashboard-search-footer"><span>${rows.length} résultat${rows.length>1?'s':''} affiché${rows.length>1?'s':''}</span><button type="button" id="dashboardSearchAll">Voir tous les résultats →</button></div>`+createAction;
+    box.innerHTML=rows.map((x,i)=>{
+      const c=x.c;
+      const title=c.chassis||c.qr_id||'Chariot';
+      const status=String(c.status||'').trim();
+      const engineCapacity=[c.engine?String(c.engine).trim():'',c.capacity?fmtCapacity(c.capacity):''].filter(Boolean).join(' · ');
+      const color=String(c.color||'').trim();
+      const swatch=dashboardSearchColor(color);
+      const meta=[
+        engineCapacity?'<span>'+esc(engineCapacity)+'</span>':'',
+        color?'<span style="display:flex;align-items:center;gap:7px"><span aria-hidden="true" style="display:inline-block;flex:0 0 10px;width:10px;height:10px;border-radius:50%;background:'+esc(swatch)+';border:1px solid rgba(30,45,60,.22);box-sizing:border-box"></span><span>Couleur : '+esc(color)+'</span></span>':'',
+        c.client?'<span>Client : '+esc(c.client)+'</span>':'',
+        c.qr_id?'<span>QR ID : '+esc(c.qr_id)+'</span>':''
+      ].filter(Boolean);
+      return `<button type="button" class="dashboard-search-result ${i===activeIndex?'is-active':''}" role="option" aria-selected="${i===activeIndex?'true':'false'}" data-qr="${esc(c.qr_id||'')}"><span class="dashboard-search-result-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7h11v10H3zM14 11h4l3 3v3h-7z"/><circle cx="7" cy="19" r="2"/><circle cx="18" cy="19" r="2"/></svg></span><span class="dashboard-search-result-main"><span class="dashboard-search-result-title">${esc(title)}</span><span class="dashboard-search-result-meta">${meta.join('')}</span></span><span class="dashboard-search-result-side">${status?`<span class="dashboard-search-result-status">${esc(status)}</span>`:''}<span class="dashboard-search-result-arrow" aria-hidden="true">›</span></span></button>`;
+    }).join('')+`<div class="dashboard-search-footer"><span>${rows.length} résultat${rows.length>1?'s':''} affiché${rows.length>1?'s':''}</span><button type="button" id="dashboardSearchAll">Voir tous les résultats →</button></div>`+createAction;
     box.classList.add('open');input.setAttribute('aria-expanded','true');positionResults();
     box.querySelectorAll('.dashboard-search-result').forEach((btn)=>btn.addEventListener('click',()=>{const qr=btn.dataset.qr;if(qr)location.href='chariot.html?id='+encodeURIComponent(qr)}));
     box.querySelector('#dashboardSearchAll')?.addEventListener('click',()=>dashboardGlobalSearch());

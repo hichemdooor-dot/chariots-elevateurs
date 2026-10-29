@@ -2670,7 +2670,7 @@ function showDuplicatePopup(duplicate, fields){
       <button type="button" class="sbi-duplicate-modal-close" aria-label="Fermer">×</button>
     </div>
     <div class="sbi-duplicate-modal-body">
-      <p>Le chariot avec le châssis <strong>${esc(chassis)}</strong> et le moteur <strong>${esc(engine)}</strong> existe déjà, quelle que soit sa capacité.</p>
+      <p>Le chariot avec le châssis <strong>${esc(chassis)}</strong>, le moteur <strong>${esc(engine)}</strong> et la même capacité existe déjà.</p>
       <div class="sbi-duplicate-modal-ref">Référence existante : <strong>${esc(qr)}</strong></div>
     </div>
     <div class="sbi-duplicate-modal-actions"><button type="button" class="btn" data-duplicate-ok>OK</button></div>
@@ -2690,7 +2690,8 @@ function setupLiveDuplicateGuard(old){
   let lastDuplicate=false;
   const check=()=>{
     const chassis=norm(fields.chassis?.value),engine=norm(fields.engine?.value);
-    const duplicate=!!chassis&&!!engine&&(CHARIOTS||[]).find(c=>norm(c?.chassis)===chassis&&norm(c?.engine)===engine&&String(c?.qr_id)!==String(old?.qr_id||''));
+    const capacity=norm(String(form.querySelector('[name="capacity"]')?.value||'').replace(/\s*T\s*$/i,''));
+    const duplicate=!!chassis&&!!engine&&!!capacity&&(CHARIOTS||[]).find(c=>norm(c?.chassis)===chassis&&norm(c?.engine)===engine&&norm(String(c?.capacity||'').replace(/\s*T\s*$/i,''))===capacity&&String(c?.qr_id)!==String(old?.qr_id||''));
     if(duplicate){
       const key=[chassis,engine,String(duplicate.qr_id||'')].join('|');
       if(!lastDuplicate||key!==lastPopupKey){
@@ -2761,7 +2762,8 @@ async function saveChariot(){
     else if(['4.3m','4.5m','6m'].includes(heightRule))p.mast_type='TRIPLEX';
   }
   delete p.status_display;
-  const duplicate=CHARIOTS.find(c=>norm(c.chassis)===norm(p.chassis)&&norm(c.engine)===norm(p.engine)&&String(c.qr_id)!==String(oldId));
+  const capacityKey=value=>norm(String(value??'').replace(/\s*T\s*$/i,''));
+  const duplicate=CHARIOTS.find(c=>norm(c.chassis)===norm(p.chassis)&&norm(c.engine)===norm(p.engine)&&capacityKey(c.capacity)===capacityKey(p.capacity)&&String(c.qr_id)!==String(oldId));
   if(duplicate){showDuplicatePopup(duplicate,{chassis:{value:p.chassis},engine:{value:p.engine},capacity:{value:p.capacity}});return}
   p.updated_at=new Date().toISOString();
   // Keep the date when editing other fields, but clear it when a delivered

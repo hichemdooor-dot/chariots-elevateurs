@@ -474,7 +474,7 @@ async function page(){
  await loadAgendaDrivers();
  bind();render();
  document.addEventListener("visibilitychange",async()=>{if(document.visibilityState!=="visible"||DEMO)return;try{await loadShared();render()}catch(e){}});
- window.setInterval(async()=>{if(document.visibilityState!=="visible"||$("agendaModal").hidden===false)return;try{const before=JSON.stringify(items);await loadShared();if(JSON.stringify(items)!==before)render()}catch(e){}},45000);
+ // Automatic refresh disabled: preserve in-progress work until the user manually refreshes the page.
 }
 function demoPage(){
  $("agendaDemoBanner").style.display="block";

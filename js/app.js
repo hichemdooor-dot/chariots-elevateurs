@@ -1404,7 +1404,7 @@ function initDashboardGlobalSearch(){
   const removeOldSearchResults=()=>{
     // Remove legacy dropdowns that were rendered by the previous page-specific search.
     document.querySelectorAll(
-      '.sbi-chassis-create-panel, #dashboardSearchResults, .global-search-results, .site-global-search-results, .search-results-dropdown'
+      '.sbi-chassis-create-panel, #dashboardSearchResults, .global-search-results, .site-global-search-results, .search-results-dropdown, .dashboard-search-results:not(#siteGlobalSearchResults), [id*="SearchResults"]:not(#siteGlobalSearchResults)'
     ).forEach(old=>{
       if(old===box)return;
       old.innerHTML='';

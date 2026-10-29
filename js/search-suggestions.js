@@ -250,7 +250,7 @@
       if (qr) location.href = `chariot.html?id=${encodeURIComponent(qr)}${pageOrigin()}`;
     });
     window.addEventListener('resize', positionPanel, { passive: true });
-    window.addEventListener('scroll', positionPanel, { passive: true, capture: true });
+    window.addEventListener('scroll', closePanel, { passive: true, capture: true });
     window.visualViewport?.addEventListener('resize', positionPanel, { passive: true });
     window.visualViewport?.addEventListener('scroll', positionPanel, { passive: true });
   }

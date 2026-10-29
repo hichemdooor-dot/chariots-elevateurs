@@ -1406,24 +1406,27 @@ function initDashboardGlobalSearch(){
   };
   const positionResults=()=>{
     if(!box.classList.contains('open'))return;
-    if(window.matchMedia&&window.matchMedia('(max-width: 800px)').matches){
-      const shell=input.closest('.dashboard-search-shell');
-      const rect=shell?shell.getBoundingClientRect():input.getBoundingClientRect();
-      const viewport=window.visualViewport;
-      const viewportHeight=viewport?viewport.height:window.innerHeight;
-      const viewportOffset=viewport?viewport.offsetTop:0;
-      const visibleBottom=viewportOffset+viewportHeight-12;
-      const top=Math.max(viewportOffset+8,Math.min(rect.bottom+8,visibleBottom-180));
-      box.style.setProperty('position','fixed','important');
-      box.style.setProperty('left','12px','important');
-      box.style.setProperty('right','12px','important');
-      box.style.setProperty('top',top+'px','important');
-      box.style.setProperty('width','auto','important');
-      box.style.setProperty('max-width','none','important');
-      box.style.setProperty('max-height',Math.max(100,visibleBottom-top)+'px','important');
-    }else{
-      ['position','left','right','top','width','max-width','max-height'].forEach(k=>box.style.removeProperty(k));
+    const shell=input.closest('.dashboard-search-shell')||input;
+    const rect=shell.getBoundingClientRect();
+    const viewport=window.visualViewport;
+    const viewportTop=viewport?viewport.offsetTop:0;
+    const viewportHeight=viewport?viewport.height:window.innerHeight;
+    const viewportBottom=viewportTop+viewportHeight-12;
+    const boxHeight=Math.min(box.scrollHeight||320,Math.max(120,viewportHeight-24));
+    let top=rect.bottom+8;
+    if(top+Math.min(boxHeight,320)>viewportBottom){
+      top=Math.max(viewportTop+8,rect.top-Math.min(boxHeight,320)-8);
     }
+    // Results are moved to <body>, so fixed viewport coordinates are required
+    // on desktop as well as mobile; absolute positioning loses the search anchor.
+    box.style.setProperty('position','fixed','important');
+    box.style.setProperty('left',Math.max(12,Math.min(rect.left,window.innerWidth-rect.width-12))+'px','important');
+    box.style.setProperty('right','auto','important');
+    box.style.setProperty('top',top+'px','important');
+    box.style.setProperty('width',Math.min(rect.width,window.innerWidth-24)+'px','important');
+    box.style.setProperty('max-width','none','important');
+    box.style.setProperty('max-height',Math.max(100,viewportBottom-top)+'px','important');
+    box.style.setProperty('z-index','1201','important');
   };
   window.addEventListener('resize',positionResults);
   window.visualViewport?.addEventListener('resize',positionResults);

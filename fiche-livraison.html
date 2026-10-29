@@ -92,7 +92,7 @@
     <div class="spec"><div class="label">TYPE DE MÂT</div><div id="mast" class="value">—</div></div>
   </section>
   </main></div></section>
-<script src="maintenance-config.js?v=7"></script><script src="js/app.js?v=20261018menu2"></script>
+<script src="maintenance-config.js?v=7"></script><script src="js/app.js?v=20261029-global-search-cleanup-v3"></script>
 <script>
 function ficheText(value,fallback='—'){return String(value??'').trim()||fallback}
 function setEngineDisplay(value){const name=String(value||'').trim();const special=['GERBEUR ÉLECTRIQUE','GERBEUR ELECTRIQUE','TRANSPALETTE'];const isSpecial=special.includes(name.toLocaleUpperCase('fr'));const label=document.getElementById('engineLabel');const engine=document.getElementById('engine');if(label){label.textContent=isSpecial?'':'MOTEUR';label.style.display=isSpecial?'none':'';}if(engine){engine.textContent=ficheText(name);engine.style.display='';}}

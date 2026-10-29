@@ -1489,11 +1489,10 @@ function initDashboardGlobalSearch(){
     box.style.setProperty('z-index','1201','important');
   };
   window.addEventListener('resize',positionResults);
-  // Keep results anchored while the viewport resizes, but close them on page scroll
-  // so the fixed dropdown cannot drift over unrelated cards on mobile.
+  // Keep the results visible while the page scrolls, repositioning them under the search field.
   window.visualViewport?.addEventListener('resize',positionResults);
-  window.addEventListener('scroll',close,{passive:true,capture:true});
-  window.visualViewport?.addEventListener('scroll',close,{passive:true});
+  window.addEventListener('scroll',positionResults,{passive:true,capture:true});
+  window.visualViewport?.addEventListener('scroll',positionResults,{passive:true});
   const open=async()=>{
     removeOldSearchResults();
     let q=input.value.trim();

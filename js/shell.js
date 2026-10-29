@@ -195,6 +195,14 @@ function initSbiChassisCreateSuggestion(input,wrapper,panel){
   if(!input||!wrapper||!panel||input.dataset.chassisCreateReady==='1')return;
   input.dataset.chassisCreateReady='1';
   const render=()=>{
+    // The shared live results dropdown now owns search suggestions on app pages.
+    // Keep this legacy chassis-only panel as a fallback if the shared search is unavailable.
+    if(typeof window.__openDashboardSearch==='function'){
+      panel.innerHTML='';
+      panel.classList.remove('open');
+      panel.setAttribute('aria-hidden','true');
+      return;
+    }
     const html=sbiChassisCreateSuggestionHTML(input.value);
     panel.innerHTML=html;
     panel.classList.toggle('open',!!html);
@@ -458,6 +466,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   });
   wireNavGroups();
   initSiteGlobalSearch();
+  // Attach the same live chariot-result dropdown to dashboard and shared headers.
+  if(typeof initDashboardGlobalSearch==='function')initDashboardGlobalSearch();
   document.querySelectorAll('.menu-btn').forEach(btn=>{btn.setAttribute('aria-expanded','false');btn.setAttribute('aria-controls','mobileMenu');});
   document.querySelectorAll('.overlay').forEach((ov,i)=>{
     const side=ov.querySelector('.side');

@@ -681,6 +681,60 @@ async function exportChariotsPDF(){
 }
 
 function getUserDisplayName(){return currentUser?.user_metadata?.full_name||currentUser?.user_metadata?.name||currentUser?.email?.split('@')[0]||'Utilisateur'}
+const SBI_COMMERCIAL_NAMES=['IDRIS','MOHAMED','DJOUDI'];
+function getSbiCommercialName(name=getUserDisplayName()){
+  const normalized=String(name||'').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
+  return SBI_COMMERCIAL_NAMES.find(item=>item===normalized)||'';
+}
+async function getChariotCommercial(qrId){
+  const {data,error}=await supabaseClient.from('maintenance').select('id,date,technicien,type,travaux,created_at,created_by').eq('qr_id',qrId).eq('type','Commercial responsable').order('created_at',{ascending:false}).limit(1);
+  if(error)throw error;
+  const row=data?.[0];if(!row)return {name:'',row:null};
+  try{return {name:String(JSON.parse(row.travaux||'{}').commercial||''),row}}catch(_){return {name:'',row}}
+}
+async function saveChariotCommercial(qrId,commercial,reason='Affectation automatique'){
+  if(!qrId||!SBI_COMMERCIAL_NAMES.includes(commercial))return false;
+  const {error}=await supabaseClient.from('maintenance').insert({qr_id:qrId,date:new Date().toISOString().slice(0,10),technicien:getUserDisplayName(),type:'Commercial responsable',travaux:JSON.stringify({commercial,reason}),created_by:currentUser?.id||null});
+  if(error){console.warn('Commercial responsable non enregistré',error);return false}
+  return true;
+}
+async function assignClientToChariot(qrId){
+  if(!requireValidLicense()||!currentUser)return;
+  const commercial=getSbiCommercialName();
+  if(!commercial&&!isAdmin()){alert('Cette action est réservée aux commerciaux IDRIS, MOHAMED et DJOUDI.');return}
+  const c=CHARIOTS.find(x=>String(x.qr_id)===String(qrId));
+  if(!c){alert('Chariot introuvable.');return}
+  if(isDelivered(c)){alert('Un chariot déjà livré ne peut pas être affecté à un nouveau client depuis cette action.');return}
+  const client=String(prompt('Nom du client :',String(c.client||''))||'').trim().toUpperCase();
+  if(!client)return;
+  if(!confirm('Affecter le chariot '+(c.chassis||c.qr_id)+' au client '+client+' ?'))return;
+  const payload={client,status:'Réservé',updated_at:new Date().toISOString()};
+  const {error}=await supabaseClient.from('chariots').update(payload).eq('qr_id',qrId);
+  if(error){alert('Affectation impossible : '+friendlySupabaseError(error));return}
+  Object.assign(c,payload);
+  const assignedCommercial=commercial||(await getChariotCommercial(qrId).catch(()=>({name:''}))).name;
+  if(assignedCommercial){
+    const saved=await saveChariotCommercial(qrId,assignedCommercial,'Client affecté : '+client);
+    if(!saved)alert('Le client a été affecté, mais le commercial n’a pas pu être enregistré dans l’historique.');
+  }
+  try{await supabaseClient.from('maintenance').insert({qr_id:qrId,date:new Date().toISOString().slice(0,10),technicien:getUserDisplayName(),type:'Affectation client',travaux:'Client : '+client+' • Commercial : '+(assignedCommercial||'Non renseigné'),created_by:currentUser.id})}catch(e){console.warn('Historique affectation client non enregistré',e)}
+  await detailPage();
+}
+async function editChariotCommercial(qrId){
+  if(!requireAdmin())return;
+  const choices=['IDRIS','MOHAMED','DJOUDI','Aucun'];
+  const currentCommercial=await getChariotCommercial(qrId).catch(()=>({name:''}));
+  const promptText='Commercial responsable :\\n'+choices.map((name,i)=>(i+1)+'. '+name).join('\\n')+'\\n\\nSaisissez 1, 2, 3 ou 4 :';
+  const answer=prompt(promptText,String(Math.max(1,choices.indexOf(currentCommercial.name)+1)));
+  if(answer===null)return;
+  const index=Number(answer)-1;
+  if(!Number.isInteger(index)||index<0||index>=choices.length){alert('Choix invalide.');return}
+  if(choices[index]==='Aucun'){
+    const {error}=await supabaseClient.from('maintenance').insert({qr_id:qrId,date:new Date().toISOString().slice(0,10),technicien:getUserDisplayName(),type:'Commercial responsable',travaux:JSON.stringify({commercial:'',reason:'Correction administrateur'}),created_by:currentUser?.id||null});
+    if(error){alert('Erreur : '+friendlySupabaseError(error));return}
+  }else if(!await saveChariotCommercial(qrId,choices[index],'Correction administrateur')){alert('Impossible d’enregistrer le commercial.');return}
+  await detailPage();
+}
 function getUserRoleLabel(){return isAdmin()?'Administrateur':'Utilisateur'}
 function renderConnectedUser(){
   const name=getUserDisplayName(),role=getUserRoleLabel(),admin=isAdmin();
@@ -974,7 +1028,14 @@ async function transitionChariotStatus(qrId,nextStatus,reason='',options={}){
   const {error}=await supabaseClient.from('chariots').update(payload).eq('qr_id',qrId);
   if(error){alert('Erreur : '+friendlySupabaseError(error));return false}
   try{await supabaseClient.from('maintenance').insert({qr_id:qrId,date:localDateISO(now),technicien:getUserDisplayName(),type:'Statut',travaux:reason||`Statut : ${c.status||'—'} → ${nextStatus}`,created_by:currentUser.id})}catch(e){console.warn('Historique de statut non enregistré',e)}
-  Object.assign(c,payload);return true;
+  Object.assign(c,payload);
+  if(['reserve','livre'].includes(to)&&String(c.client||'').trim()){
+    const commercial=getSbiCommercialName();
+    if(commercial){
+      try{const existing=await getChariotCommercial(qrId);if(!existing.name)await saveChariotCommercial(qrId,commercial,'Attribution automatique lors du passage au statut '+nextStatus)}catch(e){console.warn('Attribution commerciale automatique impossible',e)}
+    }
+  }
+  return true;
 }
 function setupAutomaticHeightMastField(){
   const heightEl=document.querySelector('[name="lifting_height"]');
@@ -2148,6 +2209,7 @@ async function detailPage(){
   current=CHARIOTS.find(c=>String(c.qr_id)===String(id));
   if(!current){$('#detail').innerHTML='<div class="empty">Chariot introuvable.</div>';return}
   $('#title').textContent=current.chassis||current.qr_id;$('#status').textContent=current.status||'—';
+  let commercialInfo={name:''};try{commercialInfo=await getChariotCommercial(current.qr_id)}catch(e){console.warn('Lecture du commercial responsable impossible',e)}
   const planned=getDeliveryPlan(current.qr_id),plannedDate=planned?.date?formatPlannedDate(planned.date):'—',plannedTime=planned?.time||'—',plannedDriver=planned?.driver||'—',plannedDestination=planned?.destination||'—';
   const planDeliveryButton=$('#planDeliveryAction');
   if(planDeliveryButton){
@@ -2179,7 +2241,7 @@ async function detailPage(){
   const group=(key,title,rows)=>`<section class="detail-panel detail-panel--${key}"><header class="detail-panel-head"><span class="detail-panel-icon">${icon(key)}</span><h2>${esc(title)}</h2></header><div class="detail-panel-values">${rows.map(([label,value,kind])=>field(label,value,kind||'')).join('')}</div></section>`;
   const groups=[
     group('identification','Identification',[
-      ['Client',current.client],['N° châssis',current.chassis],['N° de série',current.serial_number],['Moteur',current.engine],['N° moteur',current.engine_number]
+      ['Client',current.client],['Commercial responsable',commercialInfo.name||'Non renseigné'],['N° châssis',current.chassis],['N° de série',current.serial_number],['Moteur',current.engine],['N° moteur',current.engine_number]
     ]),
     group('characteristics','Caractéristiques du chariot',[
       ['Capacité',fmtCapacity(current.capacity)],['Hauteur de levage',current.lifting_height],['Type de mât',String(current.mast_type||'').toUpperCase()],['Dimensions des fourches',current.fork_dimension],['Type de pneu',current.tire_type],['Couleur',current.color],['Statut',current.status,normalizeStatus(current.status).replace(/\s+/g,'-')]
@@ -2195,6 +2257,18 @@ async function detailPage(){
 
   const [identificationGroup,characteristicsGroup,stockGroup,deliveryGroup]=groups;
   $('#detail').innerHTML=`<div class="detail-dashboard-layout detail-layout-compact"><div class="detail-information-grid"><div class="detail-info-column detail-info-column--left">${identificationGroup}${stockGroup}</div><div class="detail-info-column detail-info-column--right">${characteristicsGroup}${deliveryGroup}</div></div><section class="detail-panel detail-panel--observations"><header class="detail-panel-head"><span class="detail-panel-icon">${icon('observations')}</span><h2>Observations</h2></header><div class="detail-observation-text">${esc(current.observations||'Aucune observation enregistrée.')}</div></section></div>`;
+  if(isAdmin()||getSbiCommercialName()){
+    const commercialPanel=document.querySelector('#detail .detail-panel--identification .detail-panel-head');
+    if(commercialPanel&&!document.getElementById('assignClientBtn')&&!isDelivered(current)){
+      const button=document.createElement('button');button.id='assignClientBtn';button.type='button';button.className='btn light';button.textContent=current.client?'Modifier le client':'Affecter un client';button.onclick=()=>assignClientToChariot(current.qr_id);commercialPanel.appendChild(button);
+    }
+  }
+  if(isAdmin()){
+    const commercialPanel=document.querySelector('#detail .detail-panel--identification .detail-panel-head');
+    if(commercialPanel&&!document.getElementById('editCommercialBtn')){
+      const button=document.createElement('button');button.id='editCommercialBtn';button.type='button';button.className='btn light';button.textContent='Modifier le commercial';button.style.marginLeft='auto';button.onclick=()=>editChariotCommercial(current.qr_id);commercialPanel.appendChild(button);
+    }
+  }
   showChariotObservationPopup(current);
 
   const historyToggle=document.getElementById('historyToggle');

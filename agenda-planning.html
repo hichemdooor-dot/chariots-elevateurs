@@ -236,10 +236,9 @@ function render(){
  if(sharedLoadError&&!DEMO){
   $("agendaCalendar").className="";
   $("agendaCalendar").innerHTML='<div class="agenda-empty-state"><strong>Impossible de charger les activités partagées.</strong>'+safe(sharedLoadError)+'<br>Vérifiez votre connexion et les autorisations, puis rechargez la page.</div>';
-  $("agendaSelected").hidden=true;populateChariotOptions();return;
+  $("agendaSelected").hidden=true;return;
  }
  if(view==="week")renderWeek();else if(view==="day")renderDay();else renderList();
- populateChariotOptions();
 }
 function populateChariotOptions(query){
  $("agendaWilayaOptions").hidden=true;$("agendaDestination").setAttribute("aria-expanded","false");

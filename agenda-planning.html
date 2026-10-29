@@ -422,6 +422,8 @@ function subscribeAgendaRealtime(){
    .on("postgres_changes",{event:"*",schema:"public",table:"maintenance"},payload=>{
     const row=payload?.new||payload?.old||{};
     if(row.type!==TYPE)return;
+    const currentUserId=typeof currentUser!=="undefined"?(currentUser?.id||null):null;
+    if(currentUserId&&row.created_by&&String(row.created_by)===String(currentUserId))return;
     pendingRealtimeRefresh=true;scheduleRealtimeRefresh();
    })
    .subscribe(status=>{if(status==="CHANNEL_ERROR"||status==="TIMED_OUT")console.warn("Realtime agenda indisponible : vérifiez que Realtime est activé pour la table maintenance dans Supabase.")});
@@ -502,7 +504,7 @@ async function page(){
  try{await syncExistingAgendaDeliveriesToPlanning()}catch(err){console.warn("Synchronisation des livraisons existantes de l’agenda impossible",err)}
  await loadAgendaDrivers();
  bind();render();
- subscribeAgendaRealtime()render()}catch(e){}});
+ subscribeAgendaRealtime();
  // Automatic refresh disabled: preserve in-progress work until the user manually refreshes the page.
 }
 function demoPage(){

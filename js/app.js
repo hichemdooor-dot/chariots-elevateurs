@@ -1407,7 +1407,7 @@ function initDashboardGlobalSearch(){
     const raw=String(value||'').trim();
     if(!raw)return '#9ca3af';
     if(/^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(raw))return raw;
-    const key=raw.normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().replace(/[-_]+/g,' ').replace(/\\s+/g,' ').trim();
+    const key=raw.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[-_]+/g,' ').replace(/\s+/g,' ').trim();
     const colors={
       'orange':'#f58220','orange clair':'#ffad60','orange fonce':'#d95d00',
       'rouge':'#e53935','rouge clair':'#ff6b6b','rouge fonce':'#a61b1b','red':'#e53935','dark red':'#a61b1b',

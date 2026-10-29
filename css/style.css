@@ -4047,3 +4047,13 @@ body.professional-dashboard .dash-logo img{
   #siteGlobalSearchResults .dashboard-search-result-meta{font-size:11px}
   #siteGlobalSearchResults .dashboard-search-result-side{max-width:36%}
 }
+
+
+/* Match the saved color swatch styling on the dashboard's native search panel */
+#dashboardSearchResults .dashboard-search-color-line{
+  display:flex!important;align-items:center!important;gap:7px!important;min-width:0!important;
+}
+#dashboardSearchResults .dashboard-search-color-dot{
+  display:inline-block!important;flex:0 0 11px!important;width:11px!important;height:11px!important;
+  border-radius:50%!important;border:1px solid rgba(30,45,60,.25)!important;box-sizing:border-box!important;
+}

@@ -182,7 +182,8 @@ function toISO(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"
 function parseISO(s){const p=String(s||"").split("-").map(Number);return new Date(p[0]||2000,(p[1]||1)-1,p[2]||1)}
 function addDays(d,n){const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.setDate(x.getDate()+n);return x}
 function startWeek(d){return addDays(d,-((d.getDay()+6)%7))}
-function mondayOfCurrentWeek(){return addDays(startWeek(new Date()),weekShift*7)}
+function agendaWeekStart(d){return addDays(d,-((d.getDay()+1)%7))}
+function mondayOfCurrentWeek(){return addDays(agendaWeekStart(new Date()),weekShift*7)}
 function sameDate(a,b){return String(a)===String(b)}
 function safe(v){return String(v==null?"":v).replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]))}
 function uuid(){return (crypto&&crypto.randomUUID)?crypto.randomUUID():"agenda_"+Date.now()+"_"+Math.random().toString(36).slice(2,9)}
@@ -202,7 +203,7 @@ function renderStats(){
  $("statTow").textContent=items.filter(i=>i.kind==="depannage"&&i.status!=="Annulée"&&i.status!=="Prêt / Terminé").length;
 }
 function renderWeek(){
- const base=addDays(mondayOfCurrentWeek(),-2),filtered=getFiltered().sort(ordered);
+ const base=mondayOfCurrentWeek(),filtered=getFiltered().sort(ordered);
  $("agendaPeriod").textContent=base.toLocaleDateString("fr-FR",{day:"2-digit",month:"short"})+" – "+fmtDay(addDays(base,6))+" "+base.getFullYear();
  $("agendaCalendar").className="agenda-week-grid";
  $("agendaSelected").hidden=true;
@@ -472,7 +473,7 @@ async function saveForm(e){
  const conflict=conflictFor(item);if(conflict){showAlert(conflict+" Modifiez l’heure prévue ou affectez un autre chauffeur.");return}
  saveBusy=true;$("agendaSave").disabled=true;$("agendaSave").textContent="Enregistrement…";
  try{
-  await persist(item);selectedDate=item.date;weekShift=Math.round((startWeek(parseISO(item.date))-startWeek(new Date()))/(7*86400000));closeForm();render();showToast(DEMO?"Activité enregistrée dans l’aperçu.":"Activité enregistrée dans l’agenda partagé.");
+  await persist(item);selectedDate=item.date;weekShift=Math.round((agendaWeekStart(parseISO(item.date))-agendaWeekStart(new Date()))/(7*86400000));closeForm();render();showToast(DEMO?"Activité enregistrée dans l’aperçu.":"Activité enregistrée dans l’agenda partagé.");
  }catch(err){console.error(err);showAlert("Enregistrement impossible : "+(typeof friendlySupabaseError==="function"?friendlySupabaseError(err):(err?.message||String(err)))+". Vérifiez votre connexion et les droits d’écriture sur le journal maintenance.");}
  finally{saveBusy=false;$("agendaSave").disabled=false;$("agendaSave").textContent=editingId?"Enregistrer les modifications":"Enregistrer l’activité";}
 }

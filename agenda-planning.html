@@ -176,7 +176,7 @@ const STORE="sbi_agenda_preview_demo_v1";
 const $=id=>document.getElementById(id);
 const kinds={preparation:{label:"Préparation",color:"#287ab5"},modification:{label:"Modification",color:"#7c3aed"},livraison:{label:"Livraison",color:"#15945a"},depannage:{label:"Camion dépanneur",color:"#d97706"}};
 const AGENDA_VIEW_KEY="sbi_agenda_view_v1";
-let items=[],machines=[],selectedDate=toISO(new Date()),weekShift=0,view=(()=>{try{const saved=localStorage.getItem(AGENDA_VIEW_KEY);return ["week","day","list"].includes(saved)?saved:"week"}catch(_){return "week"}})(),editingId=null,saveBusy=false,toastTimer=null,sharedLoadError="";
+let items=[],machines=[],selectedDate=toISO(new Date()),weekShift=0,view="week",editingId=null,saveBusy=false,toastTimer=null,sharedLoadError="";
 let pendingRealtimeRefresh=false,realtimeRefreshTimer=null;
 function toISO(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 function parseISO(s){const p=String(s||"").split("-").map(Number);return new Date(p[0]||2000,(p[1]||1)-1,p[2]||1)}
@@ -498,6 +498,9 @@ function bind(){
  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("agendaModal").hidden)closeForm()});
 }
 async function page(){
+ // Always open the agenda on the current Saturday–Friday week, not the last browsed week/view.
+ weekShift=0;selectedDate=toISO(new Date());view="week";
+ try{localStorage.setItem(AGENDA_VIEW_KEY,"week")}catch(_){}
  if(!await session())return;
  try{await loadChariots();machines=Array.isArray(CHARIOTS)?CHARIOTS:[]}catch(err){machines=[];console.warn("Liste des chariots indisponible dans Agenda",err)}
  try{await loadShared()}catch(err){sharedLoadError=typeof friendlySupabaseError==="function"?friendlySupabaseError(err):(err?.message||String(err));items=[];}

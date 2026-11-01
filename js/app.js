@@ -1229,6 +1229,23 @@ function compactWorkflowHtml(c){
   }).join('')}</div>`;
 }
 
+// Position row-action menus upward when there is not enough room below.
+if(!window.__SBI_ROW_MENU_EDGE_POSITION_BOUND){
+  window.__SBI_ROW_MENU_EDGE_POSITION_BOUND=true;
+  document.addEventListener('toggle',event=>{
+    const menu=event.target;
+    if(!menu.matches?.('details.sbi-row-menu'))return;
+    if(!menu.open){menu.classList.remove('opens-up');return;}
+    requestAnimationFrame(()=>{
+      const panel=menu.querySelector('.sbi-row-menu-panel');
+      if(!panel)return;
+      menu.classList.remove('opens-up');
+      const rect=panel.getBoundingClientRect();
+      if(rect.bottom>window.innerHeight-12)menu.classList.add('opens-up');
+    });
+  },true);
+}
+
 // Close any open row-action menu when the user clicks outside it.
 if(!window.__SBI_ROW_MENU_OUTSIDE_CLICK_BOUND){
   window.__SBI_ROW_MENU_OUTSIDE_CLICK_BOUND=true;

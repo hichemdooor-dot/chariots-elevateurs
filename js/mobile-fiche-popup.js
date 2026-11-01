@@ -129,7 +129,7 @@ html.sbi-mobile-fiche-popup-lock,html.sbi-mobile-fiche-popup-lock body{overflow:
     event.preventDefault();
     event.stopPropagation();
     if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
-    if (chassisHoldTriggered) {
+    if (typeof chassisHoldTriggered !== 'undefined' && chassisHoldTriggered) {
       chassisHoldTriggered = false;
       return;
     }

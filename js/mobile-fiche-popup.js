@@ -49,6 +49,12 @@ html.sbi-mobile-fiche-popup-lock,html.sbi-mobile-fiche-popup-lock body{overflow:
   var title = document.getElementById(TITLE_ID);
   var closeButton = document.getElementById(CLOSE_ID);
   var previousFocus = null;
+  var longPressTimer = null;
+  var longPressLink = null;
+  var longPressStartX = 0;
+  var longPressStartY = 0;
+  var suppressNextChassisClick = false;
+  var LONG_PRESS_MS = 550;
 
   function isMobile() {
     return (window.matchMedia && window.matchMedia('(max-width: 800px)').matches) || window.innerWidth <= 800;
@@ -111,28 +117,62 @@ html.sbi-mobile-fiche-popup-lock,html.sbi-mobile-fiche-popup-lock body{overflow:
       closePopup();
     }
   });
-  // Chassis number: a normal tap/click opens the fiche popup.
-  // Press-and-hold must not trigger a separate full-page navigation.
+  // Chassis number: a normal tap keeps its existing navigation/action.
+  // Press-and-hold opens the fiche preview popup on mobile.
   function isChassisLink(link) {
     return !!(link && link.classList && link.classList.contains('mobile-fiche-popup-link'));
   }
-  document.addEventListener('contextmenu', function (event) {
+  function eventLink(event) {
     var target = event.target && event.target.nodeType === 3 ? event.target.parentElement : event.target;
-    var link = target && target.closest ? target.closest('a[href]') : null;
+    return target && target.closest ? target.closest('a[href]') : null;
+  }
+  function clearLongPress() {
+    if (longPressTimer !== null) window.clearTimeout(longPressTimer);
+    longPressTimer = null;
+    longPressLink = null;
+  }
+  document.addEventListener('pointerdown', function (event) {
+    var link = eventLink(event);
+    if (!isMobile() || !isChassisLink(link) || (event.pointerType === 'mouse' && event.button !== 0)) return;
+    clearLongPress();
+    longPressLink = link;
+    longPressStartX = event.clientX;
+    longPressStartY = event.clientY;
+    longPressTimer = window.setTimeout(function () {
+      if (!longPressLink || !document.documentElement.contains(longPressLink)) return;
+      suppressNextChassisClick = true;
+      openPopup(longPressLink);
+      longPressTimer = null;
+      if (navigator.vibrate) { try { navigator.vibrate(25); } catch (_) {} }
+    }, LONG_PRESS_MS);
+  }, true);
+  document.addEventListener('pointermove', function (event) {
+    if (longPressTimer === null) return;
+    if (Math.abs(event.clientX - longPressStartX) > 10 || Math.abs(event.clientY - longPressStartY) > 10) clearLongPress();
+  }, true);
+  document.addEventListener('pointerup', function () {
+    if (longPressTimer !== null) clearLongPress();
+  }, true);
+  document.addEventListener('pointercancel', clearLongPress, true);
+  document.addEventListener('contextmenu', function (event) {
+    var link = eventLink(event);
     if (isChassisLink(link)) event.preventDefault();
   }, true);
   document.addEventListener('click', function (event) {
-    var target = event.target && event.target.nodeType === 3 ? event.target.parentElement : event.target;
-    var link = target && target.closest ? target.closest('a[href]') : null;
-    var chassisLink = isChassisLink(link);
-    if (!isViewFicheLink(link) || (!chassisLink && !isMobile())) return;
+    var link = eventLink(event);
+    if (isChassisLink(link)) {
+      if (suppressNextChassisClick) {
+        suppressNextChassisClick = false;
+        event.preventDefault();
+        event.stopPropagation();
+        if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
+      }
+      return;
+    }
+    if (!isViewFicheLink(link) || !isMobile()) return;
     event.preventDefault();
     event.stopPropagation();
     if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
-    if (typeof chassisHoldTriggered !== 'undefined' && chassisHoldTriggered) {
-      chassisHoldTriggered = false;
-      return;
-    }
     openPopup(link);
   }, true);
 })();

@@ -4159,3 +4159,10 @@ body.professional-dashboard .dash-logo img{
     max-width:30%!important;
   }
 }
+
+
+/* Keep the complete chariot actions menu visible on mobile and near page edges. */
+.sbi-row-menu.opens-up>.sbi-row-menu-panel{top:auto!important;bottom:calc(100% + 5px)!important}
+@media(max-width:800px){
+  .sbi-row-menu-panel{max-width:calc(100vw - 28px);max-height:calc(100dvh - 32px);overflow-y:auto;-webkit-overflow-scrolling:touch}
+}

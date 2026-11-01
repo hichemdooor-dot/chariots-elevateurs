@@ -1229,20 +1229,70 @@ function compactWorkflowHtml(c){
   }).join('')}</div>`;
 }
 
-// Position row-action menus upward when there is not enough room below.
-if(!window.__SBI_ROW_MENU_EDGE_POSITION_BOUND){
-  window.__SBI_ROW_MENU_EDGE_POSITION_BOUND=true;
+// Render row-action menus in the document body so table overflow cannot clip them.
+if(!window.__SBI_ROW_MENU_PORTAL_BOUND){
+  window.__SBI_ROW_MENU_PORTAL_BOUND=true;
+  function positionSbiRowMenu(menu){
+    const panel=menu && menu.__sbiPortaledPanel;
+    const summary=menu && menu.querySelector(':scope > summary');
+    if(!panel||!summary)return;
+    const anchor=summary.getBoundingClientRect();
+    const margin=12,gap=6;
+    const maxHeight=Math.max(120,window.innerHeight-margin*2);
+    panel.style.position='fixed';
+    panel.style.zIndex='2147483000';
+    panel.style.maxHeight=maxHeight+'px';
+    panel.style.overflowY='auto';
+    panel.style.overflowX='hidden';
+    panel.style.boxSizing='border-box';
+    panel.style.width='max-content';
+    panel.style.minWidth=Math.min(240,window.innerWidth-margin*2)+'px';
+    panel.style.maxWidth=(window.innerWidth-margin*2)+'px';
+    panel.style.right='auto';
+    panel.style.bottom='auto';
+    const panelHeight=Math.min(panel.scrollHeight,maxHeight);
+    const spaceBelow=window.innerHeight-anchor.bottom-margin;
+    const spaceAbove=anchor.top-margin;
+    let top;
+    if(spaceBelow>=Math.min(panelHeight,220)||spaceBelow>=spaceAbove){
+      top=Math.min(anchor.bottom+gap,window.innerHeight-margin-panelHeight);
+    }else{
+      top=Math.max(margin,anchor.top-gap-panelHeight);
+    }
+    const width=Math.min(Math.max(panel.offsetWidth,210),window.innerWidth-margin*2);
+    let left=anchor.right-width;
+    left=Math.max(margin,Math.min(left,window.innerWidth-margin-width));
+    panel.style.top=top+'px';
+    panel.style.left=left+'px';
+    panel.style.right='auto';
+  }
   document.addEventListener('toggle',event=>{
     const menu=event.target;
     if(!menu.matches?.('details.sbi-row-menu'))return;
-    if(!menu.open){menu.classList.remove('opens-up');return;}
-    requestAnimationFrame(()=>{
-      const panel=menu.querySelector('.sbi-row-menu-panel');
-      if(!panel)return;
-      menu.classList.remove('opens-up');
-      const rect=panel.getBoundingClientRect();
-      if(rect.bottom>window.innerHeight-12)menu.classList.add('opens-up');
-    });
+    const panel=menu.__sbiPortaledPanel||menu.querySelector(':scope > .sbi-row-menu-panel');
+    if(!panel)return;
+    if(menu.open){
+      if(!menu.__sbiPanelOrigin){
+        menu.__sbiPanelOrigin={parent:panel.parentNode,next:panel.nextSibling};
+      }
+      menu.__sbiPortaledPanel=panel;
+      if(panel.parentNode!==document.body)document.body.appendChild(panel);
+      requestAnimationFrame(()=>positionSbiRowMenu(menu));
+    }else{
+      if(menu.__sbiPanelOrigin&&panel.parentNode===document.body){
+        const origin=menu.__sbiPanelOrigin;
+        if(origin.parent)origin.parent.insertBefore(panel,origin.next&&origin.next.parentNode===origin.parent?origin.next:null);
+      }
+      panel.style.cssText='';
+      menu.__sbiPortaledPanel=null;
+      menu.__sbiPanelOrigin=null;
+    }
+  },true);
+  window.addEventListener('resize',()=>{
+    document.querySelectorAll('details.sbi-row-menu[open]').forEach(positionSbiRowMenu);
+  },{passive:true});
+  window.addEventListener('scroll',()=>{
+    document.querySelectorAll('details.sbi-row-menu[open]').forEach(positionSbiRowMenu);
   },true);
 }
 
@@ -1251,7 +1301,8 @@ if(!window.__SBI_ROW_MENU_OUTSIDE_CLICK_BOUND){
   window.__SBI_ROW_MENU_OUTSIDE_CLICK_BOUND=true;
   document.addEventListener('click',event=>{
     document.querySelectorAll('.sbi-row-menu[open]').forEach(menu=>{
-      if(!menu.contains(event.target))menu.open=false;
+      const panel=menu.__sbiPortaledPanel;
+      if(!menu.contains(event.target)&&!(panel&&panel.contains(event.target)))menu.open=false;
     });
   });
 }

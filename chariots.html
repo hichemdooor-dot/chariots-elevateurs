@@ -19,45 +19,5 @@ html.mobile-fiche-popup-lock,html.mobile-fiche-popup-lock body{overflow:hidden!i
 </div>
 <footer>QR ID permanent • Données techniques et modifications stockées dans Supabase<br>© 2026 · Developed by <strong>BaCkDoooR</strong></footer><script src="js/shell.js?v=20261029-remove-old-search-v1"></script><script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script><script src="maintenance-config.js?v=7"></script><script src="js/app.js?v=20261029-search-scroll-anchor-v5"></script><script>initPage(chariotsPage())</script>
 <script>
-/* Mobile-only popup for the actual chariot detail page. */
-(function(){
-  const list=document.getElementById('list');
-  const modal=document.getElementById('mobileFichePopup');
-  const frame=document.getElementById('mobileFicheFrame');
-  const title=document.getElementById('mobileFicheTitle');
-  const closeBtn=document.getElementById('mobileFicheClose');
-  if(!list||!modal||!frame||!closeBtn||list.dataset.mobileFichePopupBound==='1')return;
-  list.dataset.mobileFichePopupBound='1';
-  let priorFocus=null;
-  const isMobile=()=>window.matchMedia&&window.matchMedia('(max-width: 700px)').matches;
-  function close(){
-    modal.classList.remove('open');modal.setAttribute('aria-hidden','true');
-    frame.src='about:blank';document.documentElement.classList.remove('mobile-fiche-popup-lock');
-    if(priorFocus&&typeof priorFocus.focus==='function')priorFocus.focus();
-  }
-  function open(link){
-    const raw=link.dataset.popupQr||new URL(link.href,location.href).searchParams.get('id')||'';
-    const id=String(raw).trim();if(!id)return;
-    priorFocus=document.activeElement;
-    const card=link.closest('[data-card-id]');
-    const label=card?.querySelector('.chariot-list-id')?.textContent?.trim()||id;
-    title.textContent='Fiche chariot — '+label;
-    const target=new URL(link.href,location.href);target.searchParams.set('popup','1');
-    frame.src=target.href;
-    modal.classList.add('open');modal.setAttribute('aria-hidden','false');
-    document.documentElement.classList.add('mobile-fiche-popup-lock');
-    closeBtn.focus({preventScroll:true});
-  }
-  list.addEventListener('click',function(e){
-    const link=e.target.closest('.mobile-fiche-popup-link');
-    if(!link||!isMobile())return;
-    e.preventDefault();e.stopPropagation();
-    if(typeof e.stopImmediatePropagation==='function')e.stopImmediatePropagation();
-    open(link);
-  },true);
-  closeBtn.addEventListener('click',close);
-  modal.addEventListener('click',e=>{if(e.target===modal)close()});
-  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&modal.classList.contains('open')){e.preventDefault();close()}});
-})();
-</script>
-<script src="js/button-icons.js?v=67.42"></script><script src="js/search-suggestions.js?v=20261029-scroll-close"></script><script src="js/mobile-fiche-popup.js?v=68.10"></script></body></html>
+
+<script src="js/button-icons.js?v=67.42"></script><script src="js/search-suggestions.js?v=20261029-scroll-close"></script><script src="js/mobile-fiche-popup.js?v=68.11"></script></body></html>

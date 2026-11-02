@@ -3182,15 +3182,49 @@ async function deliveryPlanningPage(){
     document.addEventListener('click',e=>{if(!e.target.closest('.chariot-autocomplete')){list.hidden=true;input.setAttribute('aria-expanded','false')}});
     input.addEventListener('keydown',e=>{if(e.key==='Escape'){list.hidden=true;input.setAttribute('aria-expanded','false')}});
   })();
-  function renderSearchResults(){
+  function renderSearchResults({showSuggestions=false}={}){
     if(!els.searchResults||!els.search)return;
-    const raw=els.search.value.trim();
-    if(!raw){els.searchResults.innerHTML='';return}
+    const raw=String(els.search.value||'').trim();
     const tokens=searchTokens(raw);
-    const matches=availableChariots().filter(c=>{const text=chariotSearchText(c);return tokens.every(t=>text.includes(t))}).sort((a,b)=>String(a.chassis||a.qr_id||'').localeCompare(String(b.chassis||b.qr_id||''),undefined,{numeric:true,sensitivity:'base'})).slice(0,20);
-    els.searchResults.innerHTML=matches.length?matches.map(c=>`<button type="button" class="delivery-search-result" data-qr="${esc(c.qr_id)}"><strong>${esc(c.chassis||c.qr_id||'Chariot')}</strong><span>QR: ${esc(c.qr_id||'—')} · N° moteur: ${esc(c.engine_number||'—')} · ${esc(c.engine||'—')} · ${esc(fmtCapacity(c.capacity))} · Couleur : ${esc(c.color||'—')} · ${esc(c.client||'Sans client')}</span></button>`).join(''):'<div class="delivery-search-empty">Aucun chariot correspondant.</div>';
-    els.searchResults.querySelectorAll('[data-qr]').forEach(b=>b.addEventListener('click',()=>{els.chariot.value=b.dataset.qr;els.search.value='';els.searchResults.innerHTML=''}));
+    if(!tokens.length&&!showSuggestions){
+      els.searchResults.innerHTML='';
+      els.searchResults.hidden=true;
+      els.search.setAttribute('aria-expanded','false');
+      return;
+    }
+    const matches=availableChariots()
+      .filter(c=>!tokens.length||tokens.every(t=>chariotSearchText(c).includes(t)))
+      .sort((a,b)=>String(a.chassis||a.qr_id||'').localeCompare(String(b.chassis||b.qr_id||''),undefined,{numeric:true,sensitivity:'base'}))
+      .slice(0,20);
+    els.searchResults.innerHTML=matches.length
+      ?matches.map(c=>`<button type="button" class="delivery-search-result" role="option" data-qr="${esc(c.qr_id)}"><strong>${esc(c.chassis||c.qr_id||'Chariot')}</strong><span>QR : ${esc(c.qr_id||'—')} · N° moteur : ${esc(c.engine_number||'—')} · ${esc(c.engine||'—')} · ${esc(fmtCapacity(c.capacity))} · Couleur : ${esc(c.color||'—')} · ${esc(c.client||'Sans client')}</span></button>`).join('')
+      :'<div class="delivery-search-empty" role="status">Aucun chariot disponible correspondant. Vérifiez le châssis, le moteur ou le nom du client.</div>';
+    els.searchResults.hidden=false;
+    els.search.setAttribute('aria-expanded','true');
   }
+  function selectSearchResult(qr){
+    const c=getMachine(qr);
+    if(!c||!availableChariots().some(item=>String(item.qr_id)===String(qr)))return;
+    els.chariot.value=String(qr);
+    const visibleInput=document.getElementById('deliveryChariotSearch');
+    const optionsList=document.getElementById('deliveryChariotOptions');
+    if(visibleInput){
+      visibleInput.value=[c.chassis||c.qr_id,c.engine_number,c.engine,c.client].filter(Boolean).join(' · ');
+      visibleInput.setAttribute('aria-expanded','false');
+    }
+    if(optionsList)optionsList.hidden=true;
+    els.search.value='';
+    els.searchResults.innerHTML='';
+    els.searchResults.hidden=true;
+    els.search.setAttribute('aria-expanded','false');
+    els.chariot.dispatchEvent(new Event('change',{bubbles:true}));
+  }
+  els.searchResults?.addEventListener('click',e=>{
+    const button=e.target.closest('[data-qr]');
+    if(button)selectSearchResult(button.dataset.qr);
+  });
+  els.search?.addEventListener('focus',()=>renderSearchResults({showSuggestions:true}));
+
   function weekPlans(){const a=localDateISO(weekStart),b=localDateISO(addDays(weekStart,5));return plans.filter(p=>p.date>=a&&p.date<=b)}
   function renderStats(){const today=localDateISO(new Date());els.todayCount.textContent=plans.filter(p=>p.date===today).length;els.weekCount.textContent=weekPlans().length;els.plannedCount.textContent=plans.length}
   function renderWeek(){const dates=Array.from({length:6},(_,i)=>addDays(weekStart,i));els.range.textContent=`Semaine du ${dates[0].toLocaleDateString('fr-FR',{day:'2-digit',month:'long'})} au ${dates[5].toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})}`;els.week.innerHTML=dates.map(d=>{const iso=localDateISO(d);const dayPlans=plans.filter(p=>p.date===iso);const n=dayPlans.length;const delivered=dayPlans.filter(p=>isDelivered(getMachine(p.qr))).length;return `<button type="button" class="delivery-day" data-date="${iso}"><div class="dow">${esc(d.toLocaleDateString('fr-FR',{weekday:'long'}))}</div><div class="date">${esc(d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}))}</div><div class="num">${n} livraison${n!==1?'s':''}</div><div class="delivered-num">${delivered} chariot${delivered!==1?'s':''} livré${delivered!==1?'s':''}</div></button>`}).join('');els.week.querySelectorAll('[data-date]').forEach(b=>{b.classList.toggle('active',b.dataset.date===selectedDate);b.onclick=()=>{selectedDate=b.dataset.date;setViewMode('day');renderWeek();renderList()};if(isAdmin()){b.addEventListener('dragover',e=>{e.preventDefault();b.classList.add('delivery-day-drop-target');if(e.dataTransfer)e.dataTransfer.dropEffect='move'});b.addEventListener('dragleave',()=>b.classList.remove('delivery-day-drop-target'));b.addEventListener('drop',async e=>{e.preventDefault();b.classList.remove('delivery-day-drop-target');const id=e.dataTransfer?.getData('text/sbi-plan-id')||'';if(id)await movePlanToDate(id,b.dataset.date)})}})}
@@ -3467,7 +3501,7 @@ async function deliveryPlanningPage(){
     });
   }
   if(els.plan){els.plan.style.display=isAdmin()?'':'none'}
-  els.cancel.onclick=closeModal;document.querySelectorAll('#deliveryViewFilters [data-view-mode]').forEach(b=>{b.addEventListener('click',()=>setViewMode(b.dataset.viewMode))});els.planSearch?.addEventListener('input',renderList);els.planDateFrom?.addEventListener('change',renderList);els.planDateTo?.addEventListener('change',renderList);els.clearPlanFilters?.addEventListener('click',()=>{if(els.planSearch)els.planSearch.value='';if(els.planDateFrom)els.planDateFrom.value='';if(els.planDateTo)els.planDateTo.value='';renderList();els.planSearch?.focus()});els.close?.addEventListener('click',closeModal);els.clearSearch?.addEventListener('click',()=>{els.search.value='';renderSearchResults();els.search.focus()});els.modal.addEventListener('click',e=>{if(e.target===els.modal)closeModal()});els.search?.addEventListener('input',renderSearchResults);els.search?.addEventListener('search',renderSearchResults);els.chariot?.addEventListener('change',()=>{if(els.search){els.search.value='';els.searchResults.innerHTML=''}});els.note?.addEventListener('input',updateNoteCount);document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(els.driverManager&&!els.driverManager.classList.contains('hidden')){closeDriverManager();return}if(!els.modal.classList.contains('hidden'))closeModal()});els.plan.onclick=()=>openModal(selectedDate, new URLSearchParams(location.search).get('qr')||'');els.today.onclick=()=>{selectedDate=localDateISO(new Date());weekStart=startOfWeek(new Date());setViewMode('today');renderWeek();renderList()};els.prev.onclick=()=>{weekStart=addDays(weekStart,-7);setViewMode('day');renderWeek();renderList()};els.next.onclick=()=>{weekStart=addDays(weekStart,7);setViewMode('day');renderWeek();renderList()};
+  els.cancel.onclick=closeModal;document.querySelectorAll('#deliveryViewFilters [data-view-mode]').forEach(b=>{b.addEventListener('click',()=>setViewMode(b.dataset.viewMode))});els.planSearch?.addEventListener('input',renderList);els.planDateFrom?.addEventListener('change',renderList);els.planDateTo?.addEventListener('change',renderList);els.clearPlanFilters?.addEventListener('click',()=>{if(els.planSearch)els.planSearch.value='';if(els.planDateFrom)els.planDateFrom.value='';if(els.planDateTo)els.planDateTo.value='';renderList();els.planSearch?.focus()});els.close?.addEventListener('click',closeModal);els.clearSearch?.addEventListener('click',()=>{els.search.value='';renderSearchResults();els.search.focus()});els.modal.addEventListener('click',e=>{if(e.target===els.modal)closeModal()});els.search?.addEventListener('input',()=>renderSearchResults());els.search?.addEventListener('search',()=>renderSearchResults());els.chariot?.addEventListener('change',()=>{if(els.search){els.search.value='';els.searchResults.innerHTML='';els.searchResults.hidden=true;els.search.setAttribute('aria-expanded','false')}});els.note?.addEventListener('input',updateNoteCount);document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(els.driverManager&&!els.driverManager.classList.contains('hidden')){closeDriverManager();return}if(!els.modal.classList.contains('hidden'))closeModal()});els.plan.onclick=()=>openModal(selectedDate, new URLSearchParams(location.search).get('qr')||'');els.today.onclick=()=>{selectedDate=localDateISO(new Date());weekStart=startOfWeek(new Date());setViewMode('today');renderWeek();renderList()};els.prev.onclick=()=>{weekStart=addDays(weekStart,-7);setViewMode('day');renderWeek();renderList()};els.next.onclick=()=>{weekStart=addDays(weekStart,7);setViewMode('day');renderWeek();renderList()};
   window.addEventListener('focus',refreshFromServer);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refreshFromServer()});
   // Realtime makes planning changes visible to every connected user without F5.
   // The 15s refresh remains as a safety fallback for browsers/networks where

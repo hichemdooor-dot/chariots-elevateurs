@@ -3218,8 +3218,9 @@ async function deliveryPlanningPage(){
   }
   function selectSearchResult(qr){
     const c=getMachine(qr);
-    if(!c||!availableChariots().some(item=>String(item.qr_id)===String(qr)))return;
-    els.chariot.value=String(qr);
+    if(!c||(!availableChariots(String(els.form.dataset.edit||'')).some(item=>String(item.qr_id)===String(qr))&&!selectedChariotQrs.includes(String(qr))))return;
+    if(!selectedChariotQrs.includes(String(qr)))selectedChariotQrs.push(String(qr));
+    renderSelectedChariots();renderDeliveryChariotOptions();
     const visibleInput=document.getElementById('deliveryChariotSearch');
     const optionsList=document.getElementById('deliveryChariotOptions');
     if(visibleInput){

@@ -3373,25 +3373,26 @@ async function deliveryPlanningPage(){
     const previousSubmitText=submitButton?.textContent||'';
     if(submitButton){submitButton.disabled=true;submitButton.textContent='Enregistrement…'}
     try{
-      const qr=String(els.chariot.value||'').trim();
+      const selectedQrs=[...new Set(selectedChariotQrs.map(q=>String(q||'').trim()).filter(Boolean))];
+      const qr=selectedQrs[0]||String(els.chariot.value||'').trim();
+      if(qr&&!selectedQrs.includes(qr))selectedQrs.unshift(qr);
       const date=els.date.value||localDateISO(new Date());
       const time=els.time.value||'';
       const driver=els.driver.value.trim();
       const destination=els.destination.value.trim();
       const note=els.note.value.trim();
-      if(!qr){alert('Veuillez sélectionner un chariot.');return}
+      if(!selectedQrs.length){alert('Veuillez sélectionner au moins un chariot.');return}
       const edit=String(els.form.dataset.edit||'');
-      // Use the already-loaded shared plan list for immediate validation.
-      // Avoid an extra Supabase read on every save; Realtime keeps this list current.
-      const machine=getMachine(qr);
-      if(!machine){alert('Chariot introuvable. Actualisez la page puis réessayez.');return}
-      if(!edit&&isDelivered(machine)){alert('Un chariot déjà livré ne peut pas être planifié.');return}
-      const duplicate=plans.some(p=>String(p.qr)===qr&&String(p.id)!==edit);
-      if(duplicate){alert('Ce chariot est déjà planifié pour une livraison.');return}
+      for(const selectedQr of selectedQrs){
+        const machine=getMachine(selectedQr);
+        if(!machine){alert('Chariot introuvable : '+selectedQr+'. Actualisez la page puis réessayez.');return}
+        if(isDelivered(machine)){alert('Le chariot '+(machine.chassis||selectedQr)+' est déjà livré et ne peut pas être planifié.');return}
+        const duplicate=plans.some(p=>String(p.qr)===selectedQr&&String(p.id)!==edit);
+        if(duplicate){alert('Le chariot '+(machine.chassis||selectedQr)+' est déjà planifié pour une livraison.');return}
+      }
       planningLocalMutationUntil=Date.now()+4000;
       const logicalId=edit||('dp_'+Date.now()+'_'+Math.random().toString(36).slice(2,8));
       const previous=edit?plans.find(x=>String(x.id)===edit):null;
-      // Preserve the link to the original Agenda activity when editing a synced delivery.
       const payload={id:logicalId,qr,date:String(date),time:String(time||''),driver:String(driver||''),destination:String(destination||''),note:String(note||''),...(previous?.source==='agenda-planning'?{source:previous.source,agendaId:previous.agendaId}: {})};
       let planHistory='';
       if(previous){
@@ -3402,11 +3403,16 @@ async function deliveryPlanningPage(){
         }
         planHistory=changed.join(' • ');
       }
-      const {error}=await supabaseClient.from('maintenance').insert({
-        qr_id:qr,date,technicien:getUserDisplayName(),type:'Planification livraison',
-        travaux:JSON.stringify(payload),created_by:currentUser?.id||null
-      });
-      if(error){alert('Erreur : '+friendlySupabaseError(error));return}
+      const savedPayloads=[];
+      const groupId='dg_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+      for(let index=0;index<selectedQrs.length;index++){
+        const selectedQr=selectedQrs[index];
+        const itemPayload={...payload,id:index===0?logicalId:('dp_'+Date.now()+'_'+Math.random().toString(36).slice(2,8)),qr:selectedQr,groupId};
+        const result=await supabaseClient.from('maintenance').insert({qr_id:selectedQr,date,technicien:getUserDisplayName(),type:'Planification livraison',travaux:JSON.stringify(itemPayload),created_by:currentUser?.id||null});
+        if(result.error){alert('Erreur lors de la planification de '+(getMachine(selectedQr)?.chassis||selectedQr)+' : '+friendlySupabaseError(result.error)+'\nLes chariots déjà enregistrés restent planifiés.');break}
+        savedPayloads.push(itemPayload);
+      }
+      if(!savedPayloads.length)return;
       if(edit&&previous?.source==='agenda-planning'&&previous.agendaId){
         // Update the Agenda's own logical record as well, so both pages stay in sync.
         try{
@@ -3431,11 +3437,8 @@ async function deliveryPlanningPage(){
       }
       // Update the screen from the successful insert response path without waiting
       // for a second full planning query. Refresh shared data in the background.
-      if(edit){
-        plans=plans.map(p=>String(p.id)===edit?payload:p);
-      }else{
-        plans=[...plans.filter(p=>String(p.id)!==logicalId),payload];
-      }
+      if(edit)plans=plans.filter(p=>String(p.id)!==edit);
+      plans=[...plans,...savedPayloads];
       syncPlans(plans);
       loadDeliveryPlans().then(remote=>{
         syncPlans(remote);
@@ -3449,6 +3452,7 @@ async function deliveryPlanningPage(){
       refreshChariotOptions();
       renderWeek();
       renderList();
+      if(savedPayloads.length>1)toastPlanning(savedPayloads.length+' chariots planifiés pour '+(driver||'le chauffeur sélectionné')+'.');
     }catch(error){
       alert('Erreur lors de l’enregistrement : '+friendlySupabaseError(error));
     }finally{

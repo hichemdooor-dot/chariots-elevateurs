@@ -139,7 +139,7 @@ async function loadDeliveryFiche(){
   document.getElementById('destination').textContent=ficheText(plan?.destination||c.destination||c.delivery_destination,'DESTINATION À RENSEIGNER').toLocaleUpperCase('fr');
   document.getElementById('capacity').textContent=ficheText(fmtCapacity(c.capacity)||c.capacity);
   setEngineDisplay(ficheText(c.engine,''));
-  document.getElementById('mast').textContent=ficheText((c.mast_type||'')+(c.lifting_height?' '+c.lifting_height+' M',''));
+  document.getElementById('mast').textContent=ficheText((c.mast_type||'')+(c.lifting_height?' '+c.lifting_height+' M':''));
   document.getElementById('fork').textContent=ficheText(c.fork_dimension);
   document.title='Fiche livraison — '+ficheText(c.client,'SBI');
  }catch(e){console.error(e);document.getElementById('sheet').innerHTML='<div class="error">Impossible de charger les données du chariot. Réessayez depuis le site SBI.</div>'}

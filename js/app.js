@@ -3203,6 +3203,7 @@ async function deliveryPlanningPage(){
     if(!tokens.length&&!showSuggestions){
       els.searchResults.innerHTML='';
       els.searchResults.hidden=true;
+      els.searchResults.style.display='none';
       els.search.setAttribute('aria-expanded','false');
       return;
     }
@@ -3213,7 +3214,13 @@ async function deliveryPlanningPage(){
     els.searchResults.innerHTML=matches.length
       ?matches.map(c=>`<button type="button" class="delivery-search-result" role="option" data-qr="${esc(c.qr_id)}"><strong>${esc(c.chassis||c.qr_id||'Chariot')}</strong><span>QR : ${esc(c.qr_id||'—')} · N° moteur : ${esc(c.engine_number||'—')} · ${esc(c.engine||'—')} · ${esc(fmtCapacity(c.capacity))} · Couleur : ${esc(c.color||'—')} · ${esc(c.client||'Sans client')}</span></button>`).join('')
       :'<div class="delivery-search-empty" role="status">Aucun chariot disponible correspondant. Vérifiez le châssis, le moteur ou le nom du client.</div>';
+    // Explicitly reveal the result panel on mobile browsers as well as desktop.
+    // The HTML hidden attribute and inherited modal styles can otherwise leave
+    // the live results panel collapsed while the input continues accepting text.
     els.searchResults.hidden=false;
+    els.searchResults.style.display='grid';
+    els.searchResults.style.visibility='visible';
+    els.searchResults.style.opacity='1';
     els.search.setAttribute('aria-expanded','true');
   }
   function selectSearchResult(qr){

@@ -3245,6 +3245,27 @@ async function deliveryPlanningPage(){
     const button=e.target.closest('[data-qr]');
     if(button)selectSearchResult(button.dataset.qr);
   });
+  // Collapse the search suggestions when the user taps anywhere outside
+  // the search field/results, or presses Escape. Focusing the field reopens it.
+  function collapseDeliverySearchResults(){
+    if(!els.searchResults||!els.search)return;
+    els.searchResults.hidden=true;
+    els.searchResults.style.display='none';
+    els.search.setAttribute('aria-expanded','false');
+  }
+  document.addEventListener('click',e=>{
+    if(!e.target.closest('#deliverySearch')&&
+       !e.target.closest('#deliverySearchResults')&&
+       !e.target.closest('#clearDeliverySearch')){
+      collapseDeliverySearchResults();
+    }
+  });
+  els.search?.addEventListener('keydown',e=>{
+    if(e.key==='Escape'){
+      collapseDeliverySearchResults();
+      els.search.blur();
+    }
+  });
   els.search?.addEventListener('focus',()=>renderSearchResults({showSuggestions:true}));
 
   function weekPlans(){const a=localDateISO(weekStart),b=localDateISO(addDays(weekStart,5));return plans.filter(p=>p.date>=a&&p.date<=b)}

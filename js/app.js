@@ -693,8 +693,9 @@ async function getChariotCommercial(qrId){
   try{return {name:String(JSON.parse(row.travaux||'{}').commercial||''),row}}catch(_){return {name:'',row}}
 }
 async function saveChariotCommercial(qrId,commercial,reason='Affectation automatique'){
-  if(!qrId||!SBI_COMMERCIAL_NAMES.includes(commercial))return false;
-  const {error}=await supabaseClient.from('maintenance').insert({qr_id:qrId,date:new Date().toISOString().slice(0,10),technicien:getUserDisplayName(),type:'Commercial responsable',travaux:JSON.stringify({commercial,reason}),created_by:currentUser?.id||null});
+  const name=String(commercial||'').trim().replace(/\\s+/g,' ').toUpperCase();
+  if(!qrId||!name)return false;
+  const {error}=await supabaseClient.from('maintenance').insert({qr_id:qrId,date:new Date().toISOString().slice(0,10),technicien:getUserDisplayName(),type:'Commercial responsable',travaux:JSON.stringify({commercial:name,reason}),created_by:currentUser?.id||null});
   if(error){console.warn('Commercial responsable non enregistré',error);return false}
   return true;
 }
@@ -752,15 +753,22 @@ async function editChariotCommercial(qrId){
       <div class="cp-body">
         <label class="cp-label" for="cpCommercialSelect">Nom du commercial</label>
         <select class="cp-select" id="cpCommercialSelect">
-          <option value="IDRIS">IDRIS</option><option value="MOHAMED">MOHAMED</option><option value="DJOUDI">DJOUDI</option><option value="Aucun">Aucun commercial</option>
+          <option value="IDRIS">IDRIS</option><option value="MOHAMED">MOHAMED</option><option value="DJOUDI">DJOUDI</option><option value="__manual__">Saisie manuelle…</option><option value="Aucun">Aucun commercial</option>
         </select>
+        <div id="cpManualWrap" hidden style="margin-top:12px"><label class="cp-label" for="cpCommercialManual">Nom du commercial</label><input class="cp-select" id="cpCommercialManual" type="text" maxlength="80" autocomplete="off" placeholder="Saisir le nom du commercial"></div>
         <p class="cp-hint">Cette modification sera enregistrée dans l’historique du chariot.</p>
         <div class="cp-actions"><button type="button" class="cp-btn cp-cancel" id="cpCancel">Annuler</button><button type="button" class="cp-btn cp-save" id="cpSave">Enregistrer</button></div>
       </div>
     </section>`;
   document.body.appendChild(overlay);
   const select=overlay.querySelector('#cpCommercialSelect');
-  select.value=choices.includes(currentCommercial.name)?currentCommercial.name:'Aucun';
+  const manualWrap=overlay.querySelector('#cpManualWrap');
+  const manualInput=overlay.querySelector('#cpCommercialManual');
+  const existingName=String(currentCommercial.name||'').trim();
+  select.value=choices.includes(existingName)?existingName:(existingName?'__manual__':'Aucun');
+  if(existingName&&!choices.includes(existingName))manualInput.value=existingName;
+  const syncManual=()=>{manualWrap.hidden=select.value!=='__manual__';if(select.value==='__manual__')manualInput.focus()};
+  select.addEventListener('change',syncManual);syncManual();
   const close=()=>overlay.remove();
   overlay.querySelector('#cpCancel').onclick=close;
   overlay.addEventListener('click',event=>{if(event.target===overlay)close()});
@@ -768,7 +776,8 @@ async function editChariotCommercial(qrId){
   document.addEventListener('keydown',onKey);
   overlay.querySelector('#cpSave').onclick=async()=>{
     const saveButton=overlay.querySelector('#cpSave');
-    const selected=select.value;
+    const selected=select.value==='__manual__'?String(manualInput.value||'').trim().replace(/\\s+/g,' ').toUpperCase():select.value;
+    if(select.value==='__manual__'&&!selected){alert('Saisissez le nom du commercial.');manualInput.focus();return}
     saveButton.disabled=true;saveButton.textContent='Enregistrement…';
     if(selected==='Aucun'){
       const {error}=await supabaseClient.from('maintenance').insert({qr_id:qrId,date:new Date().toISOString().slice(0,10),technicien:getUserDisplayName(),type:'Commercial responsable',travaux:JSON.stringify({commercial:'',reason:'Correction administrateur'}),created_by:currentUser?.id||null});

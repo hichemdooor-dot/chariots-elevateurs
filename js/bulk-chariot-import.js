@@ -72,6 +72,38 @@
     confirmBtn.disabled=errors.length>0||importableCount===0;
     setStatus(errors.length?errors.join('\n'):(duplicateCount?duplicateCount+' doublon(s) seront ignoré(s). '+importableCount+' ligne(s) pourront être importées.':'Toutes les lignes sont valides. Les champs facultatifs peuvent rester vides. Vérifiez l’aperçu puis confirmez.'));
   }
+
+  function rowsFromOcr(text){
+    const out=[];
+    String(text||'').split(/\\r?\\n/).map(x=>x.trim()).filter(Boolean).forEach((line,index)=>{
+      const chassisMatch=line.match(/\\bG?\\s*\\d{4,5}\\b/i);
+      if(!chassisMatch)return;
+      const p={};fields.forEach(k=>p[k]='');
+      p.chassis='G'+chassisMatch[0].replace(/[^0-9]/g,'');
+      const upper=line.toUpperCase();
+      p.engine=['MITSUBISHI','ISUZU','XINCHAI','YANMAR'].find(x=>upper.includes(x))||'';
+      p.capacity=(upper.match(/(?:2[.,]5|3[.,]5|3[.,]8|3|5|7|10|12)\\s*T\\b/)||[])[0]?.replace(/\\s/g,'').replace(',','.')||'';
+      p.lifting_height=(upper.match(/(?:3|4|4[.,]3|4[.,]5|6)\\s*M\\b/)||[])[0]?.replace(/\\s/g,'').replace(',','.')||'';
+      p.color=['JAUNE','ORANGE','ROUGE','VERT','GRIS'].find(x=>upper.includes(x))||'';
+      p.stock='STOCK1';p.status='En stock';
+      if(p.engine==='')p.engine='';
+      out.push({sourceRow:index+1,p});
+    });
+    if(!out.length)throw new Error('Aucun numéro de châssis détecté. Corrigez le texte OCR ou prenez une photo plus nette.');
+    return out;
+  }
+  async function readCameraPhoto(){
+    const input=$('#sbiCameraFile'),file=input?.files?.[0],textArea=$('#sbiCameraText');
+    if(!file)return setStatus('Prenez une photo avant de lancer la lecture.',true);
+    if(!window.Tesseract)return setStatus('Le moteur de lecture OCR ne s’est pas chargé. Vérifiez votre connexion puis actualisez.',true);
+    const readBtn=$('#sbiCameraRead');readBtn.disabled=true;setStatus('Lecture de la photo en cours… Cela peut prendre un peu de temps.');
+    try{
+      const result=await Tesseract.recognize(file,'eng');
+      textArea.value=result.data.text||'';textArea.hidden=false;$('#sbiCameraConvert').hidden=false;
+      setStatus('Lecture terminée. Corrigez le texte si nécessaire, puis convertissez-le en lignes.');
+    }catch(e){setStatus('Lecture impossible : '+(e.message||String(e)),true)}
+    finally{readBtn.disabled=false}
+  }
   async function readFile(file){
     if(!window.XLSX)throw new Error('Le lecteur Excel n’est pas chargé. Actualisez la page et réessayez.');
     const data=await file.arrayBuffer(),workbook=XLSX.read(data,{type:'array',cellDates:false});
@@ -113,11 +145,15 @@
   }
   function init(){
     const toggle=$('#sbiBulkToggle'),panel=$('#sbiBulkPanel'),file=$('#sbiBulkFile');
+    const camera=$('#sbiCameraFile'),cameraPreview=$('#sbiCameraPreview');
+    camera?.addEventListener('change',()=>{const f=camera.files?.[0];if(f){cameraPreview.src=URL.createObjectURL(f);cameraPreview.hidden=false;$('#sbiCameraText').hidden=true;$('#sbiCameraConvert').hidden=true}});
+    $('#sbiCameraRead')?.addEventListener('click',readCameraPhoto);
+    $('#sbiCameraConvert')?.addEventListener('click',()=>{try{rows=rowsFromOcr($('#sbiCameraText').value);render();setStatus(rows.length+' ligne(s) détectée(s) depuis la photo. Vérifiez chaque champ avant confirmation.')}catch(e){setStatus(e.message||String(e),true)}});
     if(!toggle||!panel||!file)return;
     toggle.addEventListener('click',()=>{panel.hidden=!panel.hidden;toggle.textContent=panel.hidden?'Ouvrir l’importation':'Fermer l’importation';toggle.setAttribute('aria-expanded',String(!panel.hidden))});
     file.addEventListener('change',async()=>{rows=[];preview.hidden=true;confirmBtn.disabled=true;confirmBtn.hidden=false;cancelBtn.hidden=false;setStatus('');if(!file.files?.[0])return;try{rows=mapRows(await readFile(file.files[0]));if(!rows.length)throw new Error('Aucune ligne de données trouvée.');render()}catch(e){setStatus(e.message||String(e),true)}});
     confirmBtn.addEventListener('click',startImport);
-    cancelBtn.addEventListener('click',()=>{rows=[];file.value='';preview.hidden=true;confirmBtn.hidden=false;confirmBtn.disabled=true;cancelBtn.hidden=true;setStatus('Importation réinitialisée.')});
+    cancelBtn.addEventListener('click',()=>{rows=[];file.value='';if(camera)camera.value='';if(cameraPreview){cameraPreview.hidden=true;cameraPreview.removeAttribute('src')}$('#sbiCameraText').value='';$('#sbiCameraText').hidden=true;$('#sbiCameraConvert').hidden=true;preview.hidden=true;confirmBtn.hidden=false;confirmBtn.disabled=true;cancelBtn.hidden=true;setStatus('Importation réinitialisée.')});
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();

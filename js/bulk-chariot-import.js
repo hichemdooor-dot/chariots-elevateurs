@@ -38,8 +38,9 @@
       if(missing.length)nextErrors.push('Ligne '+row.sourceRow+' : '+missing.map(k=>labels[k]).join(', ')+' obligatoire(s).');
       const key=norm(p.chassis)+'|'+norm(p.engine);
       const existingMatch=existing.find(c=>norm(c.chassis)===norm(p.chassis)&&norm(c.engine)===norm(p.engine));
-      if(p.chassis&&p.engine&&existingMatch)nextErrors.push('Ligne '+row.sourceRow+' : doublon existant ('+p.chassis+' + '+p.engine+').');
-      if(p.chassis&&p.engine&&seen.has(key))nextErrors.push('Lignes '+seen.get(key)+' et '+row.sourceRow+' : doublon dans le fichier ('+p.chassis+' + '+p.engine+').');
+      // Duplicates are flagged in the preview and skipped during import; they do not block valid rows.
+      if(p.chassis&&p.engine&&existingMatch)row.duplicateReason='Déjà présent dans la base';
+      if(p.chassis&&p.engine&&seen.has(key))row.duplicateReason='Doublon dans le fichier';
       if(p.chassis&&p.engine)seen.set(key,row.sourceRow);
       if(p.chassis&&!/^G/i.test(p.chassis))nextErrors.push('Ligne '+row.sourceRow+' : le N° châssis doit commencer par G.');
       Object.keys(choices).forEach(k=>{if(p[k]&&!choices[k].includes(p[k]))nextErrors.push('Ligne '+row.sourceRow+' : valeur non reconnue pour '+labels[k]+'.')});
@@ -66,8 +67,10 @@
       el.className=duplicate?'duplicate':messages.length?'invalid':'valid';
       const tr=el.closest('tr');if(tr)tr.classList.toggle('sbi-bulk-duplicate-row',duplicate);
     });
-    confirmBtn.disabled=errors.length>0||!rows.length;
-    setStatus(errors.length?errors.join('\n'):'Toutes les lignes sont valides. Les champs facultatifs peuvent rester vides. Vérifiez l’aperçu puis confirmez.');
+    const duplicateCount=preview.querySelectorAll('[data-validation].duplicate').length;
+    const importableCount=rows.length-duplicateCount;
+    confirmBtn.disabled=errors.length>0||importableCount===0;
+    setStatus(errors.length?errors.join('\n'):(duplicateCount?duplicateCount+' doublon(s) seront ignoré(s). '+importableCount+' ligne(s) pourront être importées.':'Toutes les lignes sont valides. Les champs facultatifs peuvent rester vides. Vérifiez l’aperçu puis confirmez.'));
   }
   async function readFile(file){
     if(!window.XLSX)throw new Error('Le lecteur Excel n’est pas chargé. Actualisez la page et réessayez.');
@@ -82,8 +85,13 @@
     confirmBtn.disabled=true;cancelBtn.disabled=true;setStatus('Importation en cours…');
     const existing=Array.isArray(CHARIOTS)?CHARIOTS:[];
     let max=existing.reduce((n,c)=>Math.max(n,Number(String(c.qr_id||'').match(/^CH-(\d+)$/i)?.[1]||0),0),0);
-    const inserted=[],failed=[];
+    const inserted=[],failed=[],skipped=[];
+    const fileCounts=new Map();
+    rows.forEach(r=>{const k=norm(r.p.chassis)+'|'+norm(r.p.engine);fileCounts.set(k,(fileCounts.get(k)||0)+1)});
     for(const row of rows){
+      const duplicateKey=norm(row.p.chassis)+'|'+norm(row.p.engine);
+      const alreadyExists=existing.some(c=>norm(c.chassis)===norm(row.p.chassis)&&norm(c.engine)===norm(row.p.engine));
+      if(alreadyExists||fileCounts.get(duplicateKey)>1){skipped.push(row.sourceRow+' ('+row.p.chassis+' + '+row.p.engine+')');continue;}
       const p={...row.p};
       max+=1;p.qr_id='CH-'+String(max).padStart(4,'0');
       p.client=String(p.client||'').trim().toUpperCase();
@@ -97,7 +105,7 @@
       const audit=await supabaseClient.from('maintenance').insert(log);
       if(audit.error)failed.push(row.sourceRow+' ('+p.chassis+') : chariot créé, historique non enregistré.');
     }
-    setStatus('Import terminé : '+inserted.length+' chariot(s) créé(s), '+failed.length+' anomalie(s).'+(failed.length?'\n'+failed.join('\n'):''),failed.length>0);
+    setStatus('Import terminé : '+inserted.length+' chariot(s) créé(s), '+skipped.length+' doublon(s) ignoré(s), '+failed.length+' anomalie(s).'+(skipped.length?'\nDoublons ignorés : '+skipped.join(', '):'')+(failed.length?'\n'+failed.join('\n'):''),failed.length>0);
     confirmBtn.hidden=true;cancelBtn.textContent='Fermer';cancelBtn.hidden=false;
   }
   function init(){

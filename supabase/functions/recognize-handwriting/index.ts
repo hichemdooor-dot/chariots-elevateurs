@@ -68,7 +68,11 @@ Deno.serve(async (req) => {
     if (userError || !user) return json({ error: "Invalid or expired session" }, 401);
 
     const adminEmail = (Deno.env.get("SBI_ADMIN_EMAIL") || "HICHEMDOOOR@GMAIL.COM").toLowerCase();
-    const role = String(user.app_metadata?.sbi_role || user.user_metadata?.sbi_role || "").toLowerCase();
+    let role = String(user.app_metadata?.sbi_role || "").toLowerCase();
+    if (role !== "admin") {
+      const { data: sbiStatus, error: roleError } = await supabase.rpc("get_my_sbi_status");
+      if (!roleError && sbiStatus) role = String(sbiStatus.role || "").toLowerCase();
+    }
     if (String(user.email || "").toLowerCase() !== adminEmail && role !== "admin") {
       return json({ error: "Administrator access required" }, 403);
     }

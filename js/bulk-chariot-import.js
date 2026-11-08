@@ -84,13 +84,16 @@
     if(!confirm('Importer '+rows.length+' chariot(s) dans Supabase ? Cette action créera de nouvelles fiches et leurs historiques.'))return;
     confirmBtn.disabled=true;cancelBtn.disabled=true;setStatus('Importation en cours…');
     const existing=Array.isArray(CHARIOTS)?CHARIOTS:[];
-    let max=existing.reduce((n,c)=>Math.max(n,Number(String(c.qr_id||'').match(/^CH-(\d+)$/i)?.[1]||0),0),0);
+    const {data:latestRows,error:checkError}=await supabaseClient.from('chariots').select('chassis,engine,qr_id');
+    if(checkError){setStatus('Import annulé : impossible de vérifier les doublons dans la base ('+(checkError.message||'erreur Supabase')+').',true);confirmBtn.disabled=false;cancelBtn.disabled=false;return}
+    const databaseRows=Array.isArray(latestRows)?latestRows:existing;
+    let max=databaseRows.reduce((n,c)=>Math.max(n,Number(String(c.qr_id||'').match(/^CH-(\d+)$/i)?.[1]||0),0),0);
     const inserted=[],failed=[],skipped=[];
     const fileCounts=new Map();
     rows.forEach(r=>{const k=norm(r.p.chassis)+'|'+norm(r.p.engine);fileCounts.set(k,(fileCounts.get(k)||0)+1)});
     for(const row of rows){
       const duplicateKey=norm(row.p.chassis)+'|'+norm(row.p.engine);
-      const alreadyExists=existing.some(c=>norm(c.chassis)===norm(row.p.chassis)&&norm(c.engine)===norm(row.p.engine));
+      const alreadyExists=databaseRows.some(c=>norm(c.chassis)===norm(row.p.chassis)&&norm(c.engine)===norm(row.p.engine));
       if(alreadyExists||fileCounts.get(duplicateKey)>1){skipped.push(row.sourceRow+' ('+row.p.chassis+' + '+row.p.engine+')');continue;}
       const p={...row.p};
       max+=1;p.qr_id='CH-'+String(max).padStart(4,'0');

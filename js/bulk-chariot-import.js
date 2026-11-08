@@ -55,7 +55,17 @@
   }
   function updateValidation(){
     const errors=validate();
-    preview.querySelectorAll('[data-validation]').forEach(el=>{const line=Number(el.dataset.validation),messages=errors.filter(e=>e.includes('Ligne '+line+' :')||e.includes('Lignes '+line+' et '));el.textContent=messages.length?'À corriger':'OK';el.className=messages.length?'invalid':'valid'});
+    preview.querySelectorAll('[data-validation]').forEach(el=>{
+      const line=Number(el.dataset.validation),row=rows.find(r=>r.sourceRow===line);
+      const p=row?.p||{},existing=Array.isArray(CHARIOTS)?CHARIOTS:[];
+      const duplicateExisting=!!(p.chassis&&p.engine&&existing.some(c=>norm(c.chassis)===norm(p.chassis)&&norm(c.engine)===norm(p.engine)));
+      const duplicateFile=!!(p.chassis&&p.engine&&rows.some(r=>r.sourceRow!==line&&norm(r.p.chassis)===norm(p.chassis)&&norm(r.p.engine)===norm(p.engine)));
+      const messages=errors.filter(e=>e.includes('Ligne '+line+' :')||e.includes('Lignes '+line+' et '));
+      const duplicate=duplicateExisting||duplicateFile;
+      el.textContent=duplicate?'DOUBLON':messages.length?'À corriger':'OK';
+      el.className=duplicate?'duplicate':messages.length?'invalid':'valid';
+      const tr=el.closest('tr');if(tr)tr.classList.toggle('sbi-bulk-duplicate-row',duplicate);
+    });
     confirmBtn.disabled=errors.length>0||!rows.length;
     setStatus(errors.length?errors.join('\n'):'Toutes les lignes sont valides. Les champs facultatifs peuvent rester vides. Vérifiez l’aperçu puis confirmez.');
   }

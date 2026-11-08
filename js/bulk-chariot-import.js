@@ -31,7 +31,7 @@
     return '<input data-row="'+row.sourceRow+'" data-key="'+key+'" value="'+String(val).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')+'" inputmode="'+(key==='chassis'?'text':'text')+'">';
   }
   function validate(){
-    const seen=new Map(),existing=Array.isArray(window.CHARIOTS)?window.CHARIOTS:[];
+    const seen=new Map(),existing=Array.isArray(CHARIOTS)?CHARIOTS:[];
     const nextErrors=[];
     rows.forEach(row=>{
       const p=row.p,missing=required.filter(k=>!String(p[k]||'').trim());
@@ -65,7 +65,7 @@
     return XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',raw:false});
   }
   async function startImport(){
-    if(!window.requireValidLicense?.()||!window.requireAdmin?.())return;
+    if(!requireValidLicense()||!requireAdmin())return;
     const errors=validate();if(errors.length){setStatus(errors.join('\n'),true);return}
     if(!confirm('Importer '+rows.length+' chariot(s) dans Supabase ? Cette action créera de nouvelles fiches et leurs historiques.'))return;
     confirmBtn.disabled=true;cancelBtn.disabled=true;setStatus('Importation en cours…');
@@ -79,10 +79,10 @@
       p.status='En stock';p.stock=p.stock||'STOCK1';
       if(!String(p.mast_type||'').trim())p.mast_type=['3M','4M'].includes(p.lifting_height)?'DUPLEX':(['4.3M','4.5M','6M'].includes(p.lifting_height)?'TRIPLEX':'');
       p.updated_at=new Date().toISOString();
-      const {error}=await window.supabaseClient.from('chariots').insert(p);
+      const {error}=await supabaseClient.from('chariots').insert(p);
       if(error){failed.push(row.sourceRow+' ('+p.chassis+') : '+(error.message||'Erreur Supabase'));continue}
       inserted.push(p);
-      const log={qr_id:p.qr_id,date:new Date().toISOString().slice(0,10),technicien:window.getUserDisplayName?.()||'Import groupé',type:'Création chariot',travaux:'Chariot créé par import groupé • Châssis : '+p.chassis+' • Moteur : '+p.engine+' • Statut initial : '+p.status,created_by:window.currentUser?.id||null};
+      const log={qr_id:p.qr_id,date:new Date().toISOString().slice(0,10),technicien:getUserDisplayName?.()||'Import groupé',type:'Création chariot',travaux:'Chariot créé par import groupé • Châssis : '+p.chassis+' • Moteur : '+p.engine+' • Statut initial : '+p.status,created_by:currentUser?.id||null};
       const audit=await window.supabaseClient.from('maintenance').insert(log);
       if(audit.error)failed.push(row.sourceRow+' ('+p.chassis+') : chariot créé, historique non enregistré.');
     }

@@ -49,7 +49,7 @@
   }
   function render(){
     preview.hidden=false;
-    preview.innerHTML='<div class="sbi-bulk-summary">'+rows.length+' ligne(s) détectée(s). Modifiez les champs directement dans le tableau.</div><div class="sbi-bulk-table-wrap"><table class="sbi-bulk-table"><thead><tr><th>Ligne</th>'+fields.filter(k=>!['observations','delivery_date','serial_number','engine_number','client','stock'].includes(k)).map(k=>'<th>'+labels[k]+'</th>').join('')+'<th>Validation</th><th>Action</th></tr></thead><tbody>'+rows.map(row=>'<tr><td>'+row.sourceRow+'</td>'+fields.filter(k=>!['observations','delivery_date','serial_number','engine_number','client','stock'].includes(k)).map(k=>'<td>'+cellEditor(row,k)+'</td>').join('')+'<td data-validation="'+row.sourceRow+'"></td><td><button type="button" class="btn light sbi-bulk-remove" data-remove-row="'+row.sourceRow+'">Retirer</button></td></tr>').join('')+'</tbody></table></div><details class="sbi-bulk-extra"><summary>Afficher les autres champs (client, série, moteur, stock, date, observations)</summary>'+rows.map(row=>'<div class="sbi-bulk-extra-row"><strong>'+row.p.chassis+'</strong>'+['client','serial_number','engine_number','stock','delivery_date','observations'].map(k=>'<label>'+labels[k]+cellEditor(row,k)+'</label>').join('')+'</div>').join('')+'</details>';
+    preview.innerHTML='<div class="sbi-bulk-summary">'+rows.length+' ligne(s) détectée(s). Modifiez les champs directement dans le tableau.</div><div class="sbi-bulk-table-wrap"><table class="sbi-bulk-table"><thead><tr><th>Ligne</th>'+fields.filter(k=>!['observations','delivery_date','serial_number','engine_number','client','stock'].includes(k)).map(k=>'<th>'+labels[k]+'</th>').join('')+'<th>Reconnaissance</th><th>Validation</th><th>Action</th></tr></thead><tbody>'+rows.map(row=>'<tr><td>'+row.sourceRow+'</td>'+fields.filter(k=>!['observations','delivery_date','serial_number','engine_number','client','stock'].includes(k)).map(k=>'<td>'+cellEditor(row,k)+'</td>').join('')+'<td class="sbi-ai-confidence">'+Math.round(Math.min(...Object.values(row.confidence||{}).map(Number).filter(Number.isFinite),1)*100)+'%</td><td data-validation="'+row.sourceRow+'"></td><td><button type="button" class="btn light sbi-bulk-remove" data-remove-row="'+row.sourceRow+'">Retirer</button></td></tr>').join('')+'</tbody></table></div><details class="sbi-bulk-extra"><summary>Afficher les autres champs (client, série, moteur, stock, date, observations)</summary>'+rows.map(row=>'<div class="sbi-bulk-extra-row"><strong>'+row.p.chassis+'</strong>'+['client','serial_number','engine_number','stock','delivery_date','observations'].map(k=>'<label>'+labels[k]+cellEditor(row,k)+'</label>').join('')+'</div>').join('')+'</details>';
     preview.querySelectorAll('[data-row][data-key]').forEach(el=>el.addEventListener('change',()=>{const row=rows.find(r=>r.sourceRow===Number(el.dataset.row));if(row)row.p[el.dataset.key]=el.value;updateValidation()}));
     preview.querySelectorAll('[data-remove-row]').forEach(btn=>btn.addEventListener('click',()=>{const line=Number(btn.dataset.removeRow);rows=rows.filter(r=>r.sourceRow!==line);render();setStatus('Ligne '+line+' retirée de l’import. '+rows.length+' ligne(s) restante(s).')}));
     updateValidation();
@@ -63,46 +63,60 @@
       const duplicateFile=!!(p.chassis&&p.engine&&rows.some(r=>r.sourceRow!==line&&norm(r.p.chassis)===norm(p.chassis)&&norm(r.p.engine)===norm(p.engine)));
       const messages=errors.filter(e=>e.includes('Ligne '+line+' :')||e.includes('Lignes '+line+' et '));
       const duplicate=duplicateExisting||duplicateFile;
-      el.textContent=duplicate?'DOUBLON':messages.length?'À corriger':'OK';
-      el.className=duplicate?'duplicate':messages.length?'invalid':'valid';
-      const tr=el.closest('tr');if(tr)tr.classList.toggle('sbi-bulk-duplicate-row',duplicate);
+      const confidenceValues=Object.values(row?.confidence||{}).map(Number).filter(Number.isFinite);
+      const confidence=confidenceValues.length?Math.min(...confidenceValues):1;
+      const needsReview=!!row?.uncertain_fields?.length||confidence<0.75;
+      el.textContent=duplicate?'DOUBLON':messages.length?'À corriger':needsReview?'À VÉRIFIER':'OK';
+      el.className=duplicate?'duplicate':messages.length?'invalid':needsReview?'invalid':'valid';
+      const tr=el.closest('tr');if(tr){tr.classList.toggle('sbi-bulk-duplicate-row',duplicate);tr.classList.toggle('sbi-bulk-review-row',!duplicate&&needsReview);}
     });
     const duplicateCount=preview.querySelectorAll('[data-validation].duplicate').length;
+    const reviewCount=preview.querySelectorAll('[data-validation].invalid').length;
     const importableCount=rows.length-duplicateCount;
     confirmBtn.disabled=errors.length>0||importableCount===0;
     setStatus(errors.length?errors.join('\n'):(duplicateCount?duplicateCount+' doublon(s) seront ignoré(s). '+importableCount+' ligne(s) pourront être importées.':'Toutes les lignes sont valides. Les champs facultatifs peuvent rester vides. Vérifiez l’aperçu puis confirmez.'));
   }
 
-  function rowsFromOcr(text){
-    const out=[];
-    String(text||'').split(/\\r?\\n/).map(x=>x.trim()).filter(Boolean).forEach((line,index)=>{
-      const chassisMatch=line.match(/\\bG?\\s*\\d{4,5}\\b/i);
-      if(!chassisMatch)return;
+  function rowsFromAi(data){
+    const source=Array.isArray(data?.rows)?data.rows:[];
+    if(!source.length)throw new Error(data?.notes||'Aucun chariot n’a été reconnu sur cette photo.');
+    return source.map((r,i)=>{
       const p={};fields.forEach(k=>p[k]='');
-      p.chassis='G'+chassisMatch[0].replace(/[^0-9]/g,'');
-      const upper=line.toUpperCase();
-      p.engine=['MITSUBISHI','ISUZU','XINCHAI','YANMAR'].find(x=>upper.includes(x))||'';
-      p.capacity=(upper.match(/(?:2[.,]5|3[.,]5|3[.,]8|3|5|7|10|12)\\s*T\\b/)||[])[0]?.replace(/\\s/g,'').replace(',','.')||'';
-      p.lifting_height=(upper.match(/(?:3|4|4[.,]3|4[.,]5|6)\\s*M\\b/)||[])[0]?.replace(/\\s/g,'').replace(',','.')||'';
-      p.color=['JAUNE','ORANGE','ROUGE','VERT','GRIS'].find(x=>upper.includes(x))||'';
+      p.chassis=String(r.chassis||'').trim().toUpperCase();
+      p.engine=String(r.engine||'').trim().toUpperCase();
+      p.capacity=String(r.capacity||'').trim().toUpperCase();
+      p.lifting_height=String(r.lifting_height||'').trim().toUpperCase();
+      p.color=String(r.color||'').trim();
       p.stock='STOCK1';p.status='En stock';
-      if(p.engine==='')p.engine='';
-      out.push({sourceRow:index+1,p});
+      return {sourceRow:i+1,p,confidence:r.confidence||{},uncertain_fields:Array.isArray(r.uncertain_fields)?r.uncertain_fields:[],source_text:r.source_text||''};
     });
-    if(!out.length)throw new Error('Aucun numéro de châssis détecté. Corrigez le texte OCR ou prenez une photo plus nette.');
-    return out;
   }
   async function readCameraPhoto(){
-    const input=$('#sbiCameraFile'),file=input?.files?.[0],textArea=$('#sbiCameraText');
+    const input=$('#sbiCameraFile'),file=input?.files?.[0],readBtn=$('#sbiCameraRead');
     if(!file)return setStatus('Prenez une photo avant de lancer la lecture.',true);
-    if(!window.Tesseract)return setStatus('Le moteur de lecture OCR ne s’est pas chargé. Vérifiez votre connexion puis actualisez.',true);
-    const readBtn=$('#sbiCameraRead');readBtn.disabled=true;setStatus('Lecture de la photo en cours… Cela peut prendre un peu de temps.');
+    if(!['image/jpeg','image/png','image/webp'].includes(file.type))return setStatus('Format non pris en charge. Utilisez une photo JPEG, PNG ou WebP.',true);
+    if(file.size>8*1024*1024)return setStatus('La photo dépasse 8 Mo. Réduisez sa taille puis réessayez.',true);
+    readBtn.disabled=true;setStatus('Envoi sécurisé de la photo à OpenAI pour lire l’écriture manuscrite…');
     try{
-      const result=await Tesseract.recognize(file,'eng');
-      textArea.value=result.data.text||'';textArea.hidden=false;$('#sbiCameraConvert').hidden=false;
-      setStatus('Lecture terminée. Corrigez le texte si nécessaire, puis convertissez-le en lignes.');
-    }catch(e){setStatus('Lecture impossible : '+(e.message||String(e)),true)}
-    finally{readBtn.disabled=false}
+      const sessionResult=await supabaseClient.auth.getSession();
+      const session=sessionResult?.data?.session;
+      if(!session?.access_token)throw new Error('Votre session a expiré. Reconnectez-vous.');
+      const imageData=await new Promise((resolve,reject)=>{
+        const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||'').split(',')[1]||'');reader.onerror=()=>reject(new Error('Impossible de lire la photo.'));reader.readAsDataURL(file);
+      });
+      const {data,error}=await supabaseClient.functions.invoke('recognize-handwriting',{body:{imageBase64:imageData,mimeType:file.type}});
+      if(error)throw new Error(data?.error||error.message||'Erreur du service de reconnaissance.');
+      if(data?.error)throw new Error(data.error);
+      rows=rowsFromAi(data);
+      render();
+      const uncertain=rows.filter(r=>r.uncertain_fields.length||Object.values(r.confidence).some(v=>Number(v)<0.75)).length;
+      setStatus('Reconnaissance terminée : '+rows.length+' ligne(s). '+uncertain+' ligne(s) nécessitent une vérification. '+(data.notes||'Vérifiez chaque valeur avant confirmation.'));
+      $('#sbiCameraConvert').hidden=true;
+      $('#sbiCameraText').hidden=true;
+    }catch(e){
+      console.error('SBI handwriting recognition',e);
+      setStatus(e.message||'La reconnaissance a échoué.',true);
+    }finally{readBtn.disabled=false}
   }
   async function readFile(file){
     if(!window.XLSX)throw new Error('Le lecteur Excel n’est pas chargé. Actualisez la page et réessayez.');
@@ -148,7 +162,7 @@
     const camera=$('#sbiCameraFile'),cameraPreview=$('#sbiCameraPreview');
     camera?.addEventListener('change',()=>{const f=camera.files?.[0];if(f){cameraPreview.src=URL.createObjectURL(f);cameraPreview.hidden=false;$('#sbiCameraText').hidden=true;$('#sbiCameraConvert').hidden=true}});
     $('#sbiCameraRead')?.addEventListener('click',readCameraPhoto);
-    $('#sbiCameraConvert')?.addEventListener('click',()=>{try{rows=rowsFromOcr($('#sbiCameraText').value);render();setStatus(rows.length+' ligne(s) détectée(s) depuis la photo. Vérifiez chaque champ avant confirmation.')}catch(e){setStatus(e.message||String(e),true)}});
+    $('#sbiCameraConvert')?.addEventListener('click',()=>setStatus('La conversion OCR locale a été remplacée par la reconnaissance OpenAI sécurisée.',true));
     if(!toggle||!panel||!file)return;
     toggle.addEventListener('click',()=>{panel.hidden=!panel.hidden;toggle.textContent=panel.hidden?'Ouvrir l’importation':'Fermer l’importation';toggle.setAttribute('aria-expanded',String(!panel.hidden))});
     file.addEventListener('change',async()=>{rows=[];preview.hidden=true;confirmBtn.disabled=true;confirmBtn.hidden=false;cancelBtn.hidden=false;setStatus('');if(!file.files?.[0])return;try{rows=mapRows(await readFile(file.files[0]));if(!rows.length)throw new Error('Aucune ligne de données trouvée.');render()}catch(e){setStatus(e.message||String(e),true)}});

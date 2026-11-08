@@ -12,30 +12,82 @@
   const ocrStatus=$('#sbiOcrStatus'),ocrBox=$('#sbiOcrFields'),ocrAdd=$('#sbiOcrAdd');
   const setOcrStatus=(s,error=false)=>{if(ocrStatus){ocrStatus.textContent=s;ocrStatus.classList.toggle('error',error)}};
   function loadTesseract(){return new Promise((resolve,reject)=>{if(window.Tesseract)return resolve(window.Tesseract);const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';s.onload=()=>resolve(window.Tesseract);s.onerror=()=>reject(new Error('Impossible de charger Tesseract.js. Vérifiez votre connexion Internet.'));document.head.appendChild(s)})}
-  function guessOcrFields(text){
-    const result={};const lines=text.split(/\\r?\\n/).map(x=>x.trim()).filter(Boolean);
-    const patterns={chassis:/(?:chassis|ch[aâ]ssis|ch[aâ]ss|frame)\\s*[:#-]?\\s*([A-Z0-9-]{5,})/i,engine_number:/(?:n[°o]?\\s*moteur|engine\\s*(?:no|number)|motor\\s*(?:no|number))\\s*[:#-]?\\s*([A-Z0-9-]{3,})/i,capacity:/(?:capacit[eé]|capacity)\\s*[:#-]?\\s*(2\\.5|3\\.5|3\\.8|3|5|7|10|12)\\s*T?/i,lifting_height:/(?:hauteur|height)\\s*[:#-]?\\s*(3|4|4\\.3|4\\.5|6)\\s*M?/i};
+  function preprocessImage(file){
+    return new Promise((resolve,reject)=>{
+      const image=new Image(),url=URL.createObjectURL(file);
+      image.onload=()=>{
+        try{
+          const scale=Math.min(2.5,2400/Math.max(image.naturalWidth,image.naturalHeight));
+          const canvas=document.createElement('canvas');
+          canvas.width=Math.max(1,Math.round(image.naturalWidth*scale));
+          canvas.height=Math.max(1,Math.round(image.naturalHeight*scale));
+          const ctx=canvas.getContext('2d',{willReadFrequently:true});
+          ctx.drawImage(image,0,0,canvas.width,canvas.height);
+          const frame=ctx.getImageData(0,0,canvas.width,canvas.height),d=frame.data;
+          let sum=0;for(let i=0;i<d.length;i+=4){const y=.299*d[i]+.587*d[i+1]+.114*d[i+2];sum+=y}
+          const mean=sum/(d.length/4),threshold=Math.max(105,Math.min(205,mean*.88));
+          for(let i=0;i<d.length;i+=4){
+            const y=.299*d[i]+.587*d[i+1]+.114*d[i+2];
+            const v=y>threshold?255:0;
+            d[i]=d[i+1]=d[i+2]=v;
+          }
+          ctx.putImageData(frame,0,0);
+          URL.revokeObjectURL(url);
+          resolve(canvas);
+        }catch(e){URL.revokeObjectURL(url);reject(e)}
+      };
+      image.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('Image illisible.'))};
+      image.src=url;
+    });
+  }
+  function guessOcrFields(text,codeText){
+    const result={},lines=(text+'\\n'+codeText).split(/\\r?\\n/).map(x=>x.trim()).filter(Boolean);
+    const patterns={
+      chassis:/(?:chassis|ch[aâ]ssis|ch[aâ]ss|frame)\\s*[:#-]?\\s*([A-Z0-9-]{5,})/i,
+      engine_number:/(?:n[°o]?\\s*moteur|engine\\s*(?:no|number)|motor\\s*(?:no|number))\\s*[:#-]?\\s*([A-Z0-9-]{3,})/i,
+      capacity:/(?:capacit[eé]|capacity)\\s*[:#-]?\\s*(2\\.5|3\\.5|3\\.8|3|5|7|10|12)\\s*T?/i,
+      lifting_height:/(?:hauteur|height)\\s*[:#-]?\\s*(3|4|4\\.3|4\\.5|6)\\s*M?/i
+    };
     Object.entries(patterns).forEach(([k,re])=>{for(const line of lines){const m=line.match(re);if(m){result[k]=m[1].toUpperCase();break}}});
-    for(const line of lines){const u=line.toUpperCase();if(!result.engine){const e=['ISUZU','MITSUBISHI','XINCHAI','YANMAR'].find(x=>u.includes(x));if(e)result.engine=e}if(!result.color){const c=['JAUNE','ORANGE','ROUGE','VERT','GRIS'].find(x=>u.includes(x));if(c)result.color=c[0]+c.slice(1).toLowerCase()}if(!result.tire_type){if(u.includes('PNEUMATIQUE'))result.tire_type='PNEUMATIQUE';else if(u.includes('PNEU PLEIN'))result.tire_type='PNEU PLEIN'}if(!result.mast_type){if(u.includes('TRIPLEX'))result.mast_type='TRIPLEX';else if(u.includes('DUPLEX'))result.mast_type='DUPLEX'}}
+    const codeLines=codeText.split(/\\r?\\n/).map(x=>x.trim()).filter(x=>/[A-Z0-9]{5,}/i.test(x));
+    if(!result.chassis&&codeLines.length)result.chassis=codeLines[0].replace(/[^A-Z0-9-]/gi,'').toUpperCase();
+    if(!result.engine_number&&codeLines.length>1)result.engine_number=codeLines[1].replace(/[^A-Z0-9-]/gi,'').toUpperCase();
+    for(const line of lines){
+      const u=line.toUpperCase();
+      if(!result.engine){const e=['ISUZU','MITSUBISHI','XINCHAI','YANMAR'].find(x=>u.includes(x));if(e)result.engine=e}
+      if(!result.color){const c=['JAUNE','ORANGE','ROUGE','VERT','GRIS'].find(x=>u.includes(x));if(c)result.color=c[0]+c.slice(1).toLowerCase()}
+      if(!result.tire_type){if(u.includes('PNEUMATIQUE'))result.tire_type='PNEUMATIQUE';else if(u.includes('PNEU PLEIN'))result.tire_type='PNEU PLEIN'}
+      if(!result.mast_type){if(u.includes('TRIPLEX'))result.mast_type='TRIPLEX';else if(u.includes('DUPLEX'))result.mast_type='DUPLEX'}
+    }
     return result;
   }
-  function renderOcrFields(values){
+  function renderOcrFields(values,confidence){
     ocrCandidate={...values};ocrBox.hidden=false;
-    ocrBox.innerHTML=ocrFields.map(k=>'<label>'+ocrLabels[k]+'<input data-ocr-key="'+k+'" value="'+String(values[k]||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')+'" placeholder="Vérifier / saisir"></label>').join('');
+    ocrBox.innerHTML=ocrFields.map(k=>{
+      const value=String(values[k]||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+      const score=values[k]?(confidence>=80?'Confiance OCR globale élevée':confidence>=55?'Confiance OCR moyenne':'Confiance OCR faible'):'À saisir manuellement';
+      return '<label>'+ocrLabels[k]+'<small class="field-hint">'+score+'</small><input data-ocr-key="'+k+'" value="'+value+'" placeholder="Vérifier / saisir"></label>';
+    }).join('');
     ocrBox.querySelectorAll('[data-ocr-key]').forEach(el=>el.addEventListener('input',()=>{ocrCandidate[el.dataset.ocrKey]=el.value;ocrAdd.disabled=false}));
     ocrAdd.disabled=false;
   }
   async function runOcr(file){
     try{
-      setOcrStatus('Chargement du moteur OCR…');ocrAdd.disabled=true;ocrBox.hidden=true;
+      setOcrStatus('Préparation de la photo : agrandissement, niveaux de gris et contraste…');ocrAdd.disabled=true;ocrBox.hidden=true;
       const T=await loadTesseract();
       if(!ocrWorker)ocrWorker=await T.createWorker('eng');
-      setOcrStatus('Analyse de la photo en cours…');
-      const result=await ocrWorker.recognize(file);
-      const text=result.data.text||'';
-      if(!text.trim())throw new Error('Aucun texte détecté. Essayez une photo plus nette et bien éclairée.');
-      renderOcrFields(guessOcrFields(text));
-      setOcrStatus('Texte détecté. Les champs ci-dessous sont des suggestions OCR, pas des valeurs certifiées. Corrigez-les avant l’ajout.\n\nTexte brut :\n'+text);
+      const processed=await preprocessImage(file);
+      await ocrWorker.setParameters({tessedit_pageseg_mode:T.PSM.AUTO});
+      setOcrStatus('Lecture du texte et des repères…');
+      const full=await ocrWorker.recognize(processed);
+      await ocrWorker.setParameters({tessedit_char_whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-./',tessedit_pageseg_mode:T.PSM.SPARSE_TEXT});
+      const codes=await ocrWorker.recognize(processed);
+      await ocrWorker.setParameters({tessedit_char_whitelist:'',tessedit_pageseg_mode:T.PSM.AUTO});
+      const text=full.data.text||'',codeText=codes.data.text||'';
+      if(!text.trim()&&!codeText.trim())throw new Error('Aucun texte détecté. Essayez une photo plus nette, cadrée et bien éclairée.');
+      const confidence=Math.round(Number(full.data.confidence||0));
+      renderOcrFields(guessOcrFields(text,codeText),confidence);
+      setOcrStatus('Analyse terminée — confiance OCR globale : '+confidence+'%. Les codes alphanumériques ont aussi été relus avec une liste de caractères ciblée. Cette valeur ne garantit pas l’exactitude des caractères manuscrits. Vérifiez notamment O/0, I/1, S/5 et B/8.\\n\\nTexte détecté :\\n'+(text||codeText));
     }catch(e){ocrCandidate=null;setOcrStatus(e.message||String(e),true)}
   }
   const norm=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');

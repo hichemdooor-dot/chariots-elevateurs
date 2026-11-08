@@ -69,7 +69,7 @@
     const errors=validate();if(errors.length){setStatus(errors.join('\n'),true);return}
     if(!confirm('Importer '+rows.length+' chariot(s) dans Supabase ? Cette action créera de nouvelles fiches et leurs historiques.'))return;
     confirmBtn.disabled=true;cancelBtn.disabled=true;setStatus('Importation en cours…');
-    const existing=Array.isArray(window.CHARIOTS)?window.CHARIOTS:[];
+    const existing=Array.isArray(CHARIOTS)?CHARIOTS:[];
     let max=existing.reduce((n,c)=>Math.max(n,Number(String(c.qr_id||'').match(/^CH-(\d+)$/i)?.[1]||0),0),0);
     const inserted=[],failed=[];
     for(const row of rows){
@@ -83,7 +83,7 @@
       if(error){failed.push(row.sourceRow+' ('+p.chassis+') : '+(error.message||'Erreur Supabase'));continue}
       inserted.push(p);
       const log={qr_id:p.qr_id,date:new Date().toISOString().slice(0,10),technicien:getUserDisplayName?.()||'Import groupé',type:'Création chariot',travaux:'Chariot créé par import groupé • Châssis : '+p.chassis+' • Moteur : '+p.engine+' • Statut initial : '+p.status,created_by:currentUser?.id||null};
-      const audit=await window.supabaseClient.from('maintenance').insert(log);
+      const audit=await supabaseClient.from('maintenance').insert(log);
       if(audit.error)failed.push(row.sourceRow+' ('+p.chassis+') : chariot créé, historique non enregistré.');
     }
     setStatus('Import terminé : '+inserted.length+' chariot(s) créé(s), '+failed.length+' anomalie(s).'+(failed.length?'\n'+failed.join('\n'):''),failed.length>0);

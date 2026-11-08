@@ -6,6 +6,38 @@
   const required=['chassis','color','engine','capacity','fork_dimension','tire_type'];
   const choices={stock:['STOCK1','STOCK2','SHOWROOM','FABRICATION'],color:['Jaune','Orange','Rouge','Vert','Gris'],engine:['ISUZU','MITSUBISHI','XINCHAI','YANMAR','GPL','ÉLECTRIQUE'],capacity:['2.5T','3T','3.8T','3.5T (TT)','5T','7T','10T','12T'],lifting_height:['3M','4M','4.3M','4.5M','6M'],fork_dimension:['1,2 m','1,5 m','2 m','2.5 m','Autre'],mast_type:['DUPLEX','TRIPLEX'],tire_type:['PNEUMATIQUE','PNEU PLEIN']};
   let rows=[];
+  let ocrWorker=null,ocrCandidate=null;
+  const ocrFields=['chassis','engine','engine_number','capacity','color','lifting_height','fork_dimension','mast_type','tire_type'];
+  const ocrLabels={chassis:'N° châssis',engine:'Type moteur',engine_number:'N° moteur',capacity:'Capacité',color:'Couleur',lifting_height:'Hauteur',fork_dimension:'Fourche',mast_type:'Type de mât',tire_type:'Type de pneu'};
+  const ocrStatus=$('#sbiOcrStatus'),ocrBox=$('#sbiOcrFields'),ocrAdd=$('#sbiOcrAdd');
+  const setOcrStatus=(s,error=false)=>{if(ocrStatus){ocrStatus.textContent=s;ocrStatus.classList.toggle('error',error)}};
+  function loadTesseract(){return new Promise((resolve,reject)=>{if(window.Tesseract)return resolve(window.Tesseract);const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';s.onload=()=>resolve(window.Tesseract);s.onerror=()=>reject(new Error('Impossible de charger Tesseract.js. Vérifiez votre connexion Internet.'));document.head.appendChild(s)})}
+  function guessOcrFields(text){
+    const result={};const lines=text.split(/\\r?\\n/).map(x=>x.trim()).filter(Boolean);
+    const patterns={chassis:/(?:chassis|ch[aâ]ssis|ch[aâ]ss|frame)\\s*[:#-]?\\s*([A-Z0-9-]{5,})/i,engine_number:/(?:n[°o]?\\s*moteur|engine\\s*(?:no|number)|motor\\s*(?:no|number))\\s*[:#-]?\\s*([A-Z0-9-]{3,})/i,capacity:/(?:capacit[eé]|capacity)\\s*[:#-]?\\s*(2\\.5|3\\.5|3\\.8|3|5|7|10|12)\\s*T?/i,lifting_height:/(?:hauteur|height)\\s*[:#-]?\\s*(3|4|4\\.3|4\\.5|6)\\s*M?/i};
+    Object.entries(patterns).forEach(([k,re])=>{for(const line of lines){const m=line.match(re);if(m){result[k]=m[1].toUpperCase();break}}});
+    for(const line of lines){const u=line.toUpperCase();if(!result.engine){const e=['ISUZU','MITSUBISHI','XINCHAI','YANMAR'].find(x=>u.includes(x));if(e)result.engine=e}if(!result.color){const c=['JAUNE','ORANGE','ROUGE','VERT','GRIS'].find(x=>u.includes(x));if(c)result.color=c[0]+c.slice(1).toLowerCase()}if(!result.tire_type){if(u.includes('PNEUMATIQUE'))result.tire_type='PNEUMATIQUE';else if(u.includes('PNEU PLEIN'))result.tire_type='PNEU PLEIN'}if(!result.mast_type){if(u.includes('TRIPLEX'))result.mast_type='TRIPLEX';else if(u.includes('DUPLEX'))result.mast_type='DUPLEX'}}
+    return result;
+  }
+  function renderOcrFields(values){
+    ocrCandidate={...values};ocrBox.hidden=false;
+    ocrBox.innerHTML=ocrFields.map(k=>'<label>'+ocrLabels[k]+'<input data-ocr-key="'+k+'" value="'+String(values[k]||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')+'" placeholder="Vérifier / saisir"></label>').join('');
+    ocrBox.querySelectorAll('[data-ocr-key]').forEach(el=>el.addEventListener('input',()=>{ocrCandidate[el.dataset.ocrKey]=el.value;ocrAdd.disabled=false}));
+    ocrAdd.disabled=false;
+  }
+  async function runOcr(file){
+    try{
+      setOcrStatus('Chargement du moteur OCR…');ocrAdd.disabled=true;ocrBox.hidden=true;
+      const T=await loadTesseract();
+      if(!ocrWorker)ocrWorker=await T.createWorker('eng');
+      setOcrStatus('Analyse de la photo en cours…');
+      const result=await ocrWorker.recognize(file);
+      const text=result.data.text||'';
+      if(!text.trim())throw new Error('Aucun texte détecté. Essayez une photo plus nette et bien éclairée.');
+      renderOcrFields(guessOcrFields(text));
+      setOcrStatus('Texte détecté. Les champs ci-dessous sont des suggestions OCR, pas des valeurs certifiées. Corrigez-les avant l’ajout.\n\nTexte brut :\n'+text);
+    }catch(e){setOcrCandidate=null;setOcrStatus(e.message||String(e),true)}
+  }
   const norm=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
   const aliases={chassis:['chassis','numerochassis','nchassis'],serial_number:['numeroserie','nserie','serialnumber'],color:['couleur','color'],engine:['typemoteur','moteur','engine'],engine_number:['numeromoteur','nmoteur','enginenumber'],capacity:['capacite','capacity'],lifting_height:['hauteurdelevage','hauteur','liftingheight'],fork_dimension:['fourche','dimensionfourche','forkdimension'],mast_type:['typ demat','typem at','typem at','typemat','masttype'],tire_type:['typedepneu','pneu','tiretype'],client:['client'],stock:['stock'],delivery_date:['datedelivraison','deliverydate'],observations:['observations','remarques'],qr_id:['qrid']};
   const status=$('#sbiBulkStatus'),preview=$('#sbiBulkPreview'),confirmBtn=$('#sbiBulkConfirm'),cancelBtn=$('#sbiBulkCancel');
@@ -91,6 +123,17 @@
   }
   function init(){
     const toggle=$('#sbiBulkToggle'),panel=$('#sbiBulkPanel'),file=$('#sbiBulkFile');
+    const camera=$('#sbiOcrCamera');
+    camera?.addEventListener('change',()=>{if(camera.files?.[0])runOcr(camera.files[0])});
+    ocrAdd?.addEventListener('click',()=>{
+      if(!ocrCandidate)return;
+      const p={};fields.forEach(k=>p[k]='');
+      Object.assign(p,ocrCandidate);p.stock='STOCK1';p.status='En stock';
+      const sourceRow=rows.length?Math.max(...rows.map(r=>r.sourceRow))+1:2;
+      rows.push({sourceRow,p});render();
+      setOcrStatus('Ligne ajoutée à l’aperçu. Vérifiez les champs obligatoires et les doublons avant de confirmer.');
+      ocrAdd.disabled=true;ocrCandidate=null;camera.value='';
+    });
     if(!toggle||!panel||!file)return;
     toggle.addEventListener('click',()=>{panel.hidden=!panel.hidden;toggle.textContent=panel.hidden?'Ouvrir l’importation':'Fermer l’importation';toggle.setAttribute('aria-expanded',String(!panel.hidden))});
     file.addEventListener('change',async()=>{rows=[];preview.hidden=true;confirmBtn.disabled=true;confirmBtn.hidden=false;cancelBtn.hidden=false;setStatus('');if(!file.files?.[0])return;try{rows=mapRows(await readFile(file.files[0]));if(!rows.length)throw new Error('Aucune ligne de données trouvée.');render()}catch(e){setStatus(e.message||String(e),true)}});

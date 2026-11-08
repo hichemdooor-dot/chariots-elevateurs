@@ -3,7 +3,7 @@
   const $=s=>document.querySelector(s);
   const fields=['stock','client','chassis','serial_number','color','engine','engine_number','capacity','lifting_height','fork_dimension','mast_type','tire_type','delivery_date','observations'];
   const labels={stock:'Stock',client:'Client',chassis:'N° châssis',serial_number:'N° de série',color:'Couleur',engine:'Type moteur',engine_number:'N° moteur',capacity:'Capacité',lifting_height:'Hauteur',fork_dimension:'Fourche',mast_type:'Type de mât',tire_type:'Type de pneu',delivery_date:'Date livraison',observations:'Observations'};
-  const required=['chassis','color','engine','capacity','fork_dimension','tire_type'];
+  const required=['chassis','engine'];
   const choices={stock:['STOCK1','STOCK2','SHOWROOM','FABRICATION'],color:['Jaune','Orange','Rouge','Vert','Gris'],engine:['ISUZU','MITSUBISHI','XINCHAI','YANMAR','GPL','ÉLECTRIQUE'],capacity:['2.5T','3T','3.8T','3.5T (TT)','5T','7T','10T','12T'],lifting_height:['3M','4M','4.3M','4.5M','6M'],fork_dimension:['1,2 m','1,5 m','2 m','2.5 m','Autre'],mast_type:['DUPLEX','TRIPLEX'],tire_type:['PNEUMATIQUE','PNEU PLEIN']};
   let rows=[];
   const norm=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
@@ -57,7 +57,7 @@
     const errors=validate();
     preview.querySelectorAll('[data-validation]').forEach(el=>{const line=Number(el.dataset.validation),messages=errors.filter(e=>e.includes('Ligne '+line+' :')||e.includes('Lignes '+line+' et '));el.textContent=messages.length?'À corriger':'OK';el.className=messages.length?'invalid':'valid'});
     confirmBtn.disabled=errors.length>0||!rows.length;
-    setStatus(errors.length?errors.join('\n'):'Toutes les lignes sont valides. Vérifiez l’aperçu puis confirmez.');
+    setStatus(errors.length?errors.join('\n'):'Toutes les lignes sont valides. Les champs facultatifs peuvent rester vides. Vérifiez l’aperçu puis confirmez.');
   }
   async function readFile(file){
     if(!window.XLSX)throw new Error('Le lecteur Excel n’est pas chargé. Actualisez la page et réessayez.');

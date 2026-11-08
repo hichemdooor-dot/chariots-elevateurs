@@ -91,6 +91,23 @@
       return {sourceRow:i+1,p,confidence:r.confidence||{},uncertain_fields:Array.isArray(r.uncertain_fields)?r.uncertain_fields:[],source_text:r.source_text||''};
     });
   }
+  async function imageForVision(file){
+    if(typeof createImageBitmap==='function'){
+      const bitmap=await createImageBitmap(file);
+      const scale=Math.min(1,2400/Math.max(bitmap.width,bitmap.height));
+      const canvas=document.createElement('canvas');
+      canvas.width=Math.round(bitmap.width*scale);canvas.height=Math.round(bitmap.height*scale);
+      canvas.getContext('2d',{alpha:false}).drawImage(bitmap,0,0,canvas.width,canvas.height);
+      bitmap.close?.();
+      const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',0.88));
+      if(blob){
+        const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||'').split(',')[1]||'');reader.onerror=()=>reject(new Error('Impossible de préparer la photo.'));reader.readAsDataURL(blob)});
+        return {imageBase64:data,mimeType:'image/jpeg'};
+      }
+    }
+    const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||'').split(',')[1]||'');reader.onerror=()=>reject(new Error('Impossible de lire la photo.'));reader.readAsDataURL(file)});
+    return {imageBase64:data,mimeType:file.type};
+  }
   async function readCameraPhoto(){
     const input=$('#sbiCameraFile'),file=input?.files?.[0],readBtn=$('#sbiCameraRead');
     if(!file)return setStatus('Prenez une photo avant de lancer la lecture.',true);
@@ -101,10 +118,8 @@
       const sessionResult=await supabaseClient.auth.getSession();
       const session=sessionResult?.data?.session;
       if(!session?.access_token)throw new Error('Votre session a expiré. Reconnectez-vous.');
-      const imageData=await new Promise((resolve,reject)=>{
-        const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||'').split(',')[1]||'');reader.onerror=()=>reject(new Error('Impossible de lire la photo.'));reader.readAsDataURL(file);
-      });
-      const {data,error}=await supabaseClient.functions.invoke('recognize-handwriting',{body:{imageBase64:imageData,mimeType:file.type}});
+      const image=await imageForVision(file);
+      const {data,error}=await supabaseClient.functions.invoke('recognize-handwriting',{body:image});
       if(error)throw new Error(data?.error||error.message||'Erreur du service de reconnaissance.');
       if(data?.error)throw new Error(data.error);
       rows=rowsFromAi(data);
@@ -158,9 +173,8 @@
   function init(){
     const toggle=$('#sbiBulkToggle'),panel=$('#sbiBulkPanel'),file=$('#sbiBulkFile');
     const camera=$('#sbiCameraFile'),cameraPreview=$('#sbiCameraPreview');
-    camera?.addEventListener('change',()=>{const f=camera.files?.[0];if(f){cameraPreview.src=URL.createObjectURL(f);cameraPreview.hidden=false;$('#sbiCameraText').hidden=true;$('#sbiCameraConvert').hidden=true}});
+    camera?.addEventListener('change',()=>{const f=camera.files?.[0];if(f){if(cameraPreview.src)URL.revokeObjectURL(cameraPreview.src);cameraPreview.src=URL.createObjectURL(f);cameraPreview.hidden=false}});
     $('#sbiCameraRead')?.addEventListener('click',readCameraPhoto);
-    $('#sbiCameraConvert')?.addEventListener('click',()=>setStatus('La conversion OCR locale a été remplacée par la reconnaissance OpenAI sécurisée.',true));
     if(!toggle||!panel||!file)return;
     toggle.addEventListener('click',()=>{panel.hidden=!panel.hidden;toggle.textContent=panel.hidden?'Ouvrir l’importation':'Fermer l’importation';toggle.setAttribute('aria-expanded',String(!panel.hidden))});
     file.addEventListener('change',async()=>{rows=[];preview.hidden=true;confirmBtn.disabled=true;confirmBtn.hidden=false;cancelBtn.hidden=false;setStatus('');if(!file.files?.[0])return;try{rows=mapRows(await readFile(file.files[0]));if(!rows.length)throw new Error('Aucune ligne de données trouvée.');render()}catch(e){setStatus(e.message||String(e),true)}});

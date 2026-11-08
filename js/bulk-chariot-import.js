@@ -36,7 +36,7 @@
       if(!text.trim())throw new Error('Aucun texte détecté. Essayez une photo plus nette et bien éclairée.');
       renderOcrFields(guessOcrFields(text));
       setOcrStatus('Texte détecté. Les champs ci-dessous sont des suggestions OCR, pas des valeurs certifiées. Corrigez-les avant l’ajout.\n\nTexte brut :\n'+text);
-    }catch(e){setOcrCandidate=null;setOcrStatus(e.message||String(e),true)}
+    }catch(e){ocrCandidate=null;setOcrStatus(e.message||String(e),true)}
   }
   const norm=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
   const aliases={chassis:['chassis','numerochassis','nchassis'],serial_number:['numeroserie','nserie','serialnumber'],color:['couleur','color'],engine:['typemoteur','moteur','engine'],engine_number:['numeromoteur','nmoteur','enginenumber'],capacity:['capacite','capacity'],lifting_height:['hauteurdelevage','hauteur','liftingheight'],fork_dimension:['fourche','dimensionfourche','forkdimension'],mast_type:['typ demat','typem at','typem at','typemat','masttype'],tire_type:['typedepneu','pneu','tiretype'],client:['client'],stock:['stock'],delivery_date:['datedelivraison','deliverydate'],observations:['observations','remarques'],qr_id:['qrid']};

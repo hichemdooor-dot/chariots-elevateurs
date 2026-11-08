@@ -111,8 +111,6 @@
       render();
       const uncertain=rows.filter(r=>r.uncertain_fields.length||Object.values(r.confidence).some(v=>Number(v)<0.75)).length;
       setStatus('Reconnaissance terminée : '+rows.length+' ligne(s). '+uncertain+' ligne(s) nécessitent une vérification. '+(data.notes||'Vérifiez chaque valeur avant confirmation.'));
-      $('#sbiCameraConvert').hidden=true;
-      $('#sbiCameraText').hidden=true;
     }catch(e){
       console.error('SBI handwriting recognition',e);
       setStatus(e.message||'La reconnaissance a échoué.',true);
@@ -167,7 +165,7 @@
     toggle.addEventListener('click',()=>{panel.hidden=!panel.hidden;toggle.textContent=panel.hidden?'Ouvrir l’importation':'Fermer l’importation';toggle.setAttribute('aria-expanded',String(!panel.hidden))});
     file.addEventListener('change',async()=>{rows=[];preview.hidden=true;confirmBtn.disabled=true;confirmBtn.hidden=false;cancelBtn.hidden=false;setStatus('');if(!file.files?.[0])return;try{rows=mapRows(await readFile(file.files[0]));if(!rows.length)throw new Error('Aucune ligne de données trouvée.');render()}catch(e){setStatus(e.message||String(e),true)}});
     confirmBtn.addEventListener('click',startImport);
-    cancelBtn.addEventListener('click',()=>{rows=[];file.value='';if(camera)camera.value='';if(cameraPreview){cameraPreview.hidden=true;cameraPreview.removeAttribute('src')}$('#sbiCameraText').value='';$('#sbiCameraText').hidden=true;$('#sbiCameraConvert').hidden=true;preview.hidden=true;confirmBtn.hidden=false;confirmBtn.disabled=true;cancelBtn.hidden=true;setStatus('Importation réinitialisée.')});
+    cancelBtn.addEventListener('click',()=>{rows=[];file.value='';if(camera)camera.value='';if(cameraPreview){cameraPreview.hidden=true;cameraPreview.removeAttribute('src')}preview.hidden=true;confirmBtn.hidden=false;confirmBtn.disabled=true;cancelBtn.hidden=true;setStatus('Importation réinitialisée.')});
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();

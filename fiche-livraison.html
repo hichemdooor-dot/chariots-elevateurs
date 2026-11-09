@@ -28,7 +28,7 @@
  .spec .label{display:block!important;visibility:visible!important;opacity:1!important;position:static!important;transform:none!important;color:#111!important;-webkit-text-fill-color:#111!important}.spec .value{display:block!important;visibility:visible!important;opacity:1!important;position:static!important;transform:none!important;color:#d71920!important;-webkit-text-fill-color:#d71920!important}
  .spec .value{font-size:24pt!important;font-weight:900!important;line-height:1.15!important;white-space:normal!important;overflow-wrap:anywhere!important;word-break:normal!important}
  #capacity,#engine,#mast,#fork{font-size:0!important;color:transparent!important;-webkit-text-fill-color:transparent!important}
- #capacity:after,#engine:after,#mast:after,#fork:after{content:attr(data-print-value);display:block!important;font-family:Arial,sans-serif!important;font-size:24pt!important;font-weight:900!important;line-height:1.15!important;color:#d71920!important;-webkit-text-fill-color:#d71920!important;white-space:normal!important;overflow-wrap:anywhere!important;word-break:normal!important;visibility:visible!important;opacity:1!important}
+ #capacity:after,#engine:after,#mast:after,#fork:after{content:attr(data-print-value);display:block!important;font-family:Arial,sans-serif!important;font-size:var(--engine-print-size,24pt)!important;font-weight:900!important;line-height:1.15!important;color:#d71920!important;-webkit-text-fill-color:#d71920!important;white-space:normal!important;overflow-wrap:anywhere!important;word-break:normal!important;visibility:visible!important;opacity:1!important}
 
  #sheet .client.logo-mode{flex:1 1 0!important;min-height:0!important;max-height:none!important;overflow:hidden!important}
  #sheet .client-logo{display:block!important;flex:0 1 auto!important;width:var(--client-logo-size,90%)!important;height:100%!important;max-width:100%!important;max-height:100%!important;object-fit:contain!important;object-position:center!important;margin:auto!important}
@@ -96,7 +96,7 @@
 <script src="maintenance-config.js?v=7"></script><script src="js/app.js?v=20261029-search-scroll-anchor-v5"></script>
 <script>
 function ficheText(value,fallback='—'){return String(value??'').trim()||fallback}
-function setEngineDisplay(value){const name=String(value||'').trim();const special=['GERBEUR ÉLECTRIQUE','GERBEUR ELECTRIQUE','TRANSPALETTE'];const isSpecial=special.includes(name.toLocaleUpperCase('fr'));const label=document.getElementById('engineLabel');const engine=document.getElementById('engine');if(label){label.textContent=isSpecial?'':'MOTEUR';label.style.display=isSpecial?'none':'';}if(engine){engine.textContent=ficheText(name);engine.style.display='';}}
+function setEngineDisplay(value){const name=String(value||'').trim();const upper=name.toLocaleUpperCase('fr');const special=['GERBEUR ÉLECTRIQUE','GERBEUR ELECTRIQUE','TRANSPALETTE'];const isSpecial=special.includes(upper);const isTranspalette=upper==='TRANSPALETTE';const label=document.getElementById('engineLabel');const engine=document.getElementById('engine');if(label){label.textContent=isSpecial?'':'MOTEUR';label.style.display=isSpecial?'none':'';}if(engine){engine.textContent=ficheText(name);engine.style.display='';engine.style.fontSize=isTranspalette?'14pt':'';engine.style.whiteSpace=isTranspalette?'nowrap':'';engine.style.setProperty('--engine-print-size',isTranspalette?'14pt':'24pt');}}
 function clientLogoKey(name){return 'sbi-fiche-client-logo:'+String(name||'').trim().toLocaleUpperCase('fr')}
 let clientLogoObjectUrl='';
 let clientDisplayRequest=0;

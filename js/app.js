@@ -1305,15 +1305,22 @@ if(!window.__SBI_ROW_MENU_PORTAL_BOUND){
   },true);
 }
 
-// Close any open row-action menu when the user clicks outside it.
+// Close row-action menus on outside pointer interaction or Escape.
+// The menu panel is portaled to <body>, so check both its <details> and panel.
 if(!window.__SBI_ROW_MENU_OUTSIDE_CLICK_BOUND){
   window.__SBI_ROW_MENU_OUTSIDE_CLICK_BOUND=true;
-  document.addEventListener('click',event=>{
-    document.querySelectorAll('.sbi-row-menu[open]').forEach(menu=>{
-      const panel=menu.__sbiPortaledPanel;
+  const closeSbiRowMenus=()=>{
+    document.querySelectorAll('details.sbi-row-menu[open]').forEach(menu=>{menu.open=false});
+  };
+  document.addEventListener('pointerdown',event=>{
+    document.querySelectorAll('details.sbi-row-menu[open]').forEach(menu=>{
+      const panel=menu.__sbiPortaledPanel||menu.querySelector(':scope > .sbi-row-menu-panel');
       if(!menu.contains(event.target)&&!(panel&&panel.contains(event.target)))menu.open=false;
     });
-  });
+  },true);
+  document.addEventListener('keydown',event=>{
+    if(event.key==='Escape')closeSbiRowMenus();
+  },true);
 }
 
 function renderChariotTable(rows,from='',padTo=0){

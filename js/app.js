@@ -1353,6 +1353,7 @@ function renderChariotTable(rows,from='',padTo=0){
       '<a href="'+href+'"><span aria-hidden="true">◉</span> Voir la fiche</a>'+
       (isAdmin()?'<a href="nouveau-chariot.html?id='+encodeURIComponent(id)+'"><span aria-hidden="true">✎</span> Modifier le chariot</a><a href="nouveau-chariot.html?id='+encodeURIComponent(id)+'"><span aria-hidden="true">♙</span> Affecter / modifier le client</a>':'')+
       (!delivered&&isAdmin()?'<a href="chariots-prevus-livraison.html?qr='+encodeURIComponent(id)+'"><span aria-hidden="true">▣</span> Préparer la livraison</a>':'')+
+      (isAdmin()?'<button type="button" class="sbi-row-menu-delete" data-card-action="delete" data-qr="'+esc(id)+'"><span aria-hidden="true">⌫</span> Supprimer le chariot</button>':'')+
       (plan?'<div class="sbi-row-menu-extra">'+plan+'</div>':'')+
       (action?'<div class="sbi-row-menu-extra">'+action+'</div>':'')+
       '</div></details>';
@@ -1412,6 +1413,24 @@ function card(c,from=''){
   const mobileActions=action||planActionMobile?`${action}${planActionMobile}`:'<span class="mobile-chariot-no-action">Aucune action</span>';
   return `<div class="item interactive-card chariot-list-card" data-card-id="${esc(id)}"><a class="item-open-link" href="${href}" aria-label="Ouvrir le chariot ${esc(id)}"></a><div class="item-main"><div class="item-title chariot-list-id">${esc(id)}</div><div class="mobile-chariot-tech"><span><small>Châssis</small><strong>${esc(c.chassis||'—')}</strong></span><span><small>Moteur</small><strong>${esc(c.engine||'—')}</strong></span><span><small>Capacité</small><strong>${esc(fmtCapacity(c.capacity)||'—')}</strong></span><span><small>Couleur</small><strong>${esc(c.color||'—')}</strong></span></div><div class="meta chariot-desktop-meta">${esc(c.chassis||'—')} • ${esc(c.engine||'—')} • ${esc(fmtCapacity(c.capacity))} • Couleur : ${esc(c.color||'—')}</div>${c.client?`<div class="client-line"><strong>Client :</strong> ${esc(c.client)}</div>`:''}<div class="mobile-chariot-client">${c.client?`<span><small>Client</small><strong>${esc(c.client)}</strong></span>`:'<span><small>Client</small><strong>—</strong></span>'}</div><div class="recent-time">${c.updated_at?'Mis à jour : '+new Date(c.updated_at).toLocaleString('fr-FR'):''}</div></div><span class="badge ${statusClass(c.status)} chariot-status-badge">${esc(c.status||c.stock||'—')}</span><div class="desktop-card-action">${action}${planAction}</div><div class="mobile-chariot-workflow-wrap">${compactWorkflowHtml(c)}</div><div class="mobile-chariot-buttons"><a class="btn light mobile-fiche-popup-link" data-popup-qr="${esc(id)}" href="${href}">Voir la fiche</a>${mobileActions}</div></div>`;
 }
+async function deleteChariotFromList(id){
+  if(!requireValidLicense()||!requireAdmin())return false;
+  const c=CHARIOTS.find(x=>String(x.qr_id)===String(id));
+  if(!c){alert('Chariot introuvable. Actualisez la liste puis réessayez.');return false}
+  const identity=String(c.chassis||id);
+  const details=[c.engine?'Moteur : '+c.engine:'',c.client?'Client : '+c.client:''].filter(Boolean).join(' • ');
+  const message='Confirmer la suppression définitive de ce chariot ?\\n\\nChâssis : '+identity+'\\nQR ID : '+id+(details?'\\n'+details:'')+'\\n\\nCette action est irréversible.';
+  if(!confirm(message))return false;
+  try{
+    const {error:logError}=await supabaseClient.from('maintenance').insert({qr_id:id,date:new Date().toISOString().slice(0,10),technicien:getUserDisplayName(),type:'Suppression chariot',travaux:'Chariot supprimé • Châssis : '+(c.chassis||'—')+' • Moteur : '+(c.engine||'—')+' • Client : '+(c.client||'—'),created_by:currentUser?.id||null});
+    if(logError)console.warn('Historique suppression non enregistré',logError);
+  }catch(error){console.warn('Historique suppression non enregistré',error)}
+  const {error}=await supabaseClient.from('chariots').delete().eq('qr_id',id);
+  if(error){alert('Le chariot n’a pas été supprimé : '+friendlySupabaseError(error));return false}
+  toastCardUpdate(identity,'supprimé');
+  await chariotsPage();
+  return true;
+}
 function initInteractiveCards(){
   if(window.__sbiInteractiveCardsBound)return;
   window.__sbiInteractiveCardsBound=true;
@@ -1422,6 +1441,7 @@ function initInteractiveCards(){
     if(btn.dataset.busy==='1')return;
     const id=btn.dataset.qr,action=btn.dataset.cardAction;
     const c=CHARIOTS.find(x=>String(x.qr_id)===String(id));
+    if(action==='delete'){await deleteChariotFromList(id);return}
     if(!c)return;
     if(!isAdmin()&&['assign','plan','prepare','ready','start-modification','finish-modification'].includes(action)){requireAdmin();return}
     if(action==='assign'){location.href='nouveau-chariot.html?id='+encodeURIComponent(id);return}

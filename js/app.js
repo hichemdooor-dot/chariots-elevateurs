@@ -517,7 +517,7 @@ async function loadChariots(){
     // Newest first. Prefer the same ordering semantics as the original app,
     // while still using timestamps when present.
     CHARIOTS.sort((a,b)=>{
-      const da=new Date(a.created_at||a.updated_at||0).getTime();
+      const da=new Date(a.updated_at||a.created_at||0).getTime();
       const db=new Date(b.created_at||b.updated_at||0).getTime();
       if(Number.isFinite(da)&&Number.isFinite(db)&&db!==da)return db-da;
       return Number(b.id||0)-Number(a.id||0);
@@ -532,7 +532,7 @@ async function loadChariots(){
       if(error)throw error;
       CHARIOTS=Array.isArray(data)?data:[];
       CHARIOTS.sort((a,b)=>{
-        const da=new Date(a.created_at||a.updated_at||0).getTime();
+        const da=new Date(a.updated_at||a.created_at||0).getTime();
         const db=new Date(b.created_at||b.updated_at||0).getTime();
         if(Number.isFinite(da)&&Number.isFinite(db)&&db!==da)return db-da;
         return Number(b.id||0)-Number(a.id||0);
@@ -2074,6 +2074,25 @@ async function chariotsPage(){
     const q=$('#search')?.value.trim().toLowerCase()||'';
     const fs=[['engineFilter','engine'],['capacityFilter','capacity'],['mastFilter','mast_type'],['heightFilter','lifting_height']];
     rows=rows.filter(c=>(!q||[c.qr_id,c.chassis,c.engine,c.client,c.capacity,c.color].some(v=>String(v||'').toLowerCase().includes(q)))&&fs.every(([id,k])=>!$('#'+id)?.value||norm(c[k])===norm($('#'+id).value)));
+    const sortMode=$('#sortFilter')?.value||'updated_desc';
+    const textCompare=(a,b)=>String(a??'').localeCompare(String(b??''),'fr',{numeric:true,sensitivity:'base'});
+    const timeValue=c=>{const t=Date.parse(c?.updated_at||c?.created_at||'');return Number.isFinite(t)?t:0};
+    const createdValue=c=>{const t=Date.parse(c?.created_at||'');return Number.isFinite(t)?t:0};
+    const sorters={
+      updated_desc:(a,b)=>timeValue(b)-timeValue(a),
+      updated_asc:(a,b)=>timeValue(a)-timeValue(b),
+      created_desc:(a,b)=>createdValue(b)-createdValue(a),
+      created_asc:(a,b)=>createdValue(a)-createdValue(b),
+      chassis_asc:(a,b)=>textCompare(a.chassis,b.chassis),
+      chassis_desc:(a,b)=>textCompare(b.chassis,a.chassis),
+      capacity_asc:(a,b)=>textCompare(a.capacity,b.capacity),
+      capacity_desc:(a,b)=>textCompare(b.capacity,a.capacity),
+      client_asc:(a,b)=>textCompare(a.client,b.client),
+      client_desc:(a,b)=>textCompare(b.client,a.client),
+      status_asc:(a,b)=>textCompare(a.status,b.status),
+      status_desc:(a,b)=>textCompare(b.status,a.status)
+    };
+    rows=[...rows].sort(sorters[sortMode]||sorters.updated_desc);
     $('#count').textContent=rows.length+' chariot'+(rows.length!==1?'s':'');
     updateActiveFilterCount();
     const totalPages=Math.max(1,Math.ceil(rows.length/pageSize));
@@ -2085,6 +2104,7 @@ async function chariotsPage(){
     $('#list').innerHTML=(pageRows.length?renderChariotTable(pageRows,'',pageSize):'<div class="empty">Aucun résultat.</div>')+pagination;
     $('#list').querySelectorAll('[data-page]').forEach(button=>{button.onclick=()=>{const next=Number(button.dataset.page);if(Number.isFinite(next)&&next>=1&&next<=totalPages&&next!==currentPage){currentPage=next;render();}}});
   }
+  $('#sortFilter')?.addEventListener('change',()=>{currentPage=1;render()});
   $('#search').addEventListener('input',()=>{currentPage=1;render()});
   $('#statusFilter').addEventListener('change',()=>{currentPage=1;render()});
   stockFilter?.addEventListener('change',()=>{currentPage=1;render()});

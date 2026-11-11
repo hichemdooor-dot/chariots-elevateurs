@@ -1434,6 +1434,8 @@ async function deleteChariotFromList(id){
   }catch(error){console.warn('Historique suppression non enregistré',error)}
   const {error}=await supabaseClient.from('chariots').delete().eq('qr_id',id);
   if(error){alert('Le chariot n’a pas été supprimé : '+friendlySupabaseError(error));return false}
+  // Close the currently open three-dot popup immediately after successful deletion.
+  document.querySelectorAll('details.sbi-row-menu[open]').forEach(menu=>{menu.open=false});
   // Remove the deleted record from the in-memory fleet and its local cache.
   // chariotsPage() hydrates this cache first, so leaving the old row here
   // would make the deleted chariot reappear immediately after the refresh.

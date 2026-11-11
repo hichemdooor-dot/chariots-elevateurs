@@ -517,7 +517,7 @@ async function loadChariots(){
     // Newest first. Prefer the same ordering semantics as the original app,
     // while still using timestamps when present.
     CHARIOTS.sort((a,b)=>{
-      const da=new Date(a.created_at||a.updated_at||0).getTime();
+      const da=new Date(a.updated_at||a.created_at||0).getTime();
       const db=new Date(b.created_at||b.updated_at||0).getTime();
       if(Number.isFinite(da)&&Number.isFinite(db)&&db!==da)return db-da;
       return Number(b.id||0)-Number(a.id||0);
@@ -532,7 +532,7 @@ async function loadChariots(){
       if(error)throw error;
       CHARIOTS=Array.isArray(data)?data:[];
       CHARIOTS.sort((a,b)=>{
-        const da=new Date(a.created_at||a.updated_at||0).getTime();
+        const da=new Date(a.updated_at||a.created_at||0).getTime();
         const db=new Date(b.created_at||b.updated_at||0).getTime();
         if(Number.isFinite(da)&&Number.isFinite(db)&&db!==da)return db-da;
         return Number(b.id||0)-Number(a.id||0);

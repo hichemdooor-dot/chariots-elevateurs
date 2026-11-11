@@ -1434,6 +1434,11 @@ async function deleteChariotFromList(id){
   }catch(error){console.warn('Historique suppression non enregistré',error)}
   const {error}=await supabaseClient.from('chariots').delete().eq('qr_id',id);
   if(error){alert('Le chariot n’a pas été supprimé : '+friendlySupabaseError(error));return false}
+  // Remove the deleted record from the in-memory fleet and its local cache.
+  // chariotsPage() hydrates this cache first, so leaving the old row here
+  // would make the deleted chariot reappear immediately after the refresh.
+  CHARIOTS=CHARIOTS.filter(row=>String(row.qr_id)!==String(id));
+  try{localStorage.setItem('sbi_chariots_cache_v2',JSON.stringify({savedAt:Date.now(),rows:CHARIOTS}))}catch(_){}
   toastCardUpdate(identity,'supprimé');
   await chariotsPage();
   return true;

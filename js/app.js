@@ -2267,7 +2267,25 @@ function ensureDeliveryModalStyles(){
 `;document.head.appendChild(style)
 }
 let SBI_DELIVERY_DRIVER_NAMES=['AISSA','YOUNES','BILLAL','HAMZA'];
-function openDeliveryConfirmation(c,plan){
+async function loadSharedDeliveryDriverNames(){
+  const configType='Configuration chauffeurs',configQr='SYSTEM',cacheKey='sbi_delivery_drivers_v1';
+  const normalize=values=>{const out=[],seen=new Set();(Array.isArray(values)?values:[]).forEach(value=>{const name=String(value||'').trim().replace(/\\s+/g,' ').toLocaleUpperCase('fr'),key=name.toLocaleLowerCase('fr');if(name&&!seen.has(key)){seen.add(key);out.push(name)}});return out};
+  try{
+    const {data,error}=await supabaseClient.from('maintenance').select('travaux,created_at').eq('qr_id',configQr).eq('type',configType).order('created_at',{ascending:false}).limit(1);
+    if(error)throw error;
+    let names=null;
+    if(data&&data.length){try{const payload=JSON.parse(String(data[0].travaux||'{}'));if(Array.isArray(payload))names=payload;else if(Array.isArray(payload.drivers))names=payload.drivers}catch(_){}}
+    if(names===null){try{const cached=JSON.parse(localStorage.getItem(cacheKey)||'null');names=Array.isArray(cached)?cached:['AISSA','YOUNES','BILLAL','HAMZA']}catch(_){names=['AISSA','YOUNES','BILLAL','HAMZA']}}
+    SBI_DELIVERY_DRIVER_NAMES=normalize(names);
+    try{localStorage.setItem(cacheKey,JSON.stringify(SBI_DELIVERY_DRIVER_NAMES))}catch(_){}
+  }catch(error){
+    try{const cached=JSON.parse(localStorage.getItem(cacheKey)||'null');if(Array.isArray(cached))SBI_DELIVERY_DRIVER_NAMES=normalize(cached)}catch(_){}
+    console.warn('Liste des chauffeurs partagée indisponible ; utilisation de la dernière liste en cache.',error);
+  }
+  return [...SBI_DELIVERY_DRIVER_NAMES];
+}
+async function openDeliveryConfirmation(c,plan){
+  await loadSharedDeliveryDriverNames();
   ensureDeliveryModalStyles();
   return new Promise(resolve=>{
     const old=document.getElementById('sbiDeliveryModal');if(old)old.remove();

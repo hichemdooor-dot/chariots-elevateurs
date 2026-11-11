@@ -1353,7 +1353,7 @@ function renderChariotTable(rows,from='',padTo=0){
       '<a href="'+href+'"><span aria-hidden="true">◉</span> Voir la fiche</a>'+
       (isAdmin()?'<a href="nouveau-chariot.html?id='+encodeURIComponent(id)+'"><span aria-hidden="true">✎</span> Modifier le chariot</a><a href="nouveau-chariot.html?id='+encodeURIComponent(id)+'"><span aria-hidden="true">♙</span> Affecter / modifier le client</a>':'')+
       (!delivered&&isAdmin()?'<a href="chariots-prevus-livraison.html?qr='+encodeURIComponent(id)+'"><span aria-hidden="true">▣</span> Préparer la livraison</a>':'')+
-      (isAdmin()?'<button type="button" class="sbi-row-menu-delete" data-card-action="delete" data-qr="'+esc(id)+'"><span aria-hidden="true">⌫</span> Supprimer le chariot</button>':'')+
+      (isAdmin()?'<button type="button" class="sbi-row-menu-delete" style="display:flex;width:100%;align-items:center;gap:10px;padding:10px 12px;border:0;border-top:1px solid #f1d6d6;background:#fff;color:#b42318;text-align:left;font:inherit;font-weight:700;cursor:pointer" data-card-action="delete" data-qr="'+esc(id)+'"><span aria-hidden="true">⌫</span> Supprimer le chariot</button>':'')+
       (plan?'<div class="sbi-row-menu-extra">'+plan+'</div>':'')+
       (action?'<div class="sbi-row-menu-extra">'+action+'</div>':'')+
       '</div></details>';

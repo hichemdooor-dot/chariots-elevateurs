@@ -101,7 +101,7 @@
     Object.entries(aliases).forEach(([key,names])=>{const i=header.findIndex(h=>[norm(key),...names.map(norm)].includes(h));if(i>=0)map[key]=i});
     if(map.chassis===undefined||map.engine===undefined)throw new Error('Colonnes obligatoires introuvables. Le fichier doit contenir au minimum N° châssis et Type moteur.');
     return matrix.slice(1).filter(r=>r.some(v=>String(v??'').trim())).map((r,i)=>{
-      const p={};fields.forEach(k=>{const v=map[k]===undefined?'':r[map[k]];p[k]=v==null?'':String(v).trim()});
+      const p={};fields.forEach(k=>{const v=map[k]===undefined?'':r[map[k]];p[k]=v==null?'':String(v).trim();if(k==='delivery_date'&&!p[k])p[k]=null});
       p.chassis=p.chassis.toUpperCase();p.engine=p.engine.toUpperCase();p.client=p.client.toUpperCase();
       p.status='En stock';p.stock=p.stock||'STOCK1';
       return {sourceRow:i+2,p};

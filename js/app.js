@@ -1791,7 +1791,7 @@ function eventDetails(x,payload){
   return parts;
 }
 function normalizeNotificationType(value){
-  return String(value||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().replace(/\\s+/g,' ').trim();
+  return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
 }
 function isSbiNotificationEvent(x){
   const type=normalizeNotificationType(x?.type);

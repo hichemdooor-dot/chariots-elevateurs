@@ -1749,6 +1749,7 @@ async function dashboardPage(){
     if(document.visibilityState==='hidden')return;
     try{await loadDashboardNotifications();}catch(_){}
   },30000);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')loadDashboardNotifications().catch(()=>{})});
   initDashboardInteractivity();
 }
 function renderDashboardWatch(){
@@ -1858,7 +1859,7 @@ async function loadDashboardNotifications(){
     }
   }catch(e){
     try{const c=JSON.parse(localStorage.getItem('sbi_activity_cache_v1')||'null');if(Array.isArray(c?.rows))data=c.rows}catch(_){}
-    if(!data.length){try{data=await restGetTableRows('maintenance','select=id,qr_id,date,technicien,type,travaux,created_at,created_by&order=created_at.desc&limit=8',8)}catch(_) {}}
+    if(!data.length){try{data=await restGetTableRows('maintenance','select=id,qr_id,date,technicien,type,travaux,created_at,created_by&order=created_at.desc&limit=500',500)}catch(_) {}}
   }
   const allRows=data.filter(isSbiNotificationEvent);
   const rows=allRows.slice(0,6);

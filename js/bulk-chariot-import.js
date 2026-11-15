@@ -129,6 +129,7 @@
       if(p.chassis&&p.engine)seen.set(key,row.sourceRow);
       if(p.chassis&&!/^G/i.test(p.chassis))nextErrors.push('Ligne '+row.sourceRow+' : le N° châssis doit commencer par G.');
       if(special){if(mainCentre&&(p.capacity!=='1.5T'||p.lifting_height!=='3.5M'))nextErrors.push('Ligne '+row.sourceRow+' : Main Centre exige 1.5T et 3.5M.');if(!trans&&!mainCentre){const allowed=p.capacity==='2T'?['3.5M','4M']:p.capacity==='1.5T'?['3M','3.5M']:[];if(!allowed.includes(p.lifting_height))nextErrors.push('Ligne '+row.sourceRow+' : hauteur incompatible avec la capacité du gerbeur.');}if(trans&&p.lifting_height)nextErrors.push('Ligne '+row.sourceRow+' : un transpalette ne doit pas avoir de hauteur de levage.');}
+      if(!special&&['1.5T','2T'].includes(p.capacity))nextErrors.push('Ligne '+row.sourceRow+' : 1.5T et 2T sont réservés aux gerbeurs et transpalettes.');
       Object.keys(choices).forEach(k=>{if(p[k]&&!choices[k].includes(p[k]))nextErrors.push('Ligne '+row.sourceRow+' : valeur non reconnue pour '+labels[k]+'.')});
     });
     return nextErrors;

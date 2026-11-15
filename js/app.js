@@ -1106,11 +1106,11 @@ function setupEquipmentTypeFields(){
   const update=()=>{
     const type=String(model.value||'').trim().toLocaleUpperCase('fr'),special=isSbiHandlingEquipment(type),trans=type==='TRANSPALETTE',mainCentre=type==='GERBEUR MAIN CENTRE';
     if(modelLabel)modelLabel.textContent=special?'Modèle':'Type moteur';
-    Object.values(wrappers).forEach(el=>{if(el)el.hidden=special});
+    Object.values(wrappers).forEach(el=>{if(el)el.style.display=special?'none':''});
     if(!special){setOptions(capacity,standardCapacity,capacity.value);setOptions(height,standardHeights,height.value);}
     else{
-      if(wrappers.engineNumber)wrappers.engineNumber.hidden=true;if(wrappers.fork)wrappers.fork.hidden=true;if(wrappers.mast)wrappers.mast.hidden=true;if(wrappers.tire)wrappers.tire.hidden=true;
-      if(wrappers.height)wrappers.height.hidden=trans;
+      if(wrappers.engineNumber)wrappers.engineNumber.style.display='none';if(wrappers.fork)wrappers.fork.style.display='none';if(wrappers.mast)wrappers.mast.style.display='none';if(wrappers.tire)wrappers.tire.style.display='none';
+      if(wrappers.height)wrappers.height.style.display=trans?'none':'';
       if(trans){setOptions(capacity,['1.5T','2T'],capacity.value);setOptions(height,[],'');height.value='';}
       else if(mainCentre){setOptions(capacity,['1.5T'],'1.5T');setOptions(height,['3.5M'],'3.5M');capacity.value='1.5T';height.value='3.5M';}
       else{setOptions(capacity,['1.5T','2T'],capacity.value);const allowed=capacity.value==='2T'?['3.5M','4M']:capacity.value==='1.5T'?['3M','3.5M']:['3M','3.5M','4M'];setOptions(height,allowed,height.value);}

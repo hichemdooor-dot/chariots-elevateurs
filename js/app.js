@@ -708,7 +708,7 @@ async function assignClientToChariot(qrId){
   if(isDelivered(c)){alert('Un chariot déjà livré ne peut pas être affecté à un nouveau client depuis cette action.');return}
   const client=String(prompt('Nom du client :',String(c.client||''))||'').trim().toUpperCase();
   if(!client)return;
-  if(!confirm('Affecter le chariot '+(c.chassis||c.qr_id)+' au client '+client+' ?'))return;
+  if(!confirm('Affecter le chariot '+chariotReference(c)+' au client '+client+' ?'))return;
   const payload={client,status:'Réservé',updated_at:new Date().toISOString()};
   const {error}=await supabaseClient.from('chariots').update(payload).eq('qr_id',qrId);
   if(error){alert('Affectation impossible : '+friendlySupabaseError(error));return}
@@ -1095,6 +1095,7 @@ async function transitionChariotStatus(qrId,nextStatus,reason='',options={}){
 }
 
 function isSbiHandlingEquipment(value){return ['GERBEUR ÉLECTRIQUE','GERBEUR MAIN CENTRE','TRANSPALETTE'].includes(String(value||'').trim().toLocaleUpperCase('fr'));}
+function chariotReference(c){return isSbiHandlingEquipment(c?.engine)?(String(c?.serial_number||'').trim()||String(c?.qr_id||'—')):(String(c?.chassis||'').trim()||String(c?.qr_id||'—'))}
 function setupEquipmentTypeFields(){
   const form=document.getElementById('chariotForm');if(!form)return;
   const model=form.querySelector('[name="engine"]'),capacity=form.querySelector('[name="capacity"]'),height=form.querySelector('[name="lifting_height"]');
@@ -1404,8 +1405,8 @@ function renderChariotTable(rows,from='',padTo=0){
     const color=String(c.color||'').trim();
     const status=String(c.status||c.stock||'—');
     return '<tr data-card-id="'+esc(id)+'">'+
-      '<td class="chariot-table-chassis"><a class="mobile-fiche-popup-link" data-popup-qr="'+esc(id)+'" href="'+href+'" aria-label="Ouvrir la fiche du châssis '+esc(c.chassis||'')+'">'+value(c.chassis)+'</a></td>'+
-      '<td>'+value(c.serial_number)+'</td>'+
+      '<td class="chariot-table-chassis"><a class="mobile-fiche-popup-link" data-popup-qr="'+esc(id)+'" href="'+href+'" aria-label="Ouvrir la fiche du chariot '+esc(chariotReference(c))+'">'+value(chariotReference(c))+'</a></td>'+
+      '<td>'+value(isSbiHandlingEquipment(c.engine)?'':c.serial_number)+'</td>'+
       '<td>'+value(c.engine_number)+'</td>'+
       '<td>'+value(c.engine)+'</td>'+
       '<td>'+value(c.client)+'</td>'+
@@ -1422,7 +1423,7 @@ function renderChariotTable(rows,from='',padTo=0){
   const fillerCount=Math.max(0,(Number(padTo)||0)-rows.length);
   const fillerHtml=Array.from({length:fillerCount},()=>'<tr class="chariot-table-empty-row" aria-hidden="true">'+Array(13).fill('<td>&nbsp;</td>').join('')+'</tr>').join('');
   return '<div class="chariot-table-wrap" role="region" aria-label="Liste des chariots" tabindex="0"><table class="chariot-data-table"><thead><tr>'+
-    '<th>N° châssis</th><th>N° de série</th><th>N° moteur</th><th>Moteur</th><th>Client</th><th>Capacité</th><th>Hauteur</th><th>Mât</th><th>Fourches</th><th>Pneu</th><th>Couleur</th><th>Statut</th><th>Actions</th>'+
+    '<th>Référence / N° châssis</th><th>N° de série</th><th>N° moteur</th><th>Moteur</th><th>Client</th><th>Capacité</th><th>Hauteur</th><th>Mât</th><th>Fourches</th><th>Pneu</th><th>Couleur</th><th>Statut</th><th>Actions</th>'+
     '</tr></thead><tbody>'+rowsHtml+fillerHtml+'</tbody></table></div>';
 }
 
@@ -1451,18 +1452,18 @@ function card(c,from=''){
     }
   }
   const mobileActions=action||planActionMobile?`${action}${planActionMobile}`:'<span class="mobile-chariot-no-action">Aucune action</span>';
-  return `<div class="item interactive-card chariot-list-card" data-card-id="${esc(id)}"><a class="item-open-link" href="${href}" aria-label="Ouvrir le chariot ${esc(id)}"></a><div class="item-main"><div class="item-title chariot-list-id">${esc(id)}</div><div class="mobile-chariot-tech"><span><small>Châssis</small><strong>${esc(c.chassis||'—')}</strong></span><span><small>Moteur</small><strong>${esc(c.engine||'—')}</strong></span><span><small>Capacité</small><strong>${esc(fmtCapacity(c.capacity)||'—')}</strong></span><span><small>Couleur</small><strong>${esc(c.color||'—')}</strong></span></div><div class="meta chariot-desktop-meta">${esc(c.chassis||'—')} • ${esc(c.engine||'—')} • ${esc(fmtCapacity(c.capacity))} • Couleur : ${esc(c.color||'—')}</div>${c.client?`<div class="client-line"><strong>Client :</strong> ${esc(c.client)}</div>`:''}<div class="mobile-chariot-client">${c.client?`<span><small>Client</small><strong>${esc(c.client)}</strong></span>`:'<span><small>Client</small><strong>—</strong></span>'}</div><div class="recent-time">${c.updated_at?'Mis à jour : '+new Date(c.updated_at).toLocaleString('fr-FR'):''}</div></div><span class="badge ${statusClass(c.status)} chariot-status-badge">${esc(c.status||c.stock||'—')}</span><div class="desktop-card-action">${action}${planAction}</div><div class="mobile-chariot-workflow-wrap">${compactWorkflowHtml(c)}</div><div class="mobile-chariot-buttons"><a class="btn light mobile-fiche-popup-link" data-popup-qr="${esc(id)}" href="${href}">Voir la fiche</a>${mobileActions}</div></div>`;
+  return `<div class="item interactive-card chariot-list-card" data-card-id="${esc(id)}"><a class="item-open-link" href="${href}" aria-label="Ouvrir le chariot ${esc(id)}"></a><div class="item-main"><div class="item-title chariot-list-id">${esc(id)}</div><div class="mobile-chariot-tech"><span><small>${isSbiHandlingEquipment(c.engine)?'Référence':'Châssis'}</small><strong>${esc(chariotReference(c))}</strong></span><span><small>Moteur</small><strong>${esc(c.engine||'—')}</strong></span><span><small>Capacité</small><strong>${esc(fmtCapacity(c.capacity)||'—')}</strong></span><span><small>Couleur</small><strong>${esc(c.color||'—')}</strong></span></div><div class="meta chariot-desktop-meta">${esc(chariotReference(c))} • ${esc(c.engine||'—')} • ${esc(fmtCapacity(c.capacity))} • Couleur : ${esc(c.color||'—')}</div>${c.client?`<div class="client-line"><strong>Client :</strong> ${esc(c.client)}</div>`:''}<div class="mobile-chariot-client">${c.client?`<span><small>Client</small><strong>${esc(c.client)}</strong></span>`:'<span><small>Client</small><strong>—</strong></span>'}</div><div class="recent-time">${c.updated_at?'Mis à jour : '+new Date(c.updated_at).toLocaleString('fr-FR'):''}</div></div><span class="badge ${statusClass(c.status)} chariot-status-badge">${esc(c.status||c.stock||'—')}</span><div class="desktop-card-action">${action}${planAction}</div><div class="mobile-chariot-workflow-wrap">${compactWorkflowHtml(c)}</div><div class="mobile-chariot-buttons"><a class="btn light mobile-fiche-popup-link" data-popup-qr="${esc(id)}" href="${href}">Voir la fiche</a>${mobileActions}</div></div>`;
 }
 async function deleteChariotFromList(id){
   if(!requireValidLicense()||!requireAdmin())return false;
   const c=CHARIOTS.find(x=>String(x.qr_id)===String(id));
   if(!c){alert('Chariot introuvable. Actualisez la liste puis réessayez.');return false}
-  const identity=String(c.chassis||id);
+  const identity=chariotReference(c);
   const details=[c.engine?'Moteur : '+c.engine:'',c.client?'Client : '+c.client:''].filter(Boolean).join(' • ');
-  const message='Confirmer la suppression définitive de ce chariot ?\\n\\nChâssis : '+identity+'\\nQR ID : '+id+(details?'\\n'+details:'')+'\\n\\nCette action est irréversible.';
+  const message='Confirmer la suppression définitive de ce chariot ?\\n\\nRéférence : '+identity+'\\nQR ID : '+id+(details?'\\n'+details:'')+'\\n\\nCette action est irréversible.';
   if(!confirm(message))return false;
   try{
-    const {error:logError}=await supabaseClient.from('maintenance').insert({qr_id:id,date:new Date().toISOString().slice(0,10),technicien:getUserDisplayName(),type:'Suppression chariot',travaux:'Chariot supprimé • Châssis : '+(c.chassis||'—')+' • Moteur : '+(c.engine||'—')+' • Client : '+(c.client||'—'),created_by:currentUser?.id||null});
+    const {error:logError}=await supabaseClient.from('maintenance').insert({qr_id:id,date:new Date().toISOString().slice(0,10),technicien:getUserDisplayName(),type:'Suppression chariot',travaux:'Chariot supprimé • Référence : '+chariotReference(c)+' • Moteur : '+(c.engine||'—')+' • Client : '+(c.client||'—'),created_by:currentUser?.id||null});
     if(logError)console.warn('Historique suppression non enregistré',logError);
   }catch(error){console.warn('Historique suppression non enregistré',error)}
   const {error}=await supabaseClient.from('chariots').delete().eq('qr_id',id);
@@ -1658,7 +1659,7 @@ function initDashboardGlobalSearch(){
       box.classList.add('open');input.setAttribute('aria-expanded','true');box.setAttribute('aria-hidden','false');positionResults();return
     }
     box.innerHTML=rows.map((x,i)=>{
-      const c=x.c,title=c.chassis||c.qr_id||'Chariot',status=String(c.status||'').trim();
+      const c=x.c,title=chariotReference(c),status=String(c.status||'').trim();
       const engineCapacity=[c.engine?String(c.engine).trim():'',c.capacity?fmtCapacity(c.capacity):''].filter(Boolean).join(' · ');
       const color=String(c.color||'').trim(),swatch=searchColor(color);
       const meta=[
@@ -1804,7 +1805,7 @@ function renderDashboardWatch(){
 }
 function renderDashboardLatest(){
   const rows=[...CHARIOTS].sort((a,b)=>new Date(b.created_at||b.updated_at||0)-new Date(a.created_at||a.updated_at||0)).slice(0,5);
-  $('#latestRows').innerHTML=rows.map(c=>{const href='chariot.html?id='+encodeURIComponent(c.qr_id||'');return `<tr onclick="location.href='${href}'" style="cursor:pointer"><td><a class="dash-chariot-link" href="${href}"><b>${esc(c.chassis||c.qr_id||'—')}</b><div class="dash-client"><strong>Couleur :</strong> ${esc(c.color||'—')}</div>${c.client?`<div class="dash-client"><strong>Client :</strong> ${esc(c.client)}</div>`:''}</a></td><td>${esc(c.engine||'—')}</td><td>${esc(fmtCapacity(c.capacity))}</td><td><span class="dash-status ${isDelivered(c)?'delivered':''}">${esc(c.status||'—')}</span></td><td>${c.created_at?new Date(c.created_at).toLocaleDateString('fr-FR'):c.updated_at?new Date(c.updated_at).toLocaleDateString('fr-FR'):'—'}</td></tr>`}).join('')||'<tr><td colspan="5" class="dash-empty">Aucun chariot.</td></tr>';
+  $('#latestRows').innerHTML=rows.map(c=>{const href='chariot.html?id='+encodeURIComponent(c.qr_id||'');return `<tr onclick="location.href='${href}'" style="cursor:pointer"><td><a class="dash-chariot-link" href="${href}"><b>${esc(chariotReference(c))}</b><div class="dash-client"><strong>Couleur :</strong> ${esc(c.color||'—')}</div>${c.client?`<div class="dash-client"><strong>Client :</strong> ${esc(c.client)}</div>`:''}</a></td><td>${esc(c.engine||'—')}</td><td>${esc(fmtCapacity(c.capacity))}</td><td><span class="dash-status ${isDelivered(c)?'delivered':''}">${esc(c.status||'—')}</span></td><td>${c.created_at?new Date(c.created_at).toLocaleDateString('fr-FR'):c.updated_at?new Date(c.updated_at).toLocaleDateString('fr-FR'):'—'}</td></tr>`}).join('')||'<tr><td colspan="5" class="dash-empty">Aucun chariot.</td></tr>';
 }
 function parseEventPayload(value){
   if(value&&typeof value==='object')return value;
@@ -1846,7 +1847,7 @@ function formatMaintenanceEvent(x,c){
   const type=String(x?.type||'').trim();
   const normalized=normalizeNotificationType(type);
   const payload=parseEventPayload(x?.travaux);
-  const chassis=String(c?.chassis||x?.qr_id||'—');
+  const chassis=String(c?chariotReference(c):x?.qr_id||'—');
   const clean=String(x?.travaux||'').trim();
   if(normalized==='planification livraison'){
     const parts=eventDetails(x,payload);
@@ -2181,7 +2182,7 @@ async function chariotsPage(){
     if(location)rows=rows.filter(c=>stockKey(c.stock)===stockKey(location));
     const q=$('#search')?.value.trim().toLowerCase()||'';
     const fs=[['engineFilter','engine'],['capacityFilter','capacity'],['mastFilter','mast_type'],['heightFilter','lifting_height']];
-    rows=rows.filter(c=>(!q||[c.qr_id,c.chassis,c.engine,c.client,c.capacity,c.color].some(v=>String(v||'').toLowerCase().includes(q)))&&fs.every(([id,k])=>!$('#'+id)?.value||norm(c[k])===norm($('#'+id).value)));
+    rows=rows.filter(c=>(!q||[c.qr_id,c.chassis,c.serial_number,c.engine,c.client,c.capacity,c.color].some(v=>String(v||'').toLowerCase().includes(q)))&&fs.every(([id,k])=>!$('#'+id)?.value||norm(c[k])===norm($('#'+id).value)));
     const sortMode=$('#sortFilter')?.value||'updated_desc';
     const textCompare=(a,b)=>String(a??'').localeCompare(String(b??''),'fr',{numeric:true,sensitivity:'base'});
     const timeValue=c=>{const t=Date.parse(c?.updated_at||c?.created_at||'');return Number.isFinite(t)?t:0};
@@ -2200,6 +2201,7 @@ async function chariotsPage(){
       status_asc:(a,b)=>textCompare(a.status,b.status),
       status_desc:(a,b)=>textCompare(b.status,a.status)
     };
+    sorters.chassis_asc=(a,b)=>textCompare(chariotReference(a),chariotReference(b));sorters.chassis_desc=(a,b)=>textCompare(chariotReference(b),chariotReference(a));
     rows=[...rows].sort(sorters[sortMode]||sorters.updated_desc);
     $('#count').textContent=rows.length+' chariot'+(rows.length!==1?'s':'');
     updateActiveFilterCount();
@@ -2578,7 +2580,7 @@ async function detailPage(){
   }
   current=CHARIOTS.find(c=>String(c.qr_id)===String(id));
   if(!current){$('#detail').innerHTML='<div class="empty">Chariot introuvable.</div>';return}
-  $('#title').textContent=current.chassis||current.qr_id;$('#status').textContent=current.status||'—';
+  $('#title').textContent=chariotReference(current);$('#status').textContent=current.status||'—';
   let commercialInfo={name:''};try{commercialInfo=await getChariotCommercial(current.qr_id)}catch(e){console.warn('Lecture du commercial responsable impossible',e)}
   const planned=getDeliveryPlan(current.qr_id),plannedDate=planned?.date?formatPlannedDate(planned.date):'—',plannedTime=planned?.time||'—',plannedDriver=planned?.driver||'—',plannedDestination=planned?.destination||'—';
   const planDeliveryButton=$('#planDeliveryAction');
@@ -2612,7 +2614,7 @@ async function detailPage(){
   const specialEquipment=isSbiHandlingEquipment(current.engine);
   const groups=[
     group('identification','Identification',specialEquipment?[
-      ['Client',current.client],['Commercial responsable',commercialInfo.name||'Non renseigné'],['Modèle',current.engine]
+      ['Client',current.client],['Commercial responsable',commercialInfo.name||'Non renseigné'],['Modèle',current.engine],['N° de série',current.serial_number]
     ]:[
       ['Client',current.client],['Commercial responsable',commercialInfo.name||'Non renseigné'],['N° châssis',current.chassis],['N° de série',current.serial_number],['Moteur',current.engine],['N° moteur',current.engine_number]
     ]),
@@ -2973,7 +2975,7 @@ async function saveChariot(){
   if(!requireValidLicense()||!requireAdmin())return;
   const f=$('#chariotForm'),p=Object.fromEntries(new FormData(f).entries());
   const special=isSbiHandlingEquipment(p.engine),trans=String(p.engine||'').trim().toLocaleUpperCase('fr')==='TRANSPALETTE',mainCentre=String(p.engine||'').trim().toLocaleUpperCase('fr')==='GERBEUR MAIN CENTRE';
-  const required=[['engine',special?'Modèle':'Type de moteur'],['capacity','Capacité']];if(!special)required.unshift(['chassis','N° châssis'],['color','Couleur']);
+  const required=[['engine',special?'Modèle':'Type de moteur'],['capacity','Capacité']];if(special)required.unshift(['serial_number','N° de série']);else required.unshift(['chassis','N° châssis'],['color','Couleur']);
   if(!special)required.push(['fork_dimension','Fourche'],['tire_type','Type de pneu']);if(special&&!trans)required.push(['lifting_height','Hauteur de levage']);
   for(const [k,label] of required)if(!String(p[k]||'').trim()){alert(label+' obligatoire.');return}
   if(special){p.chassis='';p.color='';if(mainCentre){p.capacity='1.5T';p.lifting_height='3.5M';}if(!trans){const allowed=p.capacity==='2T'?['3.5M','4M']:p.capacity==='1.5T'?['3M','3.5M']:[];if(!allowed.includes(String(p.lifting_height||''))){alert('Hauteur incompatible avec la capacité du gerbeur.');return}}p.engine_number='';p.fork_dimension='';p.mast_type='';p.tire_type='';if(trans)p.lifting_height='';}
@@ -3101,7 +3103,7 @@ async function deliveredPage(){if(!await session())return;await loadChariots();f
   },['chariots']);
   window.__SBI_DELIVERED_LIVE_TIMER=window.__SBI_DELIVERED_LIVE_TIMER||setInterval(async()=>{if(document.visibilityState==='hidden')return;try{await loadChariots();render()}catch(e){}},30000);
 }
-async function qrPage(){if(!await session())return;await loadChariots();const sel=$('#qrSelect');const rows=[...CHARIOTS].sort((a,b)=>Number(b.id)-Number(a.id));sel.innerHTML='<option value="">Choisir un chariot...</option>'+rows.map(c=>`<option value="${esc(c.qr_id)}">${esc(c.qr_id)} — ${esc(c.chassis||'')} — ${esc(c.engine||'')} — ${esc(fmtCapacity(c.capacity))}</option>`).join('');sel.value=rows[0]?.qr_id||'';renderQR(sel.value);sel.onchange=()=>renderQR(sel.value)}
+async function qrPage(){if(!await session())return;await loadChariots();const sel=$('#qrSelect');const rows=[...CHARIOTS].sort((a,b)=>Number(b.id)-Number(a.id));sel.innerHTML='<option value="">Choisir un chariot...</option>'+rows.map(c=>`<option value="${esc(c.qr_id)}">${esc(c.qr_id)} — ${esc(chariotReference(c))} — ${esc(c.engine||'')} — ${esc(fmtCapacity(c.capacity))}</option>`).join('');sel.value=rows[0]?.qr_id||'';renderQR(sel.value);sel.onchange=()=>renderQR(sel.value)}
 function renderQR(id){const box=$('#qr');if(!box)return;box.innerHTML='';const c=CHARIOTS.find(x=>x.qr_id===id);if(!c){$('#qrLabel').textContent='';return}const url=location.origin+location.pathname.replace('qr-codes.html','chariot.html')+'?id='+encodeURIComponent(id);new QRCode(box,{text:url,width:220,height:220,correctLevel:QRCode.CorrectLevel.M});$('#qrLabel').textContent=id}
 function printSelectedQrCode(){const box=$('#qr');const source=box?.querySelector('canvas,img');if(!source){alert('QR code introuvable.');return}const src=source.tagName.toLowerCase()==='canvas'?source.toDataURL('image/png'):source.src;const w=window.open('','_blank','width=600,height=700');if(!w){alert('Autorisez les fenêtres popup.');return}w.document.write(`<html><head><title>QR Code</title><style>@page{margin:0}body{margin:0;height:100vh;display:flex;align-items:center;justify-content:center}img{width:70mm;height:70mm}</style></head><body><img src="${src}"></body></html>`);w.document.close();w.onload=()=>{w.print();setTimeout(()=>w.close(),300)}}
 let GLOBAL_HISTORY_ROWS=[];

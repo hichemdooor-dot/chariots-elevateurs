@@ -1107,6 +1107,8 @@ function setupEquipmentTypeFields(){
     const type=String(model.value||'').trim().toLocaleUpperCase('fr'),special=isSbiHandlingEquipment(type),trans=type==='TRANSPALETTE',mainCentre=type==='GERBEUR MAIN CENTRE';
     if(modelLabel)modelLabel.textContent=special?'Modèle':'Type moteur';
     Object.values(wrappers).forEach(el=>{if(el)el.style.display=special?'none':''});
+    // Le numéro de série reste visible pour les gerbeurs et transpalettes.
+    if(special&&wrappers.serialNumber)wrappers.serialNumber.style.display='';
     if(!special){setOptions(capacity,standardCapacity,capacity.value);setOptions(height,standardHeights,height.value);}
     else{
       if(wrappers.engineNumber)wrappers.engineNumber.style.display='none';if(wrappers.fork)wrappers.fork.style.display='none';if(wrappers.mast)wrappers.mast.style.display='none';if(wrappers.tire)wrappers.tire.style.display='none';
@@ -1114,7 +1116,7 @@ function setupEquipmentTypeFields(){
       if(trans){setOptions(capacity,['1.5T','2T'],capacity.value);setOptions(height,standardHeights,height.value);}
       else if(mainCentre){setOptions(capacity,['1.5T'],'1.5T');setOptions(height,['3.5M'],'3.5M');capacity.value='1.5T';height.value='3.5M';}
       else{setOptions(capacity,['1.5T','2T'],capacity.value);const allowed=capacity.value==='2T'?['3.5M','4M']:capacity.value==='1.5T'?['3M','3.5M']:['3M','3.5M','4M'];setOptions(height,allowed,height.value);}
-      ['chassis','serial_number','color','engine_number','fork_dimension','mast_type','tire_type'].forEach(k=>{const el=form.querySelector('[name="'+k+'"]');if(el)el.value='';});
+      ['chassis','color','engine_number','fork_dimension','mast_type','tire_type'].forEach(k=>{const el=form.querySelector('[name="'+k+'"]');if(el)el.value='';});
     }
     updateSaveButtonState();
   };
@@ -2974,7 +2976,7 @@ async function saveChariot(){
   const required=[['engine',special?'Modèle':'Type de moteur'],['capacity','Capacité']];if(!special)required.unshift(['chassis','N° châssis'],['color','Couleur']);
   if(!special)required.push(['fork_dimension','Fourche'],['tire_type','Type de pneu']);if(special&&!trans)required.push(['lifting_height','Hauteur de levage']);
   for(const [k,label] of required)if(!String(p[k]||'').trim()){alert(label+' obligatoire.');return}
-  if(special){p.chassis='';p.serial_number='';p.color='';if(mainCentre){p.capacity='1.5T';p.lifting_height='3.5M';}if(!trans){const allowed=p.capacity==='2T'?['3.5M','4M']:p.capacity==='1.5T'?['3M','3.5M']:[];if(!allowed.includes(String(p.lifting_height||''))){alert('Hauteur incompatible avec la capacité du gerbeur.');return}}p.engine_number='';p.fork_dimension='';p.mast_type='';p.tire_type='';if(trans)p.lifting_height='';}
+  if(special){p.chassis='';p.color='';if(mainCentre){p.capacity='1.5T';p.lifting_height='3.5M';}if(!trans){const allowed=p.capacity==='2T'?['3.5M','4M']:p.capacity==='1.5T'?['3M','3.5M']:[];if(!allowed.includes(String(p.lifting_height||''))){alert('Hauteur incompatible avec la capacité du gerbeur.');return}}p.engine_number='';p.fork_dimension='';p.mast_type='';p.tire_type='';if(trans)p.lifting_height='';}
   const oldId=new URLSearchParams(location.search).get('id')||'',old=CHARIOTS.find(c=>String(c.qr_id)===String(oldId));
   if(oldId&&!isAdmin()){alert('La modification d’un chariot est réservée à l’administrateur.');return}
   // Normalisation définitive : le nom du client est toujours stocké en MAJUSCULES.

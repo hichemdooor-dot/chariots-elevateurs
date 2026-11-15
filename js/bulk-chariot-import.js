@@ -3,8 +3,8 @@
   const $=s=>document.querySelector(s);
   const fields=['stock','client','chassis','serial_number','color','engine','engine_number','capacity','lifting_height','fork_dimension','mast_type','tire_type','delivery_date','observations'];
   const labels={stock:'Stock',client:'Client',chassis:'N° châssis',serial_number:'N° de série',color:'Couleur',engine:'Type moteur',engine_number:'N° moteur',capacity:'Capacité',lifting_height:'Hauteur',fork_dimension:'Fourche',mast_type:'Type de mât',tire_type:'Type de pneu',delivery_date:'Date livraison',observations:'Observations'};
-  const required=['chassis','color','engine','capacity','fork_dimension','tire_type'];
-  const choices={stock:['STOCK1','STOCK2','SHOWROOM','FABRICATION'],color:['Jaune','Orange','Rouge','Vert','Gris'],engine:['ISUZU','MITSUBISHI','XINCHAI','YANMAR','GPL','ÉLECTRIQUE'],capacity:['2.5T','3T','3.8T','3.5T (TT)','5T','7T','10T','12T'],lifting_height:['3M','4M','4.3M','4.5M','6M'],fork_dimension:['1,2 m','1,5 m','2 m','2.5 m','Autre'],mast_type:['DUPLEX','TRIPLEX'],tire_type:['PNEUMATIQUE','PNEU PLEIN']};
+  const required=['chassis','color','engine','capacity'];
+  const choices={stock:['STOCK1','STOCK2','SHOWROOM','FABRICATION'],color:['Jaune','Orange','Rouge','Vert','Gris'],engine:['ISUZU','MITSUBISHI','XINCHAI','YANMAR','GPL','ÉLECTRIQUE','GERBEUR ÉLECTRIQUE','GERBEUR MAIN CENTRE','TRANSPALETTE'],capacity:['1.5T','2T','2.5T','3T','3.8T','3.5T (TT)','5T','7T','10T','12T'],lifting_height:['3M','3.5M','4M','4.3M','4.5M','6M'],fork_dimension:['1,2 m','1,5 m','2 m','2.5 m','Autre'],mast_type:['DUPLEX','TRIPLEX'],tire_type:['PNEUMATIQUE','PNEU PLEIN']};
   let rows=[];
   let ocrWorker=null,ocrCandidate=null;
   const ocrFields=['chassis','engine','engine_number','capacity','color','lifting_height','fork_dimension','mast_type','tire_type'];
@@ -54,7 +54,7 @@
     if(!result.engine_number&&codeLines.length>1)result.engine_number=codeLines[1].replace(/[^A-Z0-9-]/gi,'').toUpperCase();
     for(const line of lines){
       const u=line.toUpperCase();
-      if(!result.engine){const e=['ISUZU','MITSUBISHI','XINCHAI','YANMAR'].find(x=>u.includes(x));if(e)result.engine=e}
+      if(!result.engine){const e=['GERBEUR MAIN CENTRE','GERBEUR ELECTRIQUE','GERBEUR ÉLECTRIQUE','TRANSPALETTE','ISUZU','MITSUBISHI','XINCHAI','YANMAR'].find(x=>u.includes(x));if(e)result.engine=e}
       if(!result.color){const c=['JAUNE','ORANGE','ROUGE','VERT','GRIS'].find(x=>u.includes(x));if(c)result.color=c[0]+c.slice(1).toLowerCase()}
       if(!result.tire_type){if(u.includes('PNEUMATIQUE'))result.tire_type='PNEUMATIQUE';else if(u.includes('PNEU PLEIN'))result.tire_type='PNEU PLEIN'}
       if(!result.mast_type){if(u.includes('TRIPLEX'))result.mast_type='TRIPLEX';else if(u.includes('DUPLEX'))result.mast_type='DUPLEX'}
@@ -104,6 +104,7 @@
       const p={};fields.forEach(k=>{const v=map[k]===undefined?'':r[map[k]];p[k]=v==null?'':String(v).trim();if(k==='delivery_date'&&!p[k])p[k]=null});
       p.chassis=p.chassis.toUpperCase();p.engine=p.engine.toUpperCase();p.client=p.client.toUpperCase();
       p.status='En stock';p.stock=p.stock||'STOCK1';
+      if(['GERBEUR ÉLECTRIQUE','GERBEUR MAIN CENTRE','TRANSPALETTE'].includes(p.engine)){p.engine_number='';p.fork_dimension='';p.mast_type='';p.tire_type='';if(p.engine==='TRANSPALETTE')p.lifting_height='';if(p.engine==='GERBEUR MAIN CENTRE'){p.capacity='1.5T';p.lifting_height='3.5M';}}
       return {sourceRow:i+2,p};
     });
   }
@@ -118,7 +119,8 @@
     const seen=new Map(),existing=Array.isArray(CHARIOTS)?CHARIOTS:[];
     const nextErrors=[];
     rows.forEach(row=>{
-      const p=row.p,missing=required.filter(k=>!String(p[k]||'').trim());
+      const p=row.p,special=['GERBEUR ÉLECTRIQUE','GERBEUR MAIN CENTRE','TRANSPALETTE'].includes(String(p.engine||'').trim().toLocaleUpperCase('fr')),trans=String(p.engine||'').trim().toLocaleUpperCase('fr')==='TRANSPALETTE',mainCentre=String(p.engine||'').trim().toLocaleUpperCase('fr')==='GERBEUR MAIN CENTRE';
+      const requiredFields=[...required,...(!special?['fork_dimension','tire_type']:[]),...(special&&!trans?['lifting_height']:[])];const missing=requiredFields.filter(k=>!String(p[k]||'').trim());
       if(missing.length)nextErrors.push('Ligne '+row.sourceRow+' : '+missing.map(k=>labels[k]).join(', ')+' obligatoire(s).');
       const key=norm(p.chassis)+'|'+norm(p.engine);
       const existingMatch=existing.find(c=>norm(c.chassis)===norm(p.chassis)&&norm(c.engine)===norm(p.engine));
@@ -126,6 +128,7 @@
       if(p.chassis&&p.engine&&seen.has(key))nextErrors.push('Lignes '+seen.get(key)+' et '+row.sourceRow+' : doublon dans le fichier ('+p.chassis+' + '+p.engine+').');
       if(p.chassis&&p.engine)seen.set(key,row.sourceRow);
       if(p.chassis&&!/^G/i.test(p.chassis))nextErrors.push('Ligne '+row.sourceRow+' : le N° châssis doit commencer par G.');
+      if(special){if(mainCentre&&(p.capacity!=='1.5T'||p.lifting_height!=='3.5M'))nextErrors.push('Ligne '+row.sourceRow+' : Main Centre exige 1.5T et 3.5M.');if(!trans&&!mainCentre){const allowed=p.capacity==='2T'?['3.5M','4M']:p.capacity==='1.5T'?['3M','3.5M']:[];if(!allowed.includes(p.lifting_height))nextErrors.push('Ligne '+row.sourceRow+' : hauteur incompatible avec la capacité du gerbeur.');}if(trans&&p.lifting_height)nextErrors.push('Ligne '+row.sourceRow+' : un transpalette ne doit pas avoir de hauteur de levage.');}
       Object.keys(choices).forEach(k=>{if(p[k]&&!choices[k].includes(p[k]))nextErrors.push('Ligne '+row.sourceRow+' : valeur non reconnue pour '+labels[k]+'.')});
     });
     return nextErrors;

@@ -104,7 +104,7 @@
       const p={};fields.forEach(k=>{const v=map[k]===undefined?'':r[map[k]];p[k]=v==null?'':String(v).trim();if(k==='delivery_date'&&!p[k])p[k]=null});
       p.chassis=p.chassis.toUpperCase();p.engine=p.engine.toUpperCase();p.client=p.client.toUpperCase();
       p.status='En stock';p.stock=p.stock||'STOCK1';
-      if(['GERBEUR ÉLECTRIQUE','GERBEUR MAIN CENTRE','TRANSPALETTE'].includes(p.engine)){p.engine_number='';p.fork_dimension='';p.mast_type='';p.tire_type='';if(p.engine==='TRANSPALETTE')p.lifting_height='';if(p.engine==='GERBEUR MAIN CENTRE'){p.capacity='1.5T';p.lifting_height='3.5M';}}
+      if(['GERBEUR ÉLECTRIQUE','GERBEUR MAIN CENTRE','TRANSPALETTE'].includes(p.engine)){p.engine_number='';p.fork_dimension='';p.mast_type='';p.tire_type='';if(p.engine==='TRANSPALETTE')p.lifting_height='';}
       return {sourceRow:i+2,p};
     });
   }

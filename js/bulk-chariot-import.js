@@ -120,14 +120,14 @@
     const nextErrors=[];
     rows.forEach(row=>{
       const p=row.p,special=['GERBEUR ÉLECTRIQUE','GERBEUR MAIN CENTRE','TRANSPALETTE'].includes(String(p.engine||'').trim().toLocaleUpperCase('fr')),trans=String(p.engine||'').trim().toLocaleUpperCase('fr')==='TRANSPALETTE',mainCentre=String(p.engine||'').trim().toLocaleUpperCase('fr')==='GERBEUR MAIN CENTRE';
-      const requiredFields=[...required,...(!special?['fork_dimension','tire_type']:[]),...(special&&!trans?['lifting_height']:[])];const missing=requiredFields.filter(k=>!String(p[k]||'').trim());
+      const requiredFields=[...(special?['serial_number','engine','capacity']:required),...(!special?['fork_dimension','tire_type']:[]),...(special&&!trans?['lifting_height']:[])];const missing=requiredFields.filter(k=>!String(p[k]||'').trim());
       if(missing.length)nextErrors.push('Ligne '+row.sourceRow+' : '+missing.map(k=>labels[k]).join(', ')+' obligatoire(s).');
-      const key=norm(p.chassis)+'|'+norm(p.engine);
-      const existingMatch=existing.find(c=>norm(c.chassis)===norm(p.chassis)&&norm(c.engine)===norm(p.engine));
-      if(p.chassis&&p.engine&&existingMatch)nextErrors.push('Ligne '+row.sourceRow+' : doublon existant ('+p.chassis+' + '+p.engine+').');
-      if(p.chassis&&p.engine&&seen.has(key))nextErrors.push('Lignes '+seen.get(key)+' et '+row.sourceRow+' : doublon dans le fichier ('+p.chassis+' + '+p.engine+').');
-      if(p.chassis&&p.engine)seen.set(key,row.sourceRow);
-      if(p.chassis&&!/^G/i.test(p.chassis))nextErrors.push('Ligne '+row.sourceRow+' : le N° châssis doit commencer par G.');
+      const reference=special?p.serial_number:p.chassis,key=norm(reference)+'|'+norm(p.engine);
+      const existingMatch=existing.find(c=>norm(special?(c.serial_number||''):(c.chassis||''))===norm(reference)&&norm(c.engine)===norm(p.engine));
+      if(reference&&p.engine&&existingMatch)nextErrors.push('Ligne '+row.sourceRow+' : doublon existant ('+reference+' + '+p.engine+').');
+      if(reference&&p.engine&&seen.has(key))nextErrors.push('Lignes '+seen.get(key)+' et '+row.sourceRow+' : doublon dans le fichier ('+reference+' + '+p.engine+').');
+      if(reference&&p.engine)seen.set(key,row.sourceRow);
+      if(!special&&p.chassis&&!/^G/i.test(p.chassis))nextErrors.push('Ligne '+row.sourceRow+' : le N° châssis doit commencer par G.');
       if(special){if(mainCentre&&(p.capacity!=='1.5T'||p.lifting_height!=='3.5M'))nextErrors.push('Ligne '+row.sourceRow+' : Main Centre exige 1.5T et 3.5M.');if(!trans&&!mainCentre){const allowed=p.capacity==='2T'?['3.5M','4M']:p.capacity==='1.5T'?['3M','3.5M']:[];if(!allowed.includes(p.lifting_height))nextErrors.push('Ligne '+row.sourceRow+' : hauteur incompatible avec la capacité du gerbeur.');}if(trans&&p.lifting_height)nextErrors.push('Ligne '+row.sourceRow+' : un transpalette ne doit pas avoir de hauteur de levage.');}
       if(!special&&['1.5T','2T'].includes(p.capacity))nextErrors.push('Ligne '+row.sourceRow+' : 1.5T et 2T sont réservés aux gerbeurs et transpalettes.');
       Object.keys(choices).forEach(k=>{if(p[k]&&!choices[k].includes(p[k]))nextErrors.push('Ligne '+row.sourceRow+' : valeur non reconnue pour '+labels[k]+'.')});

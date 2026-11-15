@@ -2715,7 +2715,6 @@ async function newPage(){
   else{$('[name="qr_id"]').value=nextQr();editingQrId=null;}
   if(!old&&chassisPrefill){const chassisField=document.querySelector('[name="chassis"]');if(chassisField)chassisField.value=chassisPrefill;}
   setupAutomaticStatusField(old);
-  setupEquipmentTypeFields();
   setupAutomaticHeightMastField();
   const clientField=document.querySelector('[name="client"]');
   // Client : toujours en MAJUSCULES, à la saisie et avant enregistrement.
@@ -2744,6 +2743,8 @@ async function newPage(){
   setupSmartClientSuggestions(old);
   setupLiveDuplicateGuard(old);
   setupLastUsedConfiguration(old);
+  // Apply the equipment-specific layout after restoring saved form values.
+  setupEquipmentTypeFields();
   const deleteBtn=document.querySelector('#chariotForm .btn.danger');
   if(!isAdmin()){
     if(clientField){clientField.value='';clientField.disabled=true;clientField.title='L’affectation d’un client est réservée à l’administrateur.'}

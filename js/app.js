@@ -1093,12 +1093,42 @@ async function transitionChariotStatus(qrId,nextStatus,reason='',options={}){
   }
   return true;
 }
+
+function isSbiHandlingEquipment(value){return ['GERBEUR ÉLECTRIQUE','GERBEUR MAIN CENTRE','TRANSPALETTE'].includes(String(value||'').trim().toLocaleUpperCase('fr'));}
+function setupEquipmentTypeFields(){
+  const form=document.getElementById('chariotForm');if(!form)return;
+  const model=form.querySelector('[name="engine"]'),capacity=form.querySelector('[name="capacity"]'),height=form.querySelector('[name="lifting_height"]');
+  const modelLabel=model?.closest('.field')?.querySelector('label');
+  const wrappers={engineNumber:document.getElementById('engineNumberFieldWrap'),fork:document.getElementById('forkFieldWrap'),mast:document.getElementById('mastFieldWrap'),tire:document.getElementById('tireFieldWrap'),height:document.getElementById('heightFieldWrap')};
+  if(!model||!capacity||!height)return;
+  const standardCapacity=['2.5T','3T','3.8T','3.5T (TT)','5T','7T','10T','12T'],standardHeights=['3M','4M','4.3M','4.5M','6M'];
+  const setOptions=(el,values,current)=>{const wanted=String(current||el.value||''),selected=values.includes(wanted)?wanted:'';el.innerHTML='<option value="">Choisir...</option>'+values.map(v=>'<option value="'+v+'">'+v+'</option>').join('');el.value=selected;};
+  const update=()=>{
+    const type=String(model.value||'').trim().toLocaleUpperCase('fr'),special=isSbiHandlingEquipment(type),trans=type==='TRANSPALETTE',mainCentre=type==='GERBEUR MAIN CENTRE';
+    if(modelLabel)modelLabel.textContent=special?'Modèle':'Type moteur';
+    Object.values(wrappers).forEach(el=>{if(el)el.style.display=special?'none':''});
+    if(!special){setOptions(capacity,standardCapacity,capacity.value);setOptions(height,standardHeights,height.value);}
+    else{
+      if(wrappers.engineNumber)wrappers.engineNumber.style.display='none';if(wrappers.fork)wrappers.fork.style.display='none';if(wrappers.mast)wrappers.mast.style.display='none';if(wrappers.tire)wrappers.tire.style.display='none';
+      if(wrappers.height)wrappers.height.style.display=trans?'none':'';
+      if(trans){setOptions(capacity,['1.5T','2T'],capacity.value);setOptions(height,[],'');height.value='';}
+      else if(mainCentre){setOptions(capacity,['1.5T'],'1.5T');setOptions(height,['3.5M'],'3.5M');capacity.value='1.5T';height.value='3.5M';}
+      else{setOptions(capacity,['1.5T','2T'],capacity.value);const allowed=capacity.value==='2T'?['3.5M','4M']:capacity.value==='1.5T'?['3M','3.5M']:['3M','3.5M','4M'];setOptions(height,allowed,height.value);}
+      ['engine_number','fork_dimension','mast_type','tire_type'].forEach(k=>{const el=form.querySelector('[name="'+k+'"]');if(el)el.value='';});
+    }
+    updateSaveButtonState();
+  };
+  model.addEventListener('change',update);capacity.addEventListener('change',update);update();
+}
+
 function setupAutomaticHeightMastField(){
   const heightEl=document.querySelector('[name="lifting_height"]');
   const mastEl=document.querySelector('[name="mast_type"]');
+  const modelEl=document.querySelector('[name="engine"]');
   if(!heightEl||!mastEl||heightEl.dataset.mastRuleReady==='1')return;
   heightEl.dataset.mastRuleReady='1';
   const applySuggestion=()=>{
+    if(isSbiHandlingEquipment(modelEl?.value)){mastEl.value='';delete mastEl.dataset.autoMast;updateSaveButtonState();return;}
     const h=normalizeHeightValue(heightEl.value);
     const suggested=(h==='3m'||h==='4m')?'DUPLEX':(['4.3m','4.5m','6m'].includes(h)?'TRIPLEX':'');
     // The rule provides a default suggestion, but the admin/user may override it manually.
@@ -1128,6 +1158,7 @@ function setupAutomaticHeightMastField(){
   };
   heightEl.addEventListener('change',normalizeHeight);
   mastEl.addEventListener('change',markManualAndKeep);
+  modelEl?.addEventListener('change',applySuggestion);
   applySuggestion();
 }
 function normalizeHeightValue(v){
@@ -2684,6 +2715,7 @@ async function newPage(){
   else{$('[name="qr_id"]').value=nextQr();editingQrId=null;}
   if(!old&&chassisPrefill){const chassisField=document.querySelector('[name="chassis"]');if(chassisField)chassisField.value=chassisPrefill;}
   setupAutomaticStatusField(old);
+  setupEquipmentTypeFields();
   setupAutomaticHeightMastField();
   const clientField=document.querySelector('[name="client"]');
   // Client : toujours en MAJUSCULES, à la saisie et avant enregistrement.
@@ -2924,11 +2956,19 @@ function setupLastUsedConfiguration(old){
   remember();
 }
 
-function updateSaveButtonState(){const ok=['chassis','color','engine','capacity','fork_dimension','tire_type'].every(k=>String(document.querySelector(`[name="${k}"]`)?.value||'').trim());$('#saveBtn')?.classList.toggle('save-ready',ok)}
+function updateSaveButtonState(){
+ const model=String(document.querySelector('[name="engine"]')?.value||'').trim().toLocaleUpperCase('fr'),special=isSbiHandlingEquipment(model),trans=model==='TRANSPALETTE';
+ const required=['chassis','color','engine','capacity'];if(!special)required.push('fork_dimension','tire_type');if(special&&!trans)required.push('lifting_height');
+ const ok=required.every(k=>String(document.querySelector(`[name="${k}"]`)?.value||'').trim());$('#saveBtn')?.classList.toggle('save-ready',ok);
+}
 async function saveChariot(){
   if(!requireValidLicense()||!requireAdmin())return;
   const f=$('#chariotForm'),p=Object.fromEntries(new FormData(f).entries());
-  for(const [k,label] of [['chassis','N° châssis'],['color','Couleur'],['engine','Type de moteur'],['capacity','Capacité'],['fork_dimension','Fourche'],['tire_type','Type de pneu']])if(!String(p[k]||'').trim()){alert(label+' obligatoire.');return}
+  const special=isSbiHandlingEquipment(p.engine),trans=String(p.engine||'').trim().toLocaleUpperCase('fr')==='TRANSPALETTE',mainCentre=String(p.engine||'').trim().toLocaleUpperCase('fr')==='GERBEUR MAIN CENTRE';
+  const required=[['chassis','N° châssis'],['color','Couleur'],['engine',special?'Modèle':'Type de moteur'],['capacity','Capacité']];
+  if(!special)required.push(['fork_dimension','Fourche'],['tire_type','Type de pneu']);if(special&&!trans)required.push(['lifting_height','Hauteur de levage']);
+  for(const [k,label] of required)if(!String(p[k]||'').trim()){alert(label+' obligatoire.');return}
+  if(special){if(mainCentre){p.capacity='1.5T';p.lifting_height='3.5M';}if(!trans){const allowed=p.capacity==='2T'?['3.5M','4M']:p.capacity==='1.5T'?['3M','3.5M']:[];if(!allowed.includes(String(p.lifting_height||''))){alert('Hauteur incompatible avec la capacité du gerbeur.');return}}p.engine_number='';p.fork_dimension='';p.mast_type='';p.tire_type='';if(trans)p.lifting_height='';}
   const oldId=new URLSearchParams(location.search).get('id')||'',old=CHARIOTS.find(c=>String(c.qr_id)===String(oldId));
   if(oldId&&!isAdmin()){alert('La modification d’un chariot est réservée à l’administrateur.');return}
   // Normalisation définitive : le nom du client est toujours stocké en MAJUSCULES.
@@ -2954,8 +2994,8 @@ async function saveChariot(){
   // Règle hauteur de levage → type de mât : une suggestion automatique est appliquée,
   // mais la valeur choisie manuellement reste prioritaire et peut être modifiée.
   const heightRule=normalizeHeightValue(p.lifting_height);
-  if(!String(p.mast_type||'').trim())p.mast_type=String(old?.mast_type||'').trim();
-  if(!String(p.mast_type||'').trim()){
+  if(!special&&!String(p.mast_type||'').trim())p.mast_type=String(old?.mast_type||'').trim();
+  if(!special&&!String(p.mast_type||'').trim()){
     if(['3m','4m'].includes(heightRule))p.mast_type='DUPLEX';
     else if(['4.3m','4.5m','6m'].includes(heightRule))p.mast_type='TRIPLEX';
   }

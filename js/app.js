@@ -2706,7 +2706,7 @@ async function newPage(){
   setupChassisPrefix(old);
 
   // N° moteur : préfixe automatique selon le type de moteur.
-  // XINCHAI = 2606 / MITSUBISHI = S4S- / ISUZU = C240- / GPL = CK25-.
+  // XINCHAI = 2610 / MITSUBISHI = S4S- / ISUZU = C240-3336 / GPL = CK25-.
   // YANMAR n'a pas de préfixe imposé tant qu'il n'est pas spécifié.
   setupEngineNumberPrefix();
   setupSmartClientSuggestions(old);
@@ -2757,22 +2757,24 @@ function setupEngineNumberPrefix(){
   const engineField=document.querySelector('[name="engine"]');
   const numberField=document.querySelector('[name="engine_number"]');
   if(!engineField||!numberField)return;
-  if(numberField.dataset.enginePrefixReady==='1'){
-    applyEngineNumberPrefix();
-    return;
-  }
   const prefixes={
-    XINCHAI:'2606',
+    XINCHAI:'2610',
     MITSUBISHI:'S4S-',
-    ISUZU:'C240-',
+    ISUZU:'C240-3336',
     GPL:'CK25-',
     YANMAR:'',
     'ÉLECTRIQUE':''
   };
+  if(numberField.dataset.enginePrefixReady==='1'){
+    const currentPrefix=prefixes[String(engineField.value||'').trim().toUpperCase()]||'';
+    numberField.placeholder=currentPrefix||'Numéro du moteur';
+    return;
+  }
   numberField.dataset.enginePrefixReady='1';
   numberField.dataset.enginePrefixes=JSON.stringify(prefixes);
 
-  const knownPrefixes=Object.values(prefixes).filter(Boolean).sort((a,b)=>b.length-a.length);
+  // Legacy prefixes remain recognized when the user changes motor type.
+  const knownPrefixes=[...new Set([...Object.values(prefixes),'2606','C240-'].filter(Boolean))].sort((a,b)=>b.length-a.length);
   const getPrefix=()=>prefixes[String(engineField.value||'').trim().toUpperCase()]||'';
   const stripKnownPrefix=(value)=>{
     let v=String(value||'').toUpperCase().trim();
@@ -2825,14 +2827,17 @@ function setupEngineNumberPrefix(){
     }
   });
 
-  apply();
+  // Only propose a prefix for a new/empty number. Do not rewrite saved values
+  // just because an existing chariot's form has been opened.
+  if(!String(numberField.value||'').trim())apply();
+  else numberField.placeholder=getPrefix()||'Numéro du moteur';
 }
 function applyEngineNumberPrefix(){
   const engineField=document.querySelector('[name="engine"]');
   const numberField=document.querySelector('[name="engine_number"]');
   if(!engineField||!numberField)return;
-  const prefixes={XINCHAI:'2606',MITSUBISHI:'S4S-',ISUZU:'C240-',GPL:'CK25-',YANMAR:'','ÉLECTRIQUE':''};
-  const knownPrefixes=Object.values(prefixes).filter(Boolean).sort((a,b)=>b.length-a.length);
+  const prefixes={XINCHAI:'2610',MITSUBISHI:'S4S-',ISUZU:'C240-3336',GPL:'CK25-',YANMAR:'','ÉLECTRIQUE':''};
+  const knownPrefixes=[...new Set([...Object.values(prefixes),'2606','C240-'].filter(Boolean))].sort((a,b)=>b.length-a.length);
   const prefix=prefixes[String(engineField.value||'').trim().toUpperCase()]||'';
   let value=String(numberField.value||'').toUpperCase().trim();
   for(const known of knownPrefixes){if(value.startsWith(known)){value=value.slice(known.length);break}}

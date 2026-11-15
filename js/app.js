@@ -1099,7 +1099,7 @@ function setupEquipmentTypeFields(){
   const form=document.getElementById('chariotForm');if(!form)return;
   const model=form.querySelector('[name="engine"]'),capacity=form.querySelector('[name="capacity"]'),height=form.querySelector('[name="lifting_height"]');
   const modelLabel=model?.closest('.field')?.querySelector('label');
-  const wrappers={chassis:document.getElementById('chassisFieldWrap'),color:document.getElementById('colorFieldWrap'),engineNumber:document.getElementById('engineNumberFieldWrap'),fork:document.getElementById('forkFieldWrap'),mast:document.getElementById('mastFieldWrap'),tire:document.getElementById('tireFieldWrap'),height:document.getElementById('heightFieldWrap')};
+  const wrappers={chassis:document.getElementById('chassisFieldWrap'),serialNumber:document.getElementById('serialNumberFieldWrap'),color:document.getElementById('colorFieldWrap'),engineNumber:document.getElementById('engineNumberFieldWrap'),fork:document.getElementById('forkFieldWrap'),mast:document.getElementById('mastFieldWrap'),tire:document.getElementById('tireFieldWrap'),height:document.getElementById('heightFieldWrap')};
   if(!model||!capacity||!height)return;
   const standardCapacity=['2.5T','3T','3.8T','3.5T (TT)','5T','7T','10T','12T'],standardHeights=['3M','4M','4.3M','4.5M','6M'];
   const setOptions=(el,values,current)=>{const wanted=String(current||el.value||''),selected=values.includes(wanted)?wanted:'';el.innerHTML='<option value="">Choisir...</option>'+values.map(v=>'<option value="'+v+'">'+v+'</option>').join('');el.value=selected;};
@@ -1110,11 +1110,11 @@ function setupEquipmentTypeFields(){
     if(!special){setOptions(capacity,standardCapacity,capacity.value);setOptions(height,standardHeights,height.value);}
     else{
       if(wrappers.engineNumber)wrappers.engineNumber.style.display='none';if(wrappers.fork)wrappers.fork.style.display='none';if(wrappers.mast)wrappers.mast.style.display='none';if(wrappers.tire)wrappers.tire.style.display='none';
-      if(wrappers.height)wrappers.height.style.display=trans?'none':'';
-      if(trans){setOptions(capacity,['1.5T','2T'],capacity.value);setOptions(height,[],'');height.value='';}
+      if(wrappers.height)wrappers.height.style.display='';
+      if(trans){setOptions(capacity,['1.5T','2T'],capacity.value);setOptions(height,standardHeights,height.value);}
       else if(mainCentre){setOptions(capacity,['1.5T'],'1.5T');setOptions(height,['3.5M'],'3.5M');capacity.value='1.5T';height.value='3.5M';}
       else{setOptions(capacity,['1.5T','2T'],capacity.value);const allowed=capacity.value==='2T'?['3.5M','4M']:capacity.value==='1.5T'?['3M','3.5M']:['3M','3.5M','4M'];setOptions(height,allowed,height.value);}
-      ['chassis','color','engine_number','fork_dimension','mast_type','tire_type'].forEach(k=>{const el=form.querySelector('[name="'+k+'"]');if(el)el.value='';});
+      ['chassis','serial_number','color','engine_number','fork_dimension','mast_type','tire_type'].forEach(k=>{const el=form.querySelector('[name="'+k+'"]');if(el)el.value='';});
     }
     updateSaveButtonState();
   };
@@ -2969,7 +2969,7 @@ async function saveChariot(){
   const required=[['engine',special?'Modèle':'Type de moteur'],['capacity','Capacité']];if(!special)required.unshift(['chassis','N° châssis'],['color','Couleur']);
   if(!special)required.push(['fork_dimension','Fourche'],['tire_type','Type de pneu']);if(special&&!trans)required.push(['lifting_height','Hauteur de levage']);
   for(const [k,label] of required)if(!String(p[k]||'').trim()){alert(label+' obligatoire.');return}
-  if(special){p.chassis='';p.color='';if(mainCentre){p.capacity='1.5T';p.lifting_height='3.5M';}if(!trans){const allowed=p.capacity==='2T'?['3.5M','4M']:p.capacity==='1.5T'?['3M','3.5M']:[];if(!allowed.includes(String(p.lifting_height||''))){alert('Hauteur incompatible avec la capacité du gerbeur.');return}}p.engine_number='';p.fork_dimension='';p.mast_type='';p.tire_type='';if(trans)p.lifting_height='';}
+  if(special){p.chassis='';p.serial_number='';p.color='';if(mainCentre){p.capacity='1.5T';p.lifting_height='3.5M';}if(!trans){const allowed=p.capacity==='2T'?['3.5M','4M']:p.capacity==='1.5T'?['3M','3.5M']:[];if(!allowed.includes(String(p.lifting_height||''))){alert('Hauteur incompatible avec la capacité du gerbeur.');return}}p.engine_number='';p.fork_dimension='';p.mast_type='';p.tire_type='';if(trans)p.lifting_height='';}
   const oldId=new URLSearchParams(location.search).get('id')||'',old=CHARIOTS.find(c=>String(c.qr_id)===String(oldId));
   if(oldId&&!isAdmin()){alert('La modification d’un chariot est réservée à l’administrateur.');return}
   // Normalisation définitive : le nom du client est toujours stocké en MAJUSCULES.

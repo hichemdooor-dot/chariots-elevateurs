@@ -2607,11 +2607,16 @@ async function detailPage(){
     return `<div class="detail-kv"><span class="detail-kv-label">${esc(label)}</span><strong>${esc(safeValue)}</strong></div>`;
   };
   const group=(key,title,rows)=>`<section class="detail-panel detail-panel--${key}"><header class="detail-panel-head"><span class="detail-panel-icon">${icon(key)}</span><h2>${esc(title)}</h2></header><div class="detail-panel-values">${rows.map(([label,value,kind])=>field(label,value,kind||'')).join('')}</div></section>`;
+  const specialEquipment=isSbiHandlingEquipment(current.engine);
   const groups=[
-    group('identification','Identification',[
+    group('identification','Identification',specialEquipment?[
+      ['Client',current.client],['Commercial responsable',commercialInfo.name||'Non renseigné'],['Modèle',current.engine]
+    ]:[
       ['Client',current.client],['Commercial responsable',commercialInfo.name||'Non renseigné'],['N° châssis',current.chassis],['N° de série',current.serial_number],['Moteur',current.engine],['N° moteur',current.engine_number]
     ]),
-    group('characteristics','Caractéristiques du chariot',[
+    group('characteristics','Caractéristiques du chariot',specialEquipment?[
+      ['Capacité',fmtCapacity(current.capacity)],['Hauteur de levage',current.lifting_height],['Statut',current.status,normalizeStatus(current.status).replace(/\s+/g,'-')]
+    ]:[
       ['Capacité',fmtCapacity(current.capacity)],['Hauteur de levage',current.lifting_height],['Type de mât',String(current.mast_type||'').toUpperCase()],['Dimensions des fourches',current.fork_dimension],['Type de pneu',current.tire_type],['Couleur',current.color],['Statut',current.status,normalizeStatus(current.status).replace(/\s+/g,'-')]
     ]),
     group('stock','Informations stock',[

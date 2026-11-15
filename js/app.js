@@ -1099,7 +1099,7 @@ function setupEquipmentTypeFields(){
   const form=document.getElementById('chariotForm');if(!form)return;
   const model=form.querySelector('[name="engine"]'),capacity=form.querySelector('[name="capacity"]'),height=form.querySelector('[name="lifting_height"]');
   const modelLabel=model?.closest('.field')?.querySelector('label');
-  const wrappers={engineNumber:document.getElementById('engineNumberFieldWrap'),fork:document.getElementById('forkFieldWrap'),mast:document.getElementById('mastFieldWrap'),tire:document.getElementById('tireFieldWrap'),height:document.getElementById('heightFieldWrap')};
+  const wrappers={chassis:document.getElementById('chassisFieldWrap'),color:document.getElementById('colorFieldWrap'),engineNumber:document.getElementById('engineNumberFieldWrap'),fork:document.getElementById('forkFieldWrap'),mast:document.getElementById('mastFieldWrap'),tire:document.getElementById('tireFieldWrap'),height:document.getElementById('heightFieldWrap')};
   if(!model||!capacity||!height)return;
   const standardCapacity=['2.5T','3T','3.8T','3.5T (TT)','5T','7T','10T','12T'],standardHeights=['3M','4M','4.3M','4.5M','6M'];
   const setOptions=(el,values,current)=>{const wanted=String(current||el.value||''),selected=values.includes(wanted)?wanted:'';el.innerHTML='<option value="">Choisir...</option>'+values.map(v=>'<option value="'+v+'">'+v+'</option>').join('');el.value=selected;};
@@ -1114,7 +1114,7 @@ function setupEquipmentTypeFields(){
       if(trans){setOptions(capacity,['1.5T','2T'],capacity.value);setOptions(height,[],'');height.value='';}
       else if(mainCentre){setOptions(capacity,['1.5T'],'1.5T');setOptions(height,['3.5M'],'3.5M');capacity.value='1.5T';height.value='3.5M';}
       else{setOptions(capacity,['1.5T','2T'],capacity.value);const allowed=capacity.value==='2T'?['3.5M','4M']:capacity.value==='1.5T'?['3M','3.5M']:['3M','3.5M','4M'];setOptions(height,allowed,height.value);}
-      ['engine_number','fork_dimension','mast_type','tire_type'].forEach(k=>{const el=form.querySelector('[name="'+k+'"]');if(el)el.value='';});
+      ['chassis','color','engine_number','fork_dimension','mast_type','tire_type'].forEach(k=>{const el=form.querySelector('[name="'+k+'"]');if(el)el.value='';});
     }
     updateSaveButtonState();
   };
@@ -2933,7 +2933,7 @@ function setupLiveDuplicateGuard(old){
       lastDuplicate=false;
       lastPopupKey='';
     }
-    $('#saveBtn')?.classList.toggle('save-ready',!duplicate && ['chassis','color','engine','capacity','fork_dimension','tire_type'].every(k=>String(form.querySelector(`[name="${k}"]`)?.value||'').trim()));
+    updateSaveButtonState();if(duplicate)$('#saveBtn')?.classList.remove('save-ready');
   };
   [fields.chassis,fields.engine].forEach(el=>{if(!el)return;el.addEventListener(el.tagName==='SELECT'?'change':'input',check)});
   check();
@@ -2958,17 +2958,17 @@ function setupLastUsedConfiguration(old){
 
 function updateSaveButtonState(){
  const model=String(document.querySelector('[name="engine"]')?.value||'').trim().toLocaleUpperCase('fr'),special=isSbiHandlingEquipment(model),trans=model==='TRANSPALETTE';
- const required=['chassis','color','engine','capacity'];if(!special)required.push('fork_dimension','tire_type');if(special&&!trans)required.push('lifting_height');
+ const required=['engine','capacity'];if(!special)required.push('chassis','color','fork_dimension','tire_type');if(special&&!trans)required.push('lifting_height');
  const ok=required.every(k=>String(document.querySelector(`[name="${k}"]`)?.value||'').trim());$('#saveBtn')?.classList.toggle('save-ready',ok);
 }
 async function saveChariot(){
   if(!requireValidLicense()||!requireAdmin())return;
   const f=$('#chariotForm'),p=Object.fromEntries(new FormData(f).entries());
   const special=isSbiHandlingEquipment(p.engine),trans=String(p.engine||'').trim().toLocaleUpperCase('fr')==='TRANSPALETTE',mainCentre=String(p.engine||'').trim().toLocaleUpperCase('fr')==='GERBEUR MAIN CENTRE';
-  const required=[['chassis','N° châssis'],['color','Couleur'],['engine',special?'Modèle':'Type de moteur'],['capacity','Capacité']];
+  const required=[['engine',special?'Modèle':'Type de moteur'],['capacity','Capacité']];if(!special)required.unshift(['chassis','N° châssis'],['color','Couleur']);
   if(!special)required.push(['fork_dimension','Fourche'],['tire_type','Type de pneu']);if(special&&!trans)required.push(['lifting_height','Hauteur de levage']);
   for(const [k,label] of required)if(!String(p[k]||'').trim()){alert(label+' obligatoire.');return}
-  if(special){if(mainCentre){p.capacity='1.5T';p.lifting_height='3.5M';}if(!trans){const allowed=p.capacity==='2T'?['3.5M','4M']:p.capacity==='1.5T'?['3M','3.5M']:[];if(!allowed.includes(String(p.lifting_height||''))){alert('Hauteur incompatible avec la capacité du gerbeur.');return}}p.engine_number='';p.fork_dimension='';p.mast_type='';p.tire_type='';if(trans)p.lifting_height='';}
+  if(special){p.chassis='';p.color='';if(mainCentre){p.capacity='1.5T';p.lifting_height='3.5M';}if(!trans){const allowed=p.capacity==='2T'?['3.5M','4M']:p.capacity==='1.5T'?['3M','3.5M']:[];if(!allowed.includes(String(p.lifting_height||''))){alert('Hauteur incompatible avec la capacité du gerbeur.');return}}p.engine_number='';p.fork_dimension='';p.mast_type='';p.tire_type='';if(trans)p.lifting_height='';}
   const oldId=new URLSearchParams(location.search).get('id')||'',old=CHARIOTS.find(c=>String(c.qr_id)===String(oldId));
   if(oldId&&!isAdmin()){alert('La modification d’un chariot est réservée à l’administrateur.');return}
   // Normalisation définitive : le nom du client est toujours stocké en MAJUSCULES.
@@ -3001,7 +3001,7 @@ async function saveChariot(){
   }
   delete p.status_display;
   const capacityKey=value=>norm(String(value??'').replace(/\s*T\s*$/i,''));
-  const duplicate=CHARIOTS.find(c=>norm(c.chassis)===norm(p.chassis)&&norm(c.engine)===norm(p.engine)&&capacityKey(c.capacity)===capacityKey(p.capacity)&&String(c.qr_id)!==String(oldId));
+  const duplicate=special?null:CHARIOTS.find(c=>norm(c.chassis)===norm(p.chassis)&&norm(c.engine)===norm(p.engine)&&capacityKey(c.capacity)===capacityKey(p.capacity)&&String(c.qr_id)!==String(oldId));
   if(duplicate){showDuplicatePopup(duplicate,{chassis:{value:p.chassis},engine:{value:p.engine},capacity:{value:p.capacity}});return}
   p.updated_at=new Date().toISOString();
   // Keep the date when editing other fields, but clear it when a delivered

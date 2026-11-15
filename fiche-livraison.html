@@ -114,7 +114,7 @@ function saveClientName(value){
  refreshClientNameSuggestions();
 }
 function ficheText(value,fallback='—'){return String(value??'').trim()||fallback}
-function formatFicheHeight(value){const height=String(value??'').trim().replace(/\\s*M$/i,'');return height?height+' M':''}
+function formatFicheHeight(value){const height=String(value??'').trim().replace(/\s*M$/i,'');return height?height+' M':''}
 function isSpecialHandlingModel(value){return ['GERBEUR ÉLECTRIQUE','GERBEUR ELECTRIQUE','GERBEUR MAIN CENTRE','TRANSPALETTE'].includes(String(value||'').trim().toLocaleUpperCase('fr'));}function setEngineDisplay(value){const name=String(value||'').trim();const isSpecial=isSpecialHandlingModel(name);const isTranspalette=name.toLocaleUpperCase('fr')==='TRANSPALETTE';const label=document.getElementById('engineLabel');const engine=document.getElementById('engine');const specs=document.querySelector('.specs');const mastLabel=document.getElementById('mastLabel');if(specs){specs.classList.toggle('special-layout',isSpecial);specs.classList.toggle('transpalette-layout',isTranspalette);}if(label){label.textContent=isSpecial?'MODÈLE':'MOTEUR';label.style.display='';}if(mastLabel)mastLabel.textContent=isSpecial?'HAUTEUR':'TYPE DE MÂT';if(engine){engine.textContent=ficheText(name);engine.style.display='';engine.style.fontSize=isTranspalette?'14pt':'';engine.style.whiteSpace=isTranspalette?'nowrap':'';engine.style.setProperty('--engine-print-size',isTranspalette?'14pt':'24pt');}}
 function clientLogoKey(name){return 'sbi-fiche-client-logo:'+String(name||'').trim().toLocaleUpperCase('fr')}
 let clientLogoObjectUrl='';

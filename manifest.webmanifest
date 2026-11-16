@@ -1,0 +1,21 @@
+{
+  "id": "./index.html",
+  "name": "SBI — Benouatas Industrie",
+  "short_name": "SBI",
+  "description": "Gestion du parc, du stock et des livraisons SBI.",
+  "lang": "fr",
+  "start_url": "./index.html?source=pwa",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f4f8fc",
+  "theme_color": "#0b2940",
+  "icons": [
+    {
+      "src": "./assets/sbi-pwa-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -2,8 +2,6 @@
 const CACHE_NAME = "sbi-pwa-shell-v1";
 const OFFLINE_URL = new URL("./offline.html", self.registration.scope).toString();
 const CORE_URLS = [
-  "./",
-  "./index.html",
   "./manifest.webmanifest",
   "./offline.html",
   "./assets/sbi-pwa-icon.svg",
@@ -46,10 +44,6 @@ self.addEventListener("fetch", event => {
     event.respondWith((async () => {
       try {
         const response = await fetch(request);
-        if (response && response.ok) {
-          const cache = await caches.open(CACHE_NAME);
-          await cache.put(request, response.clone());
-        }
         return response;
       } catch (_) {
         const cached = await caches.match(request);

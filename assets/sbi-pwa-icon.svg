@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#0b2940"/>
+  <path d="M88 342h336" fill="none" stroke="#fff" stroke-width="22" stroke-linecap="round"/>
+  <path d="M125 330V203h62l44 70h75v57M231 273v-72h83l48 62v67" fill="none" stroke="#f5a623" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="180" cy="365" r="29" fill="#fff"/><circle cx="337" cy="365" r="29" fill="#fff"/>
+  <text x="256" y="150" text-anchor="middle" font-family="Arial,sans-serif" font-size="100" font-weight="800" fill="#fff">SBI</text>
+</svg>

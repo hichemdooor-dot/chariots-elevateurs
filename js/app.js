@@ -3174,8 +3174,42 @@ async function saveSbiUserDisplayName(userId){if(!requireAdmin())return;const in
 async function createSbiUser(){if(!requireAdmin())return;const email=$('#userAdminEmail').value.trim(),password=$('#userAdminPassword').value,role=$('#userAdminRole').value;if(!email||password.length<6){$('#userAdminMsg').textContent='Email requis et mot de passe de 6 caractères minimum.';return}try{const {data,error}=await supabaseClient.functions.invoke('admin-create-user',{body:{email,password,role}});if(error)throw error;if(data?.error)throw new Error(data.error);$('#userAdminEmail').value='';$('#userAdminPassword').value='';$('#userAdminMsg').textContent='Utilisateur créé avec succès.';await loadSbiUsers()}catch(e){let message=friendlySupabaseError(e);try{const response=e?.context;if(response&&typeof response.clone==='function'){const payload=await response.clone().json();if(payload?.error)message=String(payload.error)}}catch(_){}console.warn('Création utilisateur SBI échouée',e);$('#userAdminMsg').textContent='Erreur : '+message}}
 async function toggleSbiUser(id,disabled){if(!requireAdmin())return;const {error}=await supabaseClient.rpc('admin_set_sbi_user_disabled',{p_user_id:id,p_disabled:disabled});if(error){alert('Erreur : '+error.message);return}await loadSbiUsers()}
 async function deleteSbiUser(id){if(!requireAdmin()||!confirm('Supprimer définitivement cet utilisateur ?'))return;const {error}=await supabaseClient.rpc('admin_delete_sbi_user',{p_user_id:id});if(error)alert('Erreur : '+error.message);else await loadSbiUsers()}
-async function licencePage(){if(!await session())return;if(!isAdmin()){$('#licensePanel').innerHTML='<div class="notice red">Gestion de licence réservée à l’administrateur.</div>';return}const {data,error}=await supabaseClient.from('licenses').select('company_name,status,start_date,expiration_date').eq('company_name',LICENSE_COMPANY).maybeSingle();if(error){$('#licenseMsg').textContent=error.message;return}if(!data){$('#licenseMsg').textContent='Licence introuvable.';return}$('#licenseStatus').value=data.status||'active';$('#licenseStart').value=data.start_date||'';$('#licenseExpiry').value=data.expiration_date||''}
+async function licencePage(){if(!await session())return;if(!isAdmin()){$('#licensePanel').innerHTML='<div class="notice red">Gestion de licence réservée à l’administrateur.</div>';return}const {data,error}=await supabaseClient.from('licenses').select('company_name,status,start_date,expiration_date').eq('company_name',LICENSE_COMPANY).maybeSingle();if(error){$('#licenseMsg').textContent=error.message;return}if(!data){$('#licenseMsg').textContent='Licence introuvable.';return}$('#licenseStatus').value=data.status||'active';$('#licenseStart').value=data.start_date||'';$('#licenseExpiry').value=data.expiration_date||'';await loadInstallAnnouncementSettings()}
 async function saveLicense(){if(!requireAdmin())return;const status=$('#licenseStatus').value,start_date=$('#licenseStart').value,expiration_date=$('#licenseExpiry').value||null;if(!start_date)return $('#licenseMsg').textContent='Date de début obligatoire.';if(expiration_date&&expiration_date<start_date)return $('#licenseMsg').textContent='Expiration invalide.';const {error}=await supabaseClient.from('licenses').update({status,start_date,expiration_date}).eq('company_name',LICENSE_COMPANY);if(error){$('#licenseMsg').textContent='Erreur : '+error.message;return}$('#licenseMsg').textContent='Licence mise à jour.';await verifyLicense()}
+
+async function loadInstallAnnouncementSettings(){
+  const msg=$('#installAnnouncementMsg');
+  try{
+    const {data,error}=await supabaseClient.from('sbi_app_install_announcement').select('enabled,title,message,frequency').eq('id','global').maybeSingle();
+    if(error)throw error;
+    if(!data)throw new Error('Configuration absente. Exécutez SUPABASE_INSTALL_ANNOUNCEMENT_SETUP.sql dans Supabase.');
+    $('#installAnnouncementEnabled').checked=!!data.enabled;
+    $('#installAnnouncementTitle').value=data.title||'Installez SBI sur votre téléphone !';
+    $('#installAnnouncementText').value=data.message||'Accédez à SBI directement depuis votre écran d’accueil.';
+    $('#installAnnouncementFrequency').value=data.frequency||'daily';
+    if(msg)msg.textContent='Configuration chargée.';
+  }catch(e){if(msg)msg.textContent='Configuration indisponible : '+friendlySupabaseError(e)+'. Vérifiez le script SQL SBI.'}
+}
+async function saveInstallAnnouncementSettings(){
+  if(!requireAdmin())return;
+  const msg=$('#installAnnouncementMsg');
+  const title=String($('#installAnnouncementTitle').value||'').trim();
+  const message=String($('#installAnnouncementText').value||'').trim();
+  const frequency=$('#installAnnouncementFrequency').value;
+  if(!title||title.length>100){if(msg)msg.textContent='Le titre doit contenir entre 1 et 100 caractères.';return}
+  if(!message||message.length>500){if(msg)msg.textContent='Le texte doit contenir entre 1 et 500 caractères.';return}
+  if(!['always','daily','once'].includes(frequency)){if(msg)msg.textContent='Fréquence invalide.';return}
+  if(msg)msg.textContent='Enregistrement...';
+  try{
+    const {data,error}=await supabaseClient.from('sbi_app_install_announcement').update({
+      enabled:$('#installAnnouncementEnabled').checked,title,message,frequency,updated_at:new Date().toISOString(),updated_by:currentUser.id
+    }).eq('id','global').select('id').maybeSingle();
+    if(error)throw error;
+    if(!data)throw new Error('Aucune configuration modifiée. Exécutez le script SQL SBI.');
+    if(msg)msg.textContent='Paramètres du popup enregistrés. Ils seront appliqués à la prochaine ouverture du site.';
+  }catch(e){if(msg)msg.textContent='Enregistrement impossible : '+friendlySupabaseError(e)}
+}
+
 
 // Live presence: shows which authenticated SBI users are currently active.
 let SBI_PRESENCE_CHANNEL=null;

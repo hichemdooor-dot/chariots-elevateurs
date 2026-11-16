@@ -688,4 +688,4 @@ document.addEventListener('DOMContentLoaded',()=>{
 (function(){var s=document.createElement('script');s.src='js/ai-assistant.js?v=1';s.defer=true;(document.head||document.documentElement).appendChild(s)})();
 
 /* SBI PWA — shared registration and install prompt */
-(function(){var s=document.createElement('script');s.src='js/pwa.js?v=1';s.defer=true;(document.head||document.documentElement).appendChild(s)})();
+(function(){var s=document.createElement('script');s.src='js/pwa.js?v=2';s.defer=true;(document.head||document.documentElement).appendChild(s)})();

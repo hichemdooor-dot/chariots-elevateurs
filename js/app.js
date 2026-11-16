@@ -709,7 +709,8 @@ async function assignClientToChariot(qrId){
   const client=String(prompt('Nom du client :',String(c.client||''))||'').trim().toUpperCase();
   if(!client)return;
   if(!confirm('Affecter le chariot '+chariotReference(c)+' au client '+client+' ?'))return;
-  const payload={client,status:'Réservé',updated_at:new Date().toISOString()};
+  const special=isSbiHandlingEquipment(c.engine);
+  const payload={client,status:special?'Prêt à livrer':'Réservé',...(special?{stock:'STOCK1'}:{}),updated_at:new Date().toISOString()};
   const {error}=await supabaseClient.from('chariots').update(payload).eq('qr_id',qrId);
   if(error){alert('Affectation impossible : '+friendlySupabaseError(error));return}
   Object.assign(c,payload);
@@ -1067,6 +1068,14 @@ async function transitionChariotStatus(qrId,nextStatus,reason='',options={}){
   if(!c){alert('Chariot introuvable.');return false}
   const from=normalizeStatus(c.status),to=normalizeStatus(nextStatus);
   if(from===to)return true;
+  if(isSbiHandlingEquipment(c.engine)){
+    const fixedPayload={stock:'STOCK1',status:'Prêt à livrer',updated_at:new Date().toISOString()};
+    const {error}=await supabaseClient.from('chariots').update(fixedPayload).eq('qr_id',qrId);
+    if(error){alert('Erreur : '+friendlySupabaseError(error));return false;}
+    Object.assign(c,fixedPayload);
+    alert('Les GERBEURS et TRANSPALETTES restent toujours en STOCK1 avec le statut « Prêt à livrer ».');
+    return false;
+  }
   const directDelivery=to==='livre'&&options?.allowDirectDelivery===true&&isAdmin();
   if(to==='livre'&&from!=='pret a livrer'&&!directDelivery){alert('Le chariot doit être en « Prêt à livrer » avant de passer à « Livré ».');return false}
   const blockedRecovery=from==='bloque / non conforme'&&isAdmin()&&['en stock','reserve'].includes(to);
@@ -3001,6 +3010,8 @@ async function saveChariot(){
   // « En stock » ne doit jamais conserver l’emplacement FABRICATION :
   // choisir Stock 1 comme emplacement par défaut, sans écraser Stock 2 ou Showroom.
   else if(normalizeStatus(p.status)==='en stock'&&normalizeStatus(p.stock)==='fabrication')p.stock='STOCK1';
+  // GERBEUR and TRANSPALETTE always remain in STOCK1 with PRÊT À LIVRER status.
+  if(special){p.stock='STOCK1';p.status='Prêt à livrer';}
   // Règle hauteur de levage → type de mât : une suggestion automatique est appliquée,
   // mais la valeur choisie manuellement reste prioritaire et peut être modifiée.
   const heightRule=normalizeHeightValue(p.lifting_height);
@@ -3068,9 +3079,9 @@ async function affectationPage(){
     if(!isStock(c)){alert('Ce chariot n’est plus disponible en stock.');await loadChariots();buildFilters();render();return}
     const request=[['Client',client],['Capacité',els.reqCapacity.value],['Moteur',els.reqEngine.value],['Mât',els.reqMast.value],['Hauteur',els.reqHeight.value],['Fourche',els.reqFork.value],['Couleur',els.reqColor.value],['Référence fiche',els.ref.value],['Observations',els.notes.value]].filter(x=>String(x[1]||'').trim()).map(x=>x[0]+' : '+String(x[1]).trim()).join('\n');
     if(!confirm(`Affecter ${c.chassis||qrId} au client « ${client} » ?`))return;
-    const now=new Date();const {error}=await supabaseClient.from('chariots').update({client,status:'Réservé',updated_at:now.toISOString()}).eq('qr_id',qrId);if(error){alert('Erreur : '+friendlySupabaseError(error));return}
+    const now=new Date();const special=isSbiHandlingEquipment(c.engine);const fixedPayload={client,status:special?'Prêt à livrer':'Réservé',...(special?{stock:'STOCK1'}:{}),updated_at:now.toISOString()};const {error}=await supabaseClient.from('chariots').update(fixedPayload).eq('qr_id',qrId);if(error){alert('Erreur : '+friendlySupabaseError(error));return}
     try{await supabaseClient.from('maintenance').insert({qr_id:qrId,date:localISODateGlobal(now),technicien:getUserDisplayName(),type:'Fiche commerciale / Affectation',travaux:`${request}\nChariot affecté : ${c.chassis||qrId}\nStock au moment de l’affectation : ${stockLabel(c.stock)}`,created_by:currentUser.id})}catch(e){console.warn('Fiche commerciale non enregistrée dans l’historique',e)}
-    c.client=client;c.status='Réservé';c.updated_at=now.toISOString();toastCardUpdate(qrId,`Réservé — ${client}`);
+    c.client=client;c.status=special?'Prêt à livrer':'Réservé';if(special)c.stock='STOCK1';c.updated_at=now.toISOString();toastCardUpdate(qrId,`${c.status} — ${client}`);
     els.client.value='';els.ref.value='';els.notes.value='';[els.reqEngine,els.reqCapacity,els.reqMast,els.reqHeight,els.reqFork,els.reqColor].forEach(x=>x.value='');buildFilters();render();
   }
   buildFilters();

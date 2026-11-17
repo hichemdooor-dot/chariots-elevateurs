@@ -96,8 +96,20 @@ Deno.serve(async (req: Request) => {
       });
       const { data: userData, error: userError } = await authClient.auth.getUser(accessToken);
       const user = userData?.user;
-      const role = String(user?.app_metadata?.sbi_role || user?.user_metadata?.sbi_role || "").toLowerCase();
-      const isAdmin = !!user && (String(user.email || "").toLowerCase() === ADMIN_EMAIL.toLowerCase() || role === "admin");
+      let role = String(user?.app_metadata?.sbi_role || user?.user_metadata?.sbi_role || "").toLowerCase();
+      let disabled = false;
+      if (user) {
+        try {
+          const { data: sbiStatus, error: statusError } = await authClient.rpc("get_my_sbi_status");
+          if (!statusError && sbiStatus) {
+            role = String(sbiStatus.role || role).toLowerCase();
+            disabled = !!sbiStatus.disabled;
+          }
+        } catch {
+          // Fall back to trusted auth metadata when the role RPC is unavailable.
+        }
+      }
+      const isAdmin = !!user && !disabled && (String(user.email || "").toLowerCase() === ADMIN_EMAIL.toLowerCase() || role === "admin");
       if (userError || !isAdmin) return json({ error: "Seul un administrateur SBI peut créer un lien public." }, 403);
 
       const qrId = String(body?.qr_id || "").trim();

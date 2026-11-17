@@ -135,7 +135,48 @@ Deno.serve(async (req: Request) => {
         return json({ error: "Impossible de charger cette fiche pour le moment." }, 500);
       }
       if (!data) return json({ error: "Ce chariot n'existe plus ou n'est plus disponible." }, 404);
-      return json({ chariot: data });
+
+      // Rebuild only the commercial assignment and delivery plan shown on the private fiche.
+      const { data: relatedRows, error: relatedError } = await adminClient.from("maintenance")
+        .select("id,date,type,travaux,created_at")
+        .eq("qr_id", payload.qr_id)
+        .in("type", ["Commercial responsable", "Planification livraison", "Annulation planification livraison"])
+        .order("created_at", { ascending: true })
+        .limit(1000);
+      if (relatedError) {
+        console.error("sbi-share-chariot related details failed", relatedError.message);
+        return json({ error: "Impossible de charger les détails associés à cette fiche." }, 500);
+      }
+      let commercialName = "";
+      const commercialRows = (relatedRows || []).filter((row: Record<string, unknown>) => row.type === "Commercial responsable");
+      if (commercialRows.length) {
+        try {
+          const latest = commercialRows[commercialRows.length - 1] as Record<string, unknown>;
+          commercialName = String((JSON.parse(String(latest.travaux || "{}")) || {}).commercial || "");
+        } catch {
+          commercialName = "";
+        }
+      }
+      const plans = new Map<string, Record<string, unknown>>();
+      for (const row of relatedRows || []) {
+        if (row.type !== "Planification livraison" && row.type !== "Annulation planification livraison") continue;
+        try {
+          const item = JSON.parse(String(row.travaux || "{}"));
+          if (!item?.qr) continue;
+          const id = String(item.id || row.id);
+          if (row.type === "Annulation planification livraison") plans.delete(id);
+          else plans.set(id, {
+            date: String(item.date || row.date || ""),
+            time: String(item.time || ""),
+            driver: String(item.driver || ""),
+            destination: String(item.destination || ""),
+          });
+        } catch {
+          // Ignore malformed historical planning entries, as the private fiche does.
+        }
+      }
+      const plannedDelivery = [...plans.values()].filter((item) => item.date).at(-1) || null;
+      return json({ chariot: { ...data, commercial_name: commercialName, planned_delivery: plannedDelivery } });
     }
 
     return json({ error: "Action non reconnue." }, 400);

@@ -91,9 +91,9 @@ async function load(){
     document.getElementById("title").textContent=reference;
     document.getElementById("status").textContent=value(c.status);
     addRows("identification",special?[
-      ["Client",c.client],["Modèle",c.engine],["N° de série",c.serial_number]
+      ["Client",c.client],["Commercial responsable",c.commercial_name],["Modèle",c.engine],["N° de série",c.serial_number]
     ]:[
-      ["Client",c.client],["N° châssis",c.chassis],["N° de série",c.serial_number],["Type moteur",c.engine],["N° moteur",c.engine_number]
+      ["Client",c.client],["Commercial responsable",c.commercial_name],["N° châssis",c.chassis],["N° de série",c.serial_number],["Type moteur",c.engine],["N° moteur",c.engine_number]
     ]);
     addRows("characteristics",special?[
       ["Capacité",c.capacity],...(String(c.engine||"").toUpperCase().includes("TRANSPALETTE")?[]:[["Hauteur de levage",c.lifting_height]]),["Statut",c.status]
@@ -101,7 +101,7 @@ async function load(){
       ["Capacité",c.capacity],["Hauteur de levage",c.lifting_height],["Type de mât",c.mast_type],["Dimensions des fourches",c.fork_dimension],["Type de pneu",c.tire_type],["Couleur",c.color],["Statut",c.status]
     ]);
     addRows("stock",[["Emplacement",c.stock],["Date d’ajout",c.created_at?String(c.created_at).slice(0,10):""]]);
-    addRows("delivery",[["Date de livraison effective",c.delivery_date]]);
+    addRows("delivery",[["Date prévue",c.planned_delivery?.date],["Heure prévue",c.planned_delivery?.time],["Chauffeur",c.planned_delivery?.driver],["Destination",c.planned_delivery?.destination],["Date de livraison effective",c.delivery_date]]);
     document.getElementById("observations").textContent=value(c.observations);
     stateEl.hidden=true;contentEl.hidden=false;
   }catch(error){showError(error.message||"Impossible de charger cette fiche.")}

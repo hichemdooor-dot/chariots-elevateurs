@@ -166,6 +166,7 @@ Deno.serve(async (req: Request) => {
           const id = String(item.id || row.id);
           if (row.type === "Annulation planification livraison") plans.delete(id);
           else plans.set(id, {
+            qr: String(item.qr),
             date: String(item.date || row.date || ""),
             time: String(item.time || ""),
             driver: String(item.driver || ""),
@@ -175,7 +176,7 @@ Deno.serve(async (req: Request) => {
           // Ignore malformed historical planning entries, as the private fiche does.
         }
       }
-      const plannedDelivery = [...plans.values()].filter((item) => item.date).at(-1) || null;
+      const plannedDelivery = [...plans.values()].find((item) => item.date && item.qr === payload.qr_id) || null;
       return json({ chariot: { ...data, commercial_name: commercialName, planned_delivery: plannedDelivery } });
     }
 

@@ -2592,12 +2592,13 @@ async function detailPage(){
   $('#title').textContent=chariotReference(current);$('#status').textContent=current.status||'—';
   // Public read-only sharing: link creation is restricted again by the Edge Function.
   const detailActions=document.querySelector('.detail-page-head .actions');
-  if(detailActions&&!document.getElementById('shareChariot')){
+  if(detailActions&&isAdmin()&&!document.getElementById('shareChariot')){
     const shareButton=document.createElement('button');
     shareButton.id='shareChariot';shareButton.type='button';shareButton.className='btn light';
     shareButton.textContent='Partager';shareButton.setAttribute('aria-label','Partager la fiche de ce chariot');
     shareButton.addEventListener('click',async()=>{
       if(shareButton.disabled)return;
+      if(!requireValidLicense()||!requireAdmin())return;
       shareButton.disabled=true;shareButton.textContent='Création du lien…';
       try{
         const {data,error}=await supabaseClient.functions.invoke('sbi-share-chariot',{body:{action:'create',qr_id:current.qr_id}});

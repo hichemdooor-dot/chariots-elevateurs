@@ -7,7 +7,7 @@ This function creates signed, read-only public links for individual chariot reco
 - Only a signed-in SBI administrator can create a link (the existing SBI admin email or `sbi_role=admin` metadata).
 - Public readers need only the signed token; they cannot query Supabase tables directly through this page.
 - Tokens are HMAC-SHA-256 signed and expire after 90 days.
-- The function reads one chariot by `qr_id` using the service role and returns an explicit allowlist of detail fields.
+- The function reads one chariot by `qr_id` using the service role and returns an explicit allowlist of detail fields, plus the commercial assignment and current delivery plan reconstructed from that chariot's existing `maintenance` records.
 - No database schema, table, policy, or RLS change is required.
 - Links are not individually revocable before expiry in this first version. Deleting the chariot makes the link return not found.
 

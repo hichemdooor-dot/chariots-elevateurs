@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#123b63">
+<title>Fiche chariot — BENOUATAS INDUSTRIE</title>
+<style>
+:root{color-scheme:light;--navy:#123b63;--blue:#1769aa;--muted:#63758a;--line:#dce5ee;--bg:#f3f7fb}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#18334d;font:15px/1.5 Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+.top{height:64px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 max(18px,calc((100% - 1040px)/2));gap:14px}
+.brand{font-weight:900;letter-spacing:.08em;color:var(--navy);font-size:21px}.brand small{display:block;font-size:10px;letter-spacing:.12em;color:var(--muted);font-weight:700}
+.wrap{width:min(100% - 28px,960px);margin:28px auto 54px}
+.head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.eyebrow{color:var(--blue);font-weight:800;font-size:11px;letter-spacing:.13em;text-transform:uppercase}
+h1{margin:3px 0 5px;font-size:clamp(25px,5vw,34px);line-height:1.15;color:var(--navy);overflow-wrap:anywhere}
+.sub{color:var(--muted);font-size:13px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+button{font:inherit}.btn{border:0;border-radius:10px;padding:11px 16px;background:var(--navy);color:white;font-weight:750;cursor:pointer;min-height:42px}.btn.secondary{background:#e8f0f7;color:var(--navy);border:1px solid #d5e1ed}
+.pill{display:inline-flex;align-items:center;border-radius:99px;background:#e8f2fb;color:#145b91;padding:5px 11px;font-size:12px;font-weight:800}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.panel{background:white;border:1px solid var(--line);border-radius:15px;padding:18px;box-shadow:0 5px 18px rgba(15,44,72,.045);min-width:0}
+.panel h2{margin:0 0 13px;color:var(--navy);font-size:16px;display:flex;align-items:center;gap:9px}
+.panel h2:before{content:"";width:4px;height:18px;border-radius:5px;background:var(--blue)}
+.rows{display:grid;grid-template-columns:1fr 1fr;gap:0 18px}
+.kv{padding:10px 0;border-top:1px solid #edf1f5;min-width:0}.kv:nth-child(-n+2){border-top:0}
+.kv span{display:block;color:var(--muted);font-size:11px;font-weight:700;margin-bottom:3px}.kv strong{display:block;font-size:14px;color:#1c354e;overflow-wrap:anywhere}
+.observations{margin-top:14px}.observations p{white-space:pre-wrap;margin:0;color:#334b62}
+.notice{background:#fff;border:1px solid var(--line);border-radius:16px;padding:24px;text-align:center;color:var(--muted)}
+.footer{text-align:center;color:#8190a0;font-size:12px;margin-top:25px}
+.loading{display:flex;justify-content:center;align-items:center;min-height:45vh;color:var(--muted)}
+@media(max-width:650px){.top{height:58px}.wrap{margin:18px auto 38px}.grid{grid-template-columns:1fr;gap:11px}.panel{padding:15px}.rows{grid-template-columns:1fr 1fr}.kv{padding:9px 0}.head{margin-bottom:13px}.actions{width:100%}.actions .btn{flex:1}}
+@media(max-width:380px){.rows{grid-template-columns:1fr}.kv:nth-child(2){border-top:1px solid #edf1f5}.kv:first-child{border-top:0}}
+</style>
+</head>
+<body>
+<header class="top"><div class="brand">SBI<small>BENOUATAS INDUSTRIE</small></div><span class="sub">Fiche publique</span></header>
+<main class="wrap">
+<div id="state" class="loading" role="status">Chargement de la fiche…</div>
+<div id="content" hidden>
+  <div class="head">
+    <div><div class="eyebrow">BENOUATAS INDUSTRIE · FICHE ÉQUIPEMENT</div><h1 id="title">Chariot</h1><div id="status" class="pill"></div></div>
+    <div class="actions"><button class="btn secondary" id="copyLink" type="button">Copier le lien</button><button class="btn" id="shareLink" type="button">Partager</button></div>
+  </div>
+  <div class="grid">
+    <section class="panel"><h2>Identification</h2><div class="rows" id="identification"></div></section>
+    <section class="panel"><h2>Caractéristiques</h2><div class="rows" id="characteristics"></div></section>
+    <section class="panel"><h2>Informations stock</h2><div class="rows" id="stock"></div></section>
+    <section class="panel"><h2>Livraison</h2><div class="rows" id="delivery"></div></section>
+  </div>
+  <section class="panel observations"><h2>Observations</h2><p id="observations"></p></section>
+  <div class="footer">BENOUATAS INDUSTRIE · Algérie<br>Cette fiche est accessible à toute personne disposant du lien.</div>
+</div>
+</main>
+<script>
+const SUPABASE_URL="https://hkakedonludcqgjjzkei.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY="sb_publishable_AQWeYHI3Xli_1iBKVr9EPg_8L8PR-Hc";
+const stateEl=document.getElementById("state"),contentEl=document.getElementById("content");
+const token=new URLSearchParams(location.search).get("token")||"";
+let shareTitle="Fiche chariot SBI";
+function value(v){return v===null||v===undefined||String(v).trim()===""?"—":String(v).trim()}
+function addRows(targetId,items){
+  const target=document.getElementById(targetId);
+  target.replaceChildren();
+  for(const [label,val] of items){
+    const wrap=document.createElement("div");wrap.className="kv";
+    const name=document.createElement("span");name.textContent=label;
+    const text=document.createElement("strong");text.textContent=value(val);
+    wrap.append(name,text);target.append(wrap);
+  }
+}
+function showError(message){
+  stateEl.className="notice";stateEl.textContent=message;
+}
+async function load(){
+  if(!token){showError("Lien manquant. Demandez à SBI de vous envoyer un nouveau lien.");return}
+  try{
+    const response=await fetch(SUPABASE_URL+"/functions/v1/sbi-share-chariot",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","apikey":SUPABASE_PUBLISHABLE_KEY},
+      body:JSON.stringify({action:"view",token})
+    });
+    const result=await response.json().catch(()=>({}));
+    if(!response.ok||!result.chariot)throw new Error(result.error||"Cette fiche n’est pas disponible.");
+    const c=result.chariot;
+    const special=/GERBEUR|TRANSPALETTE/i.test(String(c.engine||""));
+    const reference=c.chassis||c.serial_number||"Chariot SBI";
+    shareTitle="SBI — "+reference;
+    document.title=shareTitle+" | BENOUATAS INDUSTRIE";
+    document.getElementById("title").textContent=reference;
+    document.getElementById("status").textContent=value(c.status);
+    addRows("identification",special?[
+      ["Client",c.client],["Modèle",c.engine],["N° de série",c.serial_number]
+    ]:[
+      ["Client",c.client],["N° châssis",c.chassis],["N° de série",c.serial_number],["Type moteur",c.engine],["N° moteur",c.engine_number]
+    ]);
+    addRows("characteristics",special?[
+      ["Capacité",c.capacity],...(String(c.engine||"").toUpperCase().includes("TRANSPALETTE")?[]:[["Hauteur de levage",c.lifting_height]]),["Statut",c.status]
+    ]:[
+      ["Capacité",c.capacity],["Hauteur de levage",c.lifting_height],["Type de mât",c.mast_type],["Dimensions des fourches",c.fork_dimension],["Type de pneu",c.tire_type],["Couleur",c.color],["Statut",c.status]
+    ]);
+    addRows("stock",[["Emplacement",c.stock],["Date d’ajout",c.created_at?String(c.created_at).slice(0,10):""]]);
+    addRows("delivery",[["Date de livraison effective",c.delivery_date]]);
+    document.getElementById("observations").textContent=value(c.observations);
+    stateEl.hidden=true;contentEl.hidden=false;
+  }catch(error){showError(error.message||"Impossible de charger cette fiche.")}
+}
+async function share(){
+  const data={title:shareTitle,text:"Fiche détaillée du chariot · BENOUATAS INDUSTRIE",url:location.href};
+  if(navigator.share){try{await navigator.share(data);return}catch(e){if(e.name==="AbortError")return}}
+  await copy();
+}
+async function copy(){
+  try{await navigator.clipboard.writeText(location.href);alert("Lien copié.");}
+  catch(_){window.prompt("Copiez le lien :",location.href);}
+}
+document.getElementById("shareLink").addEventListener("click",share);
+document.getElementById("copyLink").addEventListener("click",copy);
+load();
+</script>
+</body>
+</html>

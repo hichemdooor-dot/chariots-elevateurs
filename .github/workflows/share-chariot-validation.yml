@@ -1,0 +1,29 @@
+name: Share Chariot Validation
+on:
+  push:
+    branches: [feat/public-share-chariot]
+  pull_request:
+    branches: [main]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Check existing SBI application JavaScript
+        run: node --check js/app.js
+      - name: Check public page JavaScript
+        run: |
+          node -e "const fs=require('fs');const h=fs.readFileSync('partage-chariot.html','utf8');const m=[...h.matchAll(/<script>([\\s\\S]*?)<\\/script>/g)];if(!m.length)throw Error('No inline page script found');fs.writeFileSync('/tmp/partage-chariot.js',m.map(x=>x[1]).join('\\n'));"
+          node --check /tmp/partage-chariot.js
+      - name: Type-check Supabase Edge Function
+        run: deno check supabase/functions/sbi-share-chariot/index.ts
+      - name: Verify no database migration or RLS files were added
+        run: |
+          test ! -d supabase/migrations || test -z "$(git diff --name-only origin/main...HEAD -- supabase/migrations)"
+          ! git diff --name-only origin/main...HEAD | grep -Ei '(^|/)(policies|rls|schema|migrations?)(/|\\.|$)'

@@ -176,7 +176,7 @@ Deno.serve(async (req: Request) => {
           // Ignore malformed historical planning entries, as the private fiche does.
         }
       }
-      const plannedDelivery = [...plans.values()].find((item) => item.date && item.qr === payload.qr_id) || null;
+      const plannedDelivery = [...plans.values()].find((item) => Boolean(item.date) && String(item.qr) === payload.qr_id) || null;
       return json({ chariot: { ...data, commercial_name: commercialName, planned_delivery: plannedDelivery } });
     }
 

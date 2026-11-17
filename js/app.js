@@ -2590,6 +2590,42 @@ async function detailPage(){
   current=CHARIOTS.find(c=>String(c.qr_id)===String(id));
   if(!current){$('#detail').innerHTML='<div class="empty">Chariot introuvable.</div>';return}
   $('#title').textContent=chariotReference(current);$('#status').textContent=current.status||'—';
+  // Public read-only sharing: link creation is restricted again by the Edge Function.
+  const detailActions=document.querySelector('.detail-page-head .actions');
+  if(detailActions&&isAdmin()&&!document.getElementById('shareChariot')){
+    const shareButton=document.createElement('button');
+    shareButton.id='shareChariot';shareButton.type='button';shareButton.className='btn light';
+    shareButton.textContent='Partager';shareButton.setAttribute('aria-label','Partager la fiche de ce chariot');
+    shareButton.addEventListener('click',async()=>{
+      if(shareButton.disabled)return;
+      if(!requireValidLicense()||!requireAdmin())return;
+      shareButton.disabled=true;shareButton.textContent='Création du lien…';
+      try{
+        const {data,error}=await supabaseClient.functions.invoke('sbi-share-chariot',{body:{action:'create',qr_id:current.qr_id}});
+        if(error)throw error;
+        if(!data?.token)throw new Error(data?.error||'Le lien de partage n’a pas pu être créé.');
+        const shareUrl=new URL('partage-chariot.html',location.href);
+        shareUrl.searchParams.set('token',data.token);
+        const title='SBI — '+chariotReference(current);
+        const text='Fiche détaillée du chariot '+chariotReference(current)+' · BENOUATAS INDUSTRIE';
+        if(navigator.share){
+          try{await navigator.share({title,text,url:shareUrl.toString()})}
+          catch(e){if(e?.name!=='AbortError')throw e}
+        }else if(navigator.clipboard?.writeText){
+          await navigator.clipboard.writeText(shareUrl.toString());
+          alert('Lien public copié. Il expire dans 90 jours.');
+        }else{
+          window.prompt('Copiez le lien public du chariot :',shareUrl.toString());
+        }
+      }catch(error){
+        console.error('Partage de la fiche SBI impossible',error);
+        alert(error?.message||'Impossible de créer le lien de partage. Vérifiez la configuration du service.');
+      }finally{
+        shareButton.disabled=false;shareButton.textContent='Partager';
+      }
+    });
+    detailActions.appendChild(shareButton);
+  }
   let commercialInfo={name:''};try{commercialInfo=await getChariotCommercial(current.qr_id)}catch(e){console.warn('Lecture du commercial responsable impossible',e)}
   const planned=getDeliveryPlan(current.qr_id),plannedDate=planned?.date?formatPlannedDate(planned.date):'—',plannedTime=planned?.time||'—',plannedDriver=planned?.driver||'—',plannedDestination=planned?.destination||'—';
   const planDeliveryButton=$('#planDeliveryAction');

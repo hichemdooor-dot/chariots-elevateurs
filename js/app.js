@@ -1122,8 +1122,8 @@ function setupEquipmentTypeFields(){
     if(!special){setOptions(capacity,standardCapacity,capacity.value);setOptions(height,standardHeights,height.value);}
     else{
       if(wrappers.engineNumber)wrappers.engineNumber.style.display='none';if(wrappers.fork)wrappers.fork.style.display='none';if(wrappers.mast)wrappers.mast.style.display='none';if(wrappers.tire)wrappers.tire.style.display='none';
-      if(wrappers.height)wrappers.height.style.display='';
-      if(trans){setOptions(capacity,['1.5T','2T'],capacity.value);setOptions(height,standardHeights,height.value);}
+      if(wrappers.height)wrappers.height.style.display=trans?'none':'';
+      if(trans){height.value='';setOptions(capacity,['1.5T','2T'],capacity.value);}
       else if(mainCentre){setOptions(capacity,['1.5T'],'1.5T');setOptions(height,['3.5M'],'3.5M');capacity.value='1.5T';height.value='3.5M';}
       else{setOptions(capacity,['1.5T','2T'],capacity.value);const allowed=capacity.value==='2T'?['3.5M','4M']:capacity.value==='1.5T'?['3M','3.5M']:['3M','3.5M','4M'];setOptions(height,allowed,height.value);}
       ['chassis','color','engine_number','fork_dimension','mast_type','tire_type'].forEach(k=>{const el=form.querySelector('[name="'+k+'"]');if(el)el.value='';});
@@ -2628,7 +2628,7 @@ async function detailPage(){
       ['Client',current.client],['Commercial responsable',commercialInfo.name||'Non renseigné'],['N° châssis',current.chassis],['N° de série',current.serial_number],['Moteur',current.engine],['N° moteur',current.engine_number]
     ]),
     group('characteristics','Caractéristiques du chariot',specialEquipment?[
-      ['Capacité',fmtCapacity(current.capacity)],['Hauteur de levage',current.lifting_height],['Statut',current.status,normalizeStatus(current.status).replace(/\s+/g,'-')]
+      ['Capacité',fmtCapacity(current.capacity)],...(String(current.engine||'').trim().toLocaleUpperCase('fr')==='TRANSPALETTE'?[]:[['Hauteur de levage',current.lifting_height]]),['Statut',current.status,normalizeStatus(current.status).replace(/\s+/g,'-')]
     ]:[
       ['Capacité',fmtCapacity(current.capacity)],['Hauteur de levage',current.lifting_height],['Type de mât',String(current.mast_type||'').toUpperCase()],['Dimensions des fourches',current.fork_dimension],['Type de pneu',current.tire_type],['Couleur',current.color],['Statut',current.status,normalizeStatus(current.status).replace(/\s+/g,'-')]
     ]),

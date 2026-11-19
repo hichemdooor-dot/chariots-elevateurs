@@ -443,14 +443,14 @@ function initSiteGlobalSearch(){
 })();
 
 
-/* SBI shared page Back button — floating at the top-right */
+/* SBI shared page Retour button — shared floating appearance */
 function initSbiPageBackButton(){
   const page=location.pathname.split('/').pop()||'dashboard.html';
   if(['index.html','maintenance.html','dashboard.html'].includes(page))return;
   if(!document.getElementById('sbiPageBackStyles')){
     const style=document.createElement('style');
     style.id='sbiPageBackStyles';
-    style.textContent='.sbi-page-back{position:fixed!important;top:112px!important;right:22px!important;z-index:1400!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:8px;min-height:40px;margin:0!important;padding:0 15px;border:1px solid #cbd9e7;border-radius:999px;background:#fff;color:#245273;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 5px 18px rgba(20,55,90,.18);text-decoration:none!important;transition:background .15s,border-color .15s,box-shadow .15s}.sbi-page-back:hover{background:#edf5fc;border-color:#8ebce2;box-shadow:0 7px 22px rgba(20,55,90,.22)}.sbi-page-back:focus-visible{outline:3px solid #1689e855;outline-offset:2px}.sbi-page-back svg{width:17px;height:17px;flex:0 0 17px}@media(max-width:800px){.sbi-page-back{top:104px!important;right:12px!important;min-height:42px;padding:0 14px;box-shadow:0 5px 18px rgba(20,55,90,.22)}}';
+    style.textContent='.sbi-page-back{position:fixed!important;top:112px!important;left:22px!important;right:auto!important;z-index:1400!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:8px;min-height:40px;margin:0!important;padding:0 15px;border:1px solid #cbd9e7;border-radius:999px;background:#fff;color:#245273;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 5px 18px rgba(20,55,90,.18);text-decoration:none!important;transition:background .15s,border-color .15s,box-shadow .15s}.sbi-page-back:hover{background:#edf5fc;border-color:#8ebce2;box-shadow:0 7px 22px rgba(20,55,90,.22)}.sbi-page-back:focus-visible{outline:3px solid #1689e855;outline-offset:2px}.sbi-page-back svg{width:17px;height:17px;flex:0 0 17px}@media(max-width:800px){.sbi-page-back{top:104px!important;left:12px!important;right:auto!important;min-height:42px;padding:0 14px;box-shadow:0 5px 18px rgba(20,55,90,.22)}}';
     (document.head||document.documentElement).appendChild(style);
   }
   const existing=Array.from(document.querySelectorAll('a,button,[role="button"]')).find(el=>{
@@ -468,18 +468,9 @@ function initSbiPageBackButton(){
   const button=document.createElement('button');
   button.type='button';
   button.className='sbi-page-back';
-  button.setAttribute('aria-label','Retour à la page précédente');
+  button.setAttribute('aria-label','Retour au tableau de bord');
   button.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/><path d="M20 12H9"/></svg><span>Retour</span>';
-  button.addEventListener('click',()=>{
-    let previousIsInternal=false;
-    try{
-      const previous=new URL(document.referrer);
-      const previousPage=previous.pathname.split('/').pop();
-      previousIsInternal=previous.origin===location.origin&&previous.pathname!==location.pathname&&!['index.html','maintenance.html'].includes(previousPage);
-    }catch(_){}
-    if(previousIsInternal&&history.length>1)history.back();
-    else location.href='dashboard.html';
-  });
+  button.addEventListener('click',()=>{location.href='dashboard.html';});
   document.body.appendChild(button);
 }
 

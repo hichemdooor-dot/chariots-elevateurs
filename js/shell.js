@@ -465,7 +465,8 @@ function initSbiPageBackButton(){
     let previousIsInternal=false;
     try{
       const previous=new URL(document.referrer);
-      previousIsInternal=previous.origin===location.origin&&previous.pathname!==location.pathname&&!/\\/(index|maintenance)\\.html$/.test(previous.pathname);
+      const previousPage=previous.pathname.split('/').pop();
+      previousIsInternal=previous.origin===location.origin&&previous.pathname!==location.pathname&&!['index.html','maintenance.html'].includes(previousPage);
     }catch(_){}
     if(previousIsInternal&&history.length>1)history.back();
     else location.href='dashboard.html';

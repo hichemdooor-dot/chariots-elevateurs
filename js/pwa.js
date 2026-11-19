@@ -34,6 +34,20 @@
   function isStandalone() {
     return (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || !!window.navigator.standalone;
   }
+
+  // The manifest is only a hint on some Android browsers. Try the Screen
+  // Orientation API while SBI is running as an installed standalone app.
+  function lockPortrait() {
+    if (!isStandalone() || !screen.orientation || typeof screen.orientation.lock !== "function") return;
+    screen.orientation.lock("portrait").catch(error => {
+      console.info("[SBI PWA] Portrait lock not available in this browser/context:", error);
+    });
+  }
+  lockPortrait();
+  window.addEventListener("pageshow", lockPortrait);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") lockPortrait();
+  });
   function rememberSeen(frequency) {
     try {
       const value = frequency === "once" ? "once" : new Date().toISOString().slice(0, 10);

@@ -443,25 +443,28 @@ function initSiteGlobalSearch(){
 })();
 
 
-/* SBI shared page Back button — added on secondary app pages */
+/* SBI shared page Back button — floating at the top-right */
 function initSbiPageBackButton(){
   const page=location.pathname.split('/').pop()||'dashboard.html';
   if(['index.html','maintenance.html','dashboard.html'].includes(page))return;
-  if(document.querySelector('.sbi-page-back'))return;
-  // Do not add a second Retour control when the page already provides one.
-  const hasExistingBack=Array.from(document.querySelectorAll('a,button,[role="button"]')).some(el=>{
-    const label=(el.getAttribute('aria-label')||el.getAttribute('title')||el.textContent||'').replace(/[←→↩︎]/g,'').trim();
-    return /^retour(?:\s|$)/i.test(label);
-  });
-  if(hasExistingBack)return;
-  const title=document.querySelector('.content .page-title,main .page-title,.page-title,main h1,.content h1');
-  if(!title||!title.parentNode)return;
   if(!document.getElementById('sbiPageBackStyles')){
     const style=document.createElement('style');
     style.id='sbiPageBackStyles';
-    style.textContent='.sbi-page-back{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:38px;margin:0 0 14px;padding:0 13px;border:1px solid #cbd9e7;border-radius:9px;background:#fff;color:#245273;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 7px rgba(20,55,90,.06);transition:background .15s,border-color .15s}.sbi-page-back:hover{background:#edf5fc;border-color:#8ebce2}.sbi-page-back:focus-visible{outline:3px solid #1689e855;outline-offset:2px}.sbi-page-back svg{width:17px;height:17px;flex:0 0 17px}@media(max-width:650px){.sbi-page-back{min-height:40px;margin-bottom:12px}}';
+    style.textContent='.sbi-page-back{position:fixed!important;top:112px!important;right:22px!important;z-index:1400!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:8px;min-height:40px;margin:0!important;padding:0 15px;border:1px solid #cbd9e7;border-radius:999px;background:#fff;color:#245273;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 5px 18px rgba(20,55,90,.18);text-decoration:none!important;transition:background .15s,border-color .15s,box-shadow .15s}.sbi-page-back:hover{background:#edf5fc;border-color:#8ebce2;box-shadow:0 7px 22px rgba(20,55,90,.22)}.sbi-page-back:focus-visible{outline:3px solid #1689e855;outline-offset:2px}.sbi-page-back svg{width:17px;height:17px;flex:0 0 17px}@media(max-width:800px){.sbi-page-back{top:104px!important;right:12px!important;min-height:42px;padding:0 14px;box-shadow:0 5px 18px rgba(20,55,90,.22)}}';
     (document.head||document.documentElement).appendChild(style);
   }
+  const existing=Array.from(document.querySelectorAll('a,button,[role="button"]')).find(el=>{
+    const labels=[el.getAttribute('aria-label'),el.getAttribute('title'),el.textContent]
+      .filter(Boolean).map(value=>value.replace(/[←→↩︎]/g,'').trim());
+    return labels.some(label=>/^retour(?:\s|$)/i.test(label));
+  });
+  if(existing){
+    existing.classList.add('sbi-page-back');
+    return;
+  }
+  if(document.querySelector('.sbi-page-back'))return;
+  const title=document.querySelector('.content .page-title,main .page-title,.page-title,main h1,.content h1');
+  if(!title||!title.parentNode)return;
   const button=document.createElement('button');
   button.type='button';
   button.className='sbi-page-back';
@@ -477,7 +480,7 @@ function initSbiPageBackButton(){
     if(previousIsInternal&&history.length>1)history.back();
     else location.href='dashboard.html';
   });
-  title.parentNode.insertBefore(button,title);
+  document.body.appendChild(button);
 }
 
 document.addEventListener('DOMContentLoaded',()=>{

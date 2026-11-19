@@ -448,6 +448,12 @@ function initSbiPageBackButton(){
   const page=location.pathname.split('/').pop()||'dashboard.html';
   if(['index.html','maintenance.html','dashboard.html'].includes(page))return;
   if(document.querySelector('.sbi-page-back'))return;
+  // Do not add a second Retour control when the page already provides one.
+  const hasExistingBack=Array.from(document.querySelectorAll('a,button,[role="button"]')).some(el=>{
+    const label=(el.getAttribute('aria-label')||el.getAttribute('title')||el.textContent||'').replace(/[←→↩︎]/g,'').trim();
+    return /^retour(?:\s|$)/i.test(label);
+  });
+  if(hasExistingBack)return;
   const title=document.querySelector('.content .page-title,main .page-title,.page-title,main h1,.content h1');
   if(!title||!title.parentNode)return;
   if(!document.getElementById('sbiPageBackStyles')){

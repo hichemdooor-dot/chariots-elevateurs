@@ -442,6 +442,37 @@ function initSiteGlobalSearch(){
   (document.head||document.documentElement).appendChild(s);
 })();
 
+
+/* SBI shared page Back button — added on secondary app pages */
+function initSbiPageBackButton(){
+  const page=location.pathname.split('/').pop()||'dashboard.html';
+  if(['index.html','maintenance.html','dashboard.html'].includes(page))return;
+  if(document.querySelector('.sbi-page-back'))return;
+  const title=document.querySelector('.content .page-title,main .page-title,.page-title,main h1,.content h1');
+  if(!title||!title.parentNode)return;
+  if(!document.getElementById('sbiPageBackStyles')){
+    const style=document.createElement('style');
+    style.id='sbiPageBackStyles';
+    style.textContent='.sbi-page-back{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:38px;margin:0 0 14px;padding:0 13px;border:1px solid #cbd9e7;border-radius:9px;background:#fff;color:#245273;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 7px rgba(20,55,90,.06);transition:background .15s,border-color .15s}.sbi-page-back:hover{background:#edf5fc;border-color:#8ebce2}.sbi-page-back:focus-visible{outline:3px solid #1689e855;outline-offset:2px}.sbi-page-back svg{width:17px;height:17px;flex:0 0 17px}@media(max-width:650px){.sbi-page-back{min-height:40px;margin-bottom:12px}}';
+    (document.head||document.documentElement).appendChild(style);
+  }
+  const button=document.createElement('button');
+  button.type='button';
+  button.className='sbi-page-back';
+  button.setAttribute('aria-label','Retour à la page précédente');
+  button.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/><path d="M20 12H9"/></svg><span>Retour</span>';
+  button.addEventListener('click',()=>{
+    let previousIsInternal=false;
+    try{
+      const previous=new URL(document.referrer);
+      previousIsInternal=previous.origin===location.origin&&previous.pathname!==location.pathname&&!/\\/(index|maintenance)\\.html$/.test(previous.pathname);
+    }catch(_){}
+    if(previousIsInternal&&history.length>1)history.back();
+    else location.href='dashboard.html';
+  });
+  title.parentNode.insertBefore(button,title);
+}
+
 document.addEventListener('DOMContentLoaded',()=>{
   // Use the exact dashboard hamburger drawer on every page.
   document.querySelectorAll('.overlay').forEach((ov,i)=>{
@@ -522,6 +553,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   // The shared header is created after the initial auth render on non-dashboard pages.
   // Populate its newly-created user fields from the active session and role.
   if(typeof renderConnectedUser==='function')renderConnectedUser();
+  initSbiPageBackButton();
   nav();
   initDashboardHoverSidebar();
   document.querySelectorAll('.overlay').forEach(ov=>{

@@ -3177,12 +3177,6 @@ async function stockPage(){
   },['chariots']);
   window.__SBI_STOCK_LIVE_TIMER=window.__SBI_STOCK_LIVE_TIMER||setInterval(async()=>{if(document.visibilityState==='hidden')return;try{await loadChariots();render()}catch(e){}},30000);
 }
-  startSbiRealtime(async evt=>{
-    if(document.visibilityState==='hidden')return;
-    try{await loadChariots();render();const qr=evt?.payload?.new?.qr_id||evt?.payload?.old?.qr_id||'';if(qr)highlightLiveListItem('stockList',qr,'Stock actualisé');}catch(e){console.warn('Actualisation temps réel stock',e)}
-  },['chariots']);
-  window.__SBI_STOCK_LIVE_TIMER=window.__SBI_STOCK_LIVE_TIMER||setInterval(async()=>{if(document.visibilityState==='hidden')return;try{await loadChariots();render()}catch(e){}},30000);
-}
 async function deliveredPage(){
   if(!await session())return;
   await loadChariots();
@@ -3206,12 +3200,6 @@ async function deliveredPage(){
   }
   $('#deliveredSearch').addEventListener('input',()=>{currentPage=1;render()});
   render();
-  startSbiRealtime(async evt=>{
-    if(document.visibilityState==='hidden')return;
-    try{await loadChariots();render();const qr=evt?.payload?.new?.qr_id||evt?.payload?.old?.qr_id||'';if(qr)highlightLiveListItem('deliveredList',qr,'Liste des livrés actualisée');}catch(e){console.warn('Actualisation temps réel livrés',e)}
-  },['chariots']);
-  window.__SBI_DELIVERED_LIVE_TIMER=window.__SBI_DELIVERED_LIVE_TIMER||setInterval(async()=>{if(document.visibilityState==='hidden')return;try{await loadChariots();render()}catch(e){}},30000);
-}
   startSbiRealtime(async evt=>{
     if(document.visibilityState==='hidden')return;
     try{await loadChariots();render();const qr=evt?.payload?.new?.qr_id||evt?.payload?.old?.qr_id||'';if(qr)highlightLiveListItem('deliveredList',qr,'Liste des livrés actualisée');}catch(e){console.warn('Actualisation temps réel livrés',e)}

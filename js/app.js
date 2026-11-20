@@ -3136,14 +3136,82 @@ async function modificationProductionPage(){
   startSbiRealtime(async()=>{if(document.visibilityState==='hidden')return;try{await loadChariots();buildFilters();render()}catch(e){console.warn('Actualisation production',e)}},['chariots','maintenance']);
 }
 
-async function stockPage(){if(!await session())return;await loadChariots();const ids=['engineFilter','capacityFilter','mastFilter','heightFilter'];function fill(){const rows=CHARIOTS.filter(isStock);const defs=[['engineFilter','engine','Moteur : Tous'],['capacityFilter','capacity','Capacité : Toutes'],['mastFilter','mast_type','Mât : Tous'],['heightFilter','lifting_height','Hauteur : Toutes']];defs.forEach(([id,k,label])=>{const e=$('#'+id),old=e.value,vals=[...new Set(rows.map(c=>String(c[k]||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));e.innerHTML=`<option value="">${label}</option>`+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');if(vals.includes(old))e.value=old})}function render(){fill();let rows=CHARIOTS.filter(isStock);const q=$('#stockSearch')?.value.trim().toLowerCase()||'';const fs=[['engineFilter','engine'],['capacityFilter','capacity'],['mastFilter','mast_type'],['heightFilter','lifting_height']];rows=rows.filter(c=>(!q||[c.qr_id,c.chassis,c.serial_number,c.engine,c.client,c.capacity,c.color].some(v=>String(v||'').toLowerCase().includes(q)))&&fs.every(([id,k])=>!$('#'+id).value||norm(c[k])===norm($('#'+id).value)));$('#stockCount').textContent=rows.length+' chariot'+(rows.length!==1?'s':'')+' en stock';$('#stockList').innerHTML=rows.length?renderChariotTable(rows,'stock'):'<div class="empty">Aucun chariot en stock.</div>'}$('#stockSearch').addEventListener('input',render);ids.forEach(id=>$('#'+id).addEventListener('change',render));$('#clearFilters').onclick=()=>{ids.forEach(id=>$('#'+id).value='');$('#stockSearch').value='';render()};render()
+async function stockPage(){
+  if(!await session())return;
+  await loadChariots();
+  const ids=['engineFilter','capacityFilter','mastFilter','heightFilter'];
+  const pageSize=10;
+  let currentPage=1;
+  function fill(){
+    const rows=CHARIOTS.filter(isStock);
+    const defs=[['engineFilter','engine','Moteur : Tous'],['capacityFilter','capacity','Capacité : Toutes'],['mastFilter','mast_type','Mât : Tous'],['heightFilter','lifting_height','Hauteur : Toutes']];
+    defs.forEach(([id,k,label])=>{
+      const e=$('#'+id),old=e.value;
+      const vals=[...new Set(rows.map(c=>String(c[k]||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+      e.innerHTML=`<option value="">${label}</option>`+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
+      if(vals.includes(old))e.value=old;
+    });
+  }
+  function render(){
+    fill();
+    let rows=CHARIOTS.filter(isStock);
+    const q=$('#stockSearch')?.value.trim().toLowerCase()||'';
+    const fs=[['engineFilter','engine'],['capacityFilter','capacity'],['mastFilter','mast_type'],['heightFilter','lifting_height']];
+    rows=rows.filter(c=>(!q||[c.qr_id,c.chassis,c.serial_number,c.engine,c.client,c.capacity,c.color].some(v=>String(v||'').toLowerCase().includes(q)))&&fs.every(([id,k])=>!$('#'+id).value||norm(c[k])===norm($('#'+id).value)));
+    $('#stockCount').textContent=rows.length+' chariot'+(rows.length!==1?'s':'')+' en stock';
+    const totalPages=Math.max(1,Math.ceil(rows.length/pageSize));
+    currentPage=Math.min(Math.max(1,currentPage),totalPages);
+    const start=(currentPage-1)*pageSize;
+    const pageRows=rows.slice(start,start+pageSize);
+    const pagination=rows.length>pageSize?'<nav class="chariot-pagination" aria-label="Pagination du stock"><span class="chariot-pagination-range">Affichage '+(start+1)+'–'+Math.min(start+pageSize,rows.length)+' sur '+rows.length+' chariots</span><div class="chariot-pagination-controls"><button type="button" class="btn light chariot-page-btn" data-stock-page="'+(currentPage-1)+'" '+(currentPage===1?'disabled':'')+'>‹ Précédent</button><span class="chariot-page-number">Page '+currentPage+' / '+totalPages+'</span><button type="button" class="btn light chariot-page-btn" data-stock-page="'+(currentPage+1)+'" '+(currentPage===totalPages?'disabled':'')+'>Suivant ›</button></div></nav>':'';
+    $('#stockList').innerHTML=rows.length?renderChariotTable(pageRows,'stock',pageSize)+pagination:'<div class="empty">Aucun chariot en stock.</div>';
+    $('#stockList').querySelectorAll('[data-stock-page]').forEach(button=>{button.onclick=()=>{const next=Number(button.dataset.stockPage);if(Number.isFinite(next)&&next>=1&&next<=totalPages&&next!==currentPage){currentPage=next;render();}}});
+  }
+  $('#stockSearch').addEventListener('input',()=>{currentPage=1;render()});
+  ids.forEach(id=>$('#'+id).addEventListener('change',()=>{currentPage=1;render()}));
+  $('#clearFilters').onclick=()=>{ids.forEach(id=>$('#'+id).value='');$('#stockSearch').value='';currentPage=1;render()};
+  render();
   startSbiRealtime(async evt=>{
     if(document.visibilityState==='hidden')return;
     try{await loadChariots();render();const qr=evt?.payload?.new?.qr_id||evt?.payload?.old?.qr_id||'';if(qr)highlightLiveListItem('stockList',qr,'Stock actualisé');}catch(e){console.warn('Actualisation temps réel stock',e)}
   },['chariots']);
   window.__SBI_STOCK_LIVE_TIMER=window.__SBI_STOCK_LIVE_TIMER||setInterval(async()=>{if(document.visibilityState==='hidden')return;try{await loadChariots();render()}catch(e){}},30000);
 }
-async function deliveredPage(){if(!await session())return;await loadChariots();function render(){const q=$('#deliveredSearch').value.trim().toLowerCase();const rows=CHARIOTS.filter(isDelivered).filter(c=>!q||[c.qr_id,c.chassis,c.serial_number,c.engine,c.client,c.color].some(v=>String(v||'').toLowerCase().includes(q))).sort((a,b)=>{const da=new Date(a.delivery_date||0).getTime();const db=new Date(b.delivery_date||0).getTime();if(db!==da)return db-da;return new Date(b.updated_at||0).getTime()-new Date(a.updated_at||0).getTime()});$('#deliveredCount').textContent=rows.length+' chariot'+(rows.length!==1?'s':'')+' livré'+(rows.length!==1?'s':'');$('#deliveredList').innerHTML=rows.length?renderChariotTable(rows,'livres'):'<div class="empty">Aucun chariot livré.</div>'}$('#deliveredSearch').addEventListener('input',render);render()
+  startSbiRealtime(async evt=>{
+    if(document.visibilityState==='hidden')return;
+    try{await loadChariots();render();const qr=evt?.payload?.new?.qr_id||evt?.payload?.old?.qr_id||'';if(qr)highlightLiveListItem('stockList',qr,'Stock actualisé');}catch(e){console.warn('Actualisation temps réel stock',e)}
+  },['chariots']);
+  window.__SBI_STOCK_LIVE_TIMER=window.__SBI_STOCK_LIVE_TIMER||setInterval(async()=>{if(document.visibilityState==='hidden')return;try{await loadChariots();render()}catch(e){}},30000);
+}
+async function deliveredPage(){
+  if(!await session())return;
+  await loadChariots();
+  const pageSize=10;
+  let currentPage=1;
+  function render(){
+    const q=$('#deliveredSearch').value.trim().toLowerCase();
+    const rows=CHARIOTS.filter(isDelivered).filter(c=>!q||[c.qr_id,c.chassis,c.serial_number,c.engine,c.client,c.color].some(v=>String(v||'').toLowerCase().includes(q))).sort((a,b)=>{
+      const da=new Date(a.delivery_date||0).getTime(),db=new Date(b.delivery_date||0).getTime();
+      if(db!==da)return db-da;
+      return new Date(b.updated_at||0).getTime()-new Date(a.updated_at||0).getTime();
+    });
+    $('#deliveredCount').textContent=rows.length+' chariot'+(rows.length!==1?'s':'')+' livré'+(rows.length!==1?'s':'');
+    const totalPages=Math.max(1,Math.ceil(rows.length/pageSize));
+    currentPage=Math.min(Math.max(1,currentPage),totalPages);
+    const start=(currentPage-1)*pageSize;
+    const pageRows=rows.slice(start,start+pageSize);
+    const pagination=rows.length>pageSize?'<nav class="chariot-pagination" aria-label="Pagination des chariots livrés"><span class="chariot-pagination-range">Affichage '+(start+1)+'–'+Math.min(start+pageSize,rows.length)+' sur '+rows.length+' chariots</span><div class="chariot-pagination-controls"><button type="button" class="btn light chariot-page-btn" data-delivered-page="'+(currentPage-1)+'" '+(currentPage===1?'disabled':'')+'>‹ Précédent</button><span class="chariot-page-number">Page '+currentPage+' / '+totalPages+'</span><button type="button" class="btn light chariot-page-btn" data-delivered-page="'+(currentPage+1)+'" '+(currentPage===totalPages?'disabled':'')+'>Suivant ›</button></div></nav>':'';
+    $('#deliveredList').innerHTML=rows.length?renderChariotTable(pageRows,'livres',pageSize)+pagination:'<div class="empty">Aucun chariot livré.</div>';
+    $('#deliveredList').querySelectorAll('[data-delivered-page]').forEach(button=>{button.onclick=()=>{const next=Number(button.dataset.deliveredPage);if(Number.isFinite(next)&&next>=1&&next<=totalPages&&next!==currentPage){currentPage=next;render();}}});
+  }
+  $('#deliveredSearch').addEventListener('input',()=>{currentPage=1;render()});
+  render();
+  startSbiRealtime(async evt=>{
+    if(document.visibilityState==='hidden')return;
+    try{await loadChariots();render();const qr=evt?.payload?.new?.qr_id||evt?.payload?.old?.qr_id||'';if(qr)highlightLiveListItem('deliveredList',qr,'Liste des livrés actualisée');}catch(e){console.warn('Actualisation temps réel livrés',e)}
+  },['chariots']);
+  window.__SBI_DELIVERED_LIVE_TIMER=window.__SBI_DELIVERED_LIVE_TIMER||setInterval(async()=>{if(document.visibilityState==='hidden')return;try{await loadChariots();render()}catch(e){}},30000);
+}
   startSbiRealtime(async evt=>{
     if(document.visibilityState==='hidden')return;
     try{await loadChariots();render();const qr=evt?.payload?.new?.qr_id||evt?.payload?.old?.qr_id||'';if(qr)highlightLiveListItem('deliveredList',qr,'Liste des livrés actualisée');}catch(e){console.warn('Actualisation temps réel livrés',e)}

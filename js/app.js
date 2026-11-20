@@ -1090,6 +1090,8 @@ async function transitionChariotStatus(qrId,nextStatus,reason='',options={}){
   else if(to==='preparation livraison'||to==='pret a livrer')payload.stock='STOCK1';
   if(to==='livre')payload.delivery_date=String(options?.deliveryDate||'').trim()||localISODateGlobal(now);
   else if(from==='livre'&&to!=='livre')payload.delivery_date=null;
+  // Keep the modification timestamp consistent for every workflow transition.
+  payload.updated_at=now.toISOString();
   const {error}=await supabaseClient.from('chariots').update(payload).eq('qr_id',qrId);
   if(error){alert('Erreur : '+friendlySupabaseError(error));return false}
   try{await supabaseClient.from('maintenance').insert({qr_id:qrId,date:localDateISO(now),technicien:getUserDisplayName(),type:'Statut',travaux:reason||`Statut : ${c.status||'—'} → ${nextStatus}`,created_by:currentUser.id})}catch(e){console.warn('Historique de statut non enregistré',e)}

@@ -1113,7 +1113,7 @@ function setupEquipmentTypeFields(){
   const modelLabel=model?.closest('.field')?.querySelector('label');
   const wrappers={chassis:document.getElementById('chassisFieldWrap'),serialNumber:document.getElementById('serialNumberFieldWrap'),color:document.getElementById('colorFieldWrap'),engineNumber:document.getElementById('engineNumberFieldWrap'),fork:document.getElementById('forkFieldWrap'),mast:document.getElementById('mastFieldWrap'),tire:document.getElementById('tireFieldWrap'),height:document.getElementById('heightFieldWrap')};
   if(!model||!capacity||!height)return;
-  const standardCapacity=['2.5T','3T','3.8T','3.5T (TT)','5T','7T','10T','12T'],standardHeights=['3M','4M','4.3M','4.5M','6M'];
+  const standardCapacity=['1.8T','2.5T','3T','3.8T','3.5T (TT)','5T','7T','10T','12T'],standardHeights=['3M','4M','4.3M','4.5M','6M'];
   const setOptions=(el,values,current)=>{const wanted=String(current||el.value||''),selected=values.includes(wanted)?wanted:'';el.innerHTML='<option value="">Choisir...</option>'+values.map(v=>'<option value="'+v+'">'+v+'</option>').join('');el.value=selected;};
   const update=()=>{
     const type=String(model.value||'').trim().toLocaleUpperCase('fr'),special=isSbiHandlingEquipment(type),trans=type==='TRANSPALETTE',mainCentre=type==='GERBEUR MAIN CENTRE';

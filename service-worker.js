@@ -1,5 +1,5 @@
 /* SBI PWA service worker — cache only same-origin app shell resources. */
-const CACHE_NAME = "sbi-pwa-shell-v1";
+const CACHE_NAME = "sbi-pwa-shell-v2";
 const OFFLINE_URL = new URL("./offline.html", self.registration.scope).toString();
 const CORE_URLS = [
   "./manifest.webmanifest",

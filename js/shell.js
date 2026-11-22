@@ -461,7 +461,7 @@ function initSbiPageBackButton(){
   if(!document.getElementById('sbiPageBackStyles')){
     const style=document.createElement('style');
     style.id='sbiPageBackStyles';
-    style.textContent='.sbi-page-back{position:fixed!important;top:var(--sbi-back-top,108px)!important;left:var(--sbi-back-left,228px)!important;right:auto!important;z-index:1400!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:8px;min-height:40px;margin:0!important;padding:0 15px;border:1px solid #cbd9e7;border-radius:999px;background:#fff;color:#245273;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 5px 18px rgba(20,55,90,.18);text-decoration:none!important;transition:background .15s,border-color .15s,box-shadow .15s}.sbi-page-back:hover{background:#edf5fc;border-color:#8ebce2;box-shadow:0 7px 22px rgba(20,55,90,.22)}.sbi-page-back:focus-visible{outline:3px solid #1689e855;outline-offset:2px}.sbi-page-back svg{width:17px;height:17px;flex:0 0 17px}@media(max-width:800px){.sbi-page-back{left:12px!important;min-height:42px;padding:0 14px;box-shadow:0 5px 18px rgba(20,55,90,.22)}}';
+    style.textContent='body.sbi-page-back-clearance .layout > .content{padding-top:70px!important}@media(max-width:800px){body.sbi-page-back-clearance .layout > .content{padding-top:70px!important}}.sbi-page-back{position:fixed!important;top:var(--sbi-back-top,108px)!important;left:var(--sbi-back-left,228px)!important;right:auto!important;z-index:1400!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:8px;min-height:40px;margin:0!important;padding:0 15px;border:1px solid #cbd9e7;border-radius:999px;background:#fff;color:#245273;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 5px 18px rgba(20,55,90,.18);text-decoration:none!important;transition:background .15s,border-color .15s,box-shadow .15s}.sbi-page-back:hover{background:#edf5fc;border-color:#8ebce2;box-shadow:0 7px 22px rgba(20,55,90,.22)}.sbi-page-back:focus-visible{outline:3px solid #1689e855;outline-offset:2px}.sbi-page-back svg{width:17px;height:17px;flex:0 0 17px}@media(max-width:800px){.sbi-page-back{left:12px!important;min-height:42px;padding:0 14px;box-shadow:0 5px 18px rgba(20,55,90,.22)}}';
     (document.head||document.documentElement).appendChild(style);
   }
 
@@ -470,6 +470,7 @@ function initSbiPageBackButton(){
       .filter(Boolean).map(value=>value.replace(/[←→↩︎]/g,'').trim());
     return labels.some(label=>/^retour(?:\s|$)/i.test(label));
   });
+  document.body.classList.add('sbi-page-back-clearance');
   if(existing){
     existing.classList.add('sbi-page-back');
   }else if(!document.querySelector('.sbi-page-back')){

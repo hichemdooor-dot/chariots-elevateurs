@@ -2728,39 +2728,25 @@ async function renderMaintenanceHistory(){const box=$('#history');if(!box||!curr
 async function addMaintenance(){if(!requireValidLicense()||!requireAdmin())return;if(!current){alert('Sélectionnez un chariot.');return}if(!currentUser){alert('Connectez-vous.');return}const types=[...document.querySelectorAll('#typeMultiOptions input:checked')].map(x=>x.value).join(', '),travaux=$('#travaux')?.value.trim()||'';if(!types&&!travaux){alert('Sélectionnez un type de modification ou indiquez les détails.');return}const {error}=await supabaseClient.from('maintenance').insert({qr_id:current.qr_id,date:$('#date')?.value||new Date().toISOString().slice(0,10),technicien:$('#technicien')?.value.trim()||currentUser.email,type:types,travaux,created_by:currentUser.id});if(error){alert('Erreur : '+error.message);return}document.querySelectorAll('#typeMultiOptions input').forEach(x=>x.checked=false);if($('#travaux'))$('#travaux').value='';await renderMaintenanceHistory()}
 async function deleteMaintenance(id){if(!requireAdmin())return;if(!confirm('Supprimer définitivement cette intervention ?'))return;const {error}=await supabaseClient.from('maintenance').delete().eq('id',id);if(error)alert('Erreur : '+error.message);else await renderMaintenanceHistory()}
 function nextQr(){let n=Math.max(0,...CHARIOTS.map(c=>Number(String(c.qr_id||'').match(/^CH-(\d+)$/i)?.[1]||0)))+1;return'CH-'+String(n).padStart(4,'0')}
+const CHARIOT_DESTINATION_WILAYAS=[["01","Adrar"],["02","Chlef"],["03","Laghouat"],["04","Oum El Bouaghi"],["05","Batna"],["06","Béjaïa"],["07","Biskra"],["08","Béchar"],["09","Blida"],["10","Bouira"],["11","Tamanrasset"],["12","Tébessa"],["13","Tlemcen"],["14","Tiaret"],["15","Tizi Ouzou"],["16","Alger"],["17","Djelfa"],["18","Jijel"],["19","Sétif"],["20","Saïda"],["21","Skikda"],["22","Sidi Bel Abbès"],["23","Annaba"],["24","Guelma"],["25","Constantine"],["26","Médéa"],["27","Mostaganem"],["28","M'Sila"],["29","Mascara"],["30","Ouargla"],["31","Oran"],["32","El Bayadh"],["33","Illizi"],["34","Bordj Bou Arréridj"],["35","Boumerdès"],["36","El Tarf"],["37","Tindouf"],["38","Tissemsilt"],["39","El Oued"],["40","Khenchela"],["41","Souk Ahras"],["42","Tipaza"],["43","Mila"],["44","Aïn Defla"],["45","Naâma"],["46","Aïn Témouchent"],["47","Ghardaïa"],["48","Relizane"],["49","Timimoun"],["50","Bordj Badji Mokhtar"],["51","Ouled Djellal"],["52","Béni Abbès"],["53","In Salah"],["54","In Guezzam"],["55","Touggourt"],["56","Djanet"],["57","El M'Ghair"],["58","El Meniaa"],["59","Aflou"],["60","Barika"],["61","El Kantara"],["62","Bir El Ater"],["63","El Aricha"],["64","Ksar Chellala"],["65","Aïn Oussara"],["66","Messaad"],["67","Ksar El Boukhari"],["68","Bou Saâda"],["69","El Abiodh Sidi Cheikh"]];
 function setupChariotDestinationField(old){
-  const valueField=document.querySelector('[name="destination"]');
-  const select=document.getElementById('destinationSelect');
-  const custom=document.getElementById('destinationCustom');
-  if(!valueField||!select||!custom)return;
+  const valueField=document.querySelector('[name="destination"]'),input=document.getElementById('destinationSearch'),box=document.getElementById('destinationOptions');
+  if(!valueField||!input||!box)return;
   const saved=String(valueField.value||old?.destination||old?.delivery_destination||'').trim();
-  const standard=Array.from(select.options).some(option=>option.value===saved&&saved!=='');
-  if(saved&&!standard){
-    select.value='__custom__';
-    custom.value=saved;
-    custom.hidden=false;
-  }else{
-    select.value=saved;
-    custom.value='';
-    custom.hidden=true;
+  input.value=saved;valueField.value=saved;
+  function render(){
+    const q=input.value.trim().toLocaleLowerCase('fr');
+    const list=CHARIOT_DESTINATION_WILAYAS.filter(([code,name])=>!q||(code+' '+name+' '+code+' - '+name).toLocaleLowerCase('fr').includes(q));
+    box.innerHTML=list.length?list.map(([code,name])=>{const label=code+' - '+name;return '<button type="button" class="chariot-destination-option" role="option" data-wilaya="'+esc(label)+'"><strong>'+esc(label)+'</strong><span>Wilaya d’Algérie</span></button>'}).join(''):'<div class="chariot-destination-empty">Aucune wilaya trouvée. Vous pouvez saisir une adresse libre.</div>';
+    box.hidden=false;input.setAttribute('aria-expanded','true');
   }
-  const sync=()=>{
-    const manual=select.value==='__custom__';
-    custom.hidden=!manual;
-    if(manual){
-      valueField.value=custom.value.trim();
-      custom.focus();
-    }else{
-      custom.value='';
-      valueField.value=select.value.trim();
-    }
-  };
-  select.addEventListener('change',sync);
-  custom.addEventListener('input',()=>{valueField.value=custom.value.trim()});
-  custom.addEventListener('change',()=>{valueField.value=custom.value.trim()});
-  valueField.value=select.value==='__custom__'?custom.value.trim():select.value.trim();
+  input.addEventListener('focus',render);
+  input.addEventListener('input',()=>{valueField.value=input.value.trim();render()});
+  input.addEventListener('change',()=>{valueField.value=input.value.trim()});
+  box.addEventListener('mousedown',event=>{const option=event.target.closest('[data-wilaya]');if(!option)return;event.preventDefault();input.value=option.dataset.wilaya;valueField.value=input.value;box.hidden=true;input.setAttribute('aria-expanded','false')});
+  document.addEventListener('click',event=>{if(!event.target.closest('.chariot-destination-picker')){box.hidden=true;input.setAttribute('aria-expanded','false')}});
+  input.addEventListener('keydown',event=>{if(event.key==='Escape'){box.hidden=true;input.setAttribute('aria-expanded','false')}});
 }
-
 async function newPage(){
   if(!await session())return;
   if(!requireAdmin()){location.replace('dashboard.html');return}

@@ -2728,6 +2728,39 @@ async function renderMaintenanceHistory(){const box=$('#history');if(!box||!curr
 async function addMaintenance(){if(!requireValidLicense()||!requireAdmin())return;if(!current){alert('Sélectionnez un chariot.');return}if(!currentUser){alert('Connectez-vous.');return}const types=[...document.querySelectorAll('#typeMultiOptions input:checked')].map(x=>x.value).join(', '),travaux=$('#travaux')?.value.trim()||'';if(!types&&!travaux){alert('Sélectionnez un type de modification ou indiquez les détails.');return}const {error}=await supabaseClient.from('maintenance').insert({qr_id:current.qr_id,date:$('#date')?.value||new Date().toISOString().slice(0,10),technicien:$('#technicien')?.value.trim()||currentUser.email,type:types,travaux,created_by:currentUser.id});if(error){alert('Erreur : '+error.message);return}document.querySelectorAll('#typeMultiOptions input').forEach(x=>x.checked=false);if($('#travaux'))$('#travaux').value='';await renderMaintenanceHistory()}
 async function deleteMaintenance(id){if(!requireAdmin())return;if(!confirm('Supprimer définitivement cette intervention ?'))return;const {error}=await supabaseClient.from('maintenance').delete().eq('id',id);if(error)alert('Erreur : '+error.message);else await renderMaintenanceHistory()}
 function nextQr(){let n=Math.max(0,...CHARIOTS.map(c=>Number(String(c.qr_id||'').match(/^CH-(\d+)$/i)?.[1]||0)))+1;return'CH-'+String(n).padStart(4,'0')}
+function setupChariotDestinationField(old){
+  const valueField=document.querySelector('[name="destination"]');
+  const select=document.getElementById('destinationSelect');
+  const custom=document.getElementById('destinationCustom');
+  if(!valueField||!select||!custom)return;
+  const saved=String(valueField.value||old?.destination||old?.delivery_destination||'').trim();
+  const standard=Array.from(select.options).some(option=>option.value===saved&&saved!=='');
+  if(saved&&!standard){
+    select.value='__custom__';
+    custom.value=saved;
+    custom.hidden=false;
+  }else{
+    select.value=saved;
+    custom.value='';
+    custom.hidden=true;
+  }
+  const sync=()=>{
+    const manual=select.value==='__custom__';
+    custom.hidden=!manual;
+    if(manual){
+      valueField.value=custom.value.trim();
+      custom.focus();
+    }else{
+      custom.value='';
+      valueField.value=select.value.trim();
+    }
+  };
+  select.addEventListener('change',sync);
+  custom.addEventListener('input',()=>{valueField.value=custom.value.trim()});
+  custom.addEventListener('change',()=>{valueField.value=custom.value.trim()});
+  valueField.value=select.value==='__custom__'?custom.value.trim():select.value.trim();
+}
+
 async function newPage(){
   if(!await session())return;
   if(!requireAdmin()){location.replace('dashboard.html');return}
@@ -2799,6 +2832,7 @@ async function newPage(){
   setupSmartClientSuggestions(old);
   setupLiveDuplicateGuard(old);
   setupLastUsedConfiguration(old);
+  setupChariotDestinationField(old);
   // Apply the equipment-specific layout after restoring saved form values.
   setupEquipmentTypeFields();
   const deleteBtn=document.querySelector('#chariotForm .btn.danger');
@@ -3070,7 +3104,7 @@ async function saveChariot(){
   const {error}=oldId?await supabaseClient.from('chariots').update(p).eq('qr_id',oldId):await supabaseClient.from('chariots').insert(p);
   if(error){alert('Erreur : '+error.message);return}
   if(oldId&&old){
-    const labels={chassis:'N° châssis',serial_number:'N° de série',engine_number:'N° moteur',engine:'Moteur',capacity:'Capacité',lifting_height:'Hauteur de levage',fork_dimension:'Fourche',mast_type:'Type de mât',tire_type:'Type de pneu',color:'Couleur',stock:'Stock',status:'Statut',client:'Client',delivery_date:'Date de livraison',observations:'Observations'};
+    const labels={chassis:'N° châssis',serial_number:'N° de série',engine_number:'N° moteur',engine:'Moteur',capacity:'Capacité',lifting_height:'Hauteur de levage',fork_dimension:'Fourche',mast_type:'Type de mât',tire_type:'Type de pneu',color:'Couleur',stock:'Stock',status:'Statut',client:'Client',delivery_date:'Date de livraison',destination:'Destination',observations:'Observations'};
     const changes=Object.keys(labels).filter(k=>String(old[k]??'')!==String(p[k]??'')).map(k=>`${labels[k]} : ${old[k]||'—'} → ${p[k]||'—'}`);
     if(changes.length){try{await supabaseClient.from('maintenance').insert({qr_id:p.qr_id,date:new Date().toISOString().slice(0,10),technicien:getUserDisplayName(),type:'Modification chariot',travaux:changes.join(' • '),created_by:currentUser.id})}catch(e){console.warn('Notification modification non enregistrée',e)}}
   }else{

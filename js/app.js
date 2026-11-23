@@ -2681,16 +2681,23 @@ async function detailPage(){
 
   const [identificationGroup,characteristicsGroup,stockGroup,deliveryGroup]=groups;
   $('#detail').innerHTML=`<div class="detail-dashboard-layout detail-layout-compact"><div class="detail-information-grid"><div class="detail-info-column detail-info-column--left">${identificationGroup}${stockGroup}</div><div class="detail-info-column detail-info-column--right">${characteristicsGroup}${deliveryGroup}</div></div><section class="detail-panel detail-panel--observations"><header class="detail-panel-head"><span class="detail-panel-icon">${icon('observations')}</span><h2>Observations</h2></header><div class="detail-observation-text">${esc(current.observations||'Aucune observation enregistrée.')}</div></section></div>`;
+  const identificationPanel=document.querySelector('#detail .detail-panel--identification .detail-panel-head');
+  const identificationActions=()=>{
+    if(!identificationPanel)return null;
+    let actions=identificationPanel.querySelector('.detail-panel-head-actions');
+    if(!actions){actions=document.createElement('div');actions.className='detail-panel-head-actions';identificationPanel.appendChild(actions)}
+    return actions;
+  };
   if(isAdmin()||getSbiCommercialName()){
-    const commercialPanel=document.querySelector('#detail .detail-panel--identification .detail-panel-head');
-    if(commercialPanel&&!document.getElementById('assignClientBtn')&&!isDelivered(current)){
-      const button=document.createElement('button');button.id='assignClientBtn';button.type='button';button.className='btn light';button.textContent=current.client?'Modifier le client':'Affecter un client';button.onclick=()=>assignClientToChariot(current.qr_id);commercialPanel.appendChild(button);
+    const actions=identificationActions();
+    if(actions&&!document.getElementById('assignClientBtn')&&!isDelivered(current)){
+      const button=document.createElement('button');button.id='assignClientBtn';button.type='button';button.className='btn light';button.textContent=current.client?'Modifier le client':'Affecter un client';button.onclick=()=>assignClientToChariot(current.qr_id);actions.appendChild(button);
     }
   }
   if(isAdmin()){
-    const commercialPanel=document.querySelector('#detail .detail-panel--identification .detail-panel-head');
-    if(commercialPanel&&!document.getElementById('editCommercialBtn')){
-      const button=document.createElement('button');button.id='editCommercialBtn';button.type='button';button.className='btn light';button.textContent='Modifier le commercial';button.style.marginLeft='auto';button.onclick=()=>editChariotCommercial(current.qr_id);commercialPanel.appendChild(button);
+    const actions=identificationActions();
+    if(actions&&!document.getElementById('editCommercialBtn')){
+      const button=document.createElement('button');button.id='editCommercialBtn';button.type='button';button.className='btn light';button.textContent='Modifier le commercial';button.onclick=()=>editChariotCommercial(current.qr_id);actions.appendChild(button);
     }
   }
   showChariotObservationPopup(current);

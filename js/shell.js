@@ -387,7 +387,7 @@ function initSiteGlobalSearch(){
       .pro-header .dashboard-search-shell{height:42px!important}
       header.top .sbi-global-searchbar input,
       .pro-header .dashboard-search-shell #dashboardSearch{
-        font-size:14px!important;padding:0 12px!important;
+        font-size:16px!important;padding:0 12px!important;
       }
       header.top .sbi-global-searchbar input::placeholder,
       .pro-header .dashboard-search-shell #dashboardSearch::placeholder{font-size:13px!important}

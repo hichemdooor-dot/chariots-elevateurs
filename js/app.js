@@ -1627,16 +1627,19 @@ function initDashboardGlobalSearch(){
     const viewport=window.visualViewport;
     const viewportTop=viewport?viewport.offsetTop:0;
     const viewportHeight=viewport?viewport.height:window.innerHeight;
+    const viewportWidth=viewport?viewport.width:window.innerWidth;
     const viewportBottom=viewportTop+viewportHeight-12;
-    const boxHeight=Math.min(box.scrollHeight||320,Math.max(120,viewportHeight-24));
+    const desiredHeight=Math.min(box.scrollHeight||320,320);
+    const spaceBelow=Math.max(0,viewportBottom-rect.bottom-8);
+    const spaceAbove=Math.max(0,rect.top-viewportTop-8);
     let top=rect.bottom+8;
-    if(top+Math.min(boxHeight,320)>viewportBottom){
-      top=Math.max(viewportTop+8,rect.top-Math.min(boxHeight,320)-8);
+    let available=spaceBelow;
+    if(spaceBelow<Math.min(desiredHeight,150)&&spaceAbove>spaceBelow){
+      available=spaceAbove;
+      top=Math.max(viewportTop+8,rect.top-Math.min(desiredHeight,spaceAbove)-8);
     }
-    // Results are moved to <body>, so fixed viewport coordinates are required
-    // on desktop as well as mobile; absolute positioning loses the search anchor.
     const mobile=window.innerWidth<=800;
-    const panelWidth=mobile?Math.max(0,viewport?viewport.width:window.innerWidth)-24:Math.min(rect.width,window.innerWidth-24);
+    const panelWidth=mobile?Math.max(0,viewportWidth-24):Math.min(rect.width,window.innerWidth-24);
     const panelLeft=mobile?12:Math.max(12,Math.min(rect.left,window.innerWidth-rect.width-12));
     box.style.setProperty('position','fixed','important');
     box.style.setProperty('left',panelLeft+'px','important');
@@ -1644,7 +1647,7 @@ function initDashboardGlobalSearch(){
     box.style.setProperty('top',top+'px','important');
     box.style.setProperty('width',panelWidth+'px','important');
     box.style.setProperty('max-width','none','important');
-    box.style.setProperty('max-height',Math.max(100,viewportBottom-top)+'px','important');
+    box.style.setProperty('max-height',Math.max(80,Math.min(desiredHeight,available))+'px','important');
     box.style.setProperty('z-index','1201','important');
   };
   window.addEventListener('resize',positionResults);

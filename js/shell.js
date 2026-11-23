@@ -459,7 +459,7 @@ function initSbiPageBackButton(){
   }
 
   const existing=Array.from(document.querySelectorAll('a,button,[role="button"]')).find(el=>{
-    const labels=[el.getAttribute('aria-label'),el.getAttribute('title'),el.textContent)
+    const labels=[el.getAttribute('aria-label'),el.getAttribute('title'),el.textContent]
       .filter(Boolean).map(value=>value.replace(/[←→↩︎]/g,'').trim());
     return labels.some(label=>/^retour(?:\\s|$)/i.test(label));
   });

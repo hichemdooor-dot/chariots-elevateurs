@@ -1632,13 +1632,13 @@ function initDashboardGlobalSearch(){
     const desiredHeight=Math.min(box.scrollHeight||320,320);
     const spaceBelow=Math.max(0,viewportBottom-rect.bottom-8);
     const spaceAbove=Math.max(0,rect.top-viewportTop-8);
-    const mobile=window.innerWidth<=800;
     let top=rect.bottom+8;
     let available=spaceBelow;
-    if(!mobile&&spaceBelow<Math.min(desiredHeight,150)&&spaceAbove>spaceBelow){
+    if(spaceBelow<Math.min(desiredHeight,150)&&spaceAbove>spaceBelow){
       available=spaceAbove;
       top=Math.max(viewportTop+8,rect.top-Math.min(desiredHeight,spaceAbove)-8);
     }
+    const mobile=window.innerWidth<=800;
     const panelWidth=mobile?Math.max(0,viewportWidth-24):Math.min(rect.width,window.innerWidth-24);
     const panelLeft=mobile?12:Math.max(12,Math.min(rect.left,window.innerWidth-rect.width-12));
     box.style.setProperty('position','fixed','important');

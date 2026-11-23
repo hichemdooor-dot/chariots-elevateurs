@@ -1639,8 +1639,8 @@ function initDashboardGlobalSearch(){
       top=Math.max(viewportTop+8,rect.top-Math.min(desiredHeight,spaceAbove)-8);
     }
     const mobile=window.innerWidth<=800;
-    const panelWidth=mobile?Math.max(0,viewportWidth-24):Math.min(rect.width,window.innerWidth-24);
-    const panelLeft=mobile?12:Math.max(12,Math.min(rect.left,window.innerWidth-rect.width-12));
+    const panelWidth=Math.min(rect.width,window.innerWidth-24);
+    const panelLeft=Math.max(12,Math.min(rect.left,window.innerWidth-rect.width-12));
     box.style.setProperty('position','fixed','important');
     box.style.setProperty('left',panelLeft+'px','important');
     box.style.setProperty('right','auto','important');

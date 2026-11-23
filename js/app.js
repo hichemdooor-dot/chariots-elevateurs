@@ -1635,11 +1635,14 @@ function initDashboardGlobalSearch(){
     }
     // Results are moved to <body>, so fixed viewport coordinates are required
     // on desktop as well as mobile; absolute positioning loses the search anchor.
+    const mobile=window.innerWidth<=800;
+    const panelWidth=mobile?Math.max(0,viewport?viewport.width:window.innerWidth)-24:Math.min(rect.width,window.innerWidth-24);
+    const panelLeft=mobile?12:Math.max(12,Math.min(rect.left,window.innerWidth-rect.width-12));
     box.style.setProperty('position','fixed','important');
-    box.style.setProperty('left',Math.max(12,Math.min(rect.left,window.innerWidth-rect.width-12))+'px','important');
+    box.style.setProperty('left',panelLeft+'px','important');
     box.style.setProperty('right','auto','important');
     box.style.setProperty('top',top+'px','important');
-    box.style.setProperty('width',Math.min(rect.width,window.innerWidth-24)+'px','important');
+    box.style.setProperty('width',panelWidth+'px','important');
     box.style.setProperty('max-width','none','important');
     box.style.setProperty('max-height',Math.max(100,viewportBottom-top)+'px','important');
     box.style.setProperty('z-index','1201','important');

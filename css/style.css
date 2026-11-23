@@ -4212,3 +4212,40 @@ body.professional-dashboard .dash-logo img{
 .detail-panel--identification .detail-panel-head-actions{display:flex;flex:1 1 100%;flex-wrap:wrap;justify-content:flex-end;gap:6px;min-width:0}
 .detail-panel--identification .detail-panel-head-actions .btn{flex:1 1 145px;min-width:0;min-height:36px;padding:6px 10px;line-height:1.25;white-space:normal}
 @media(max-width:560px){.detail-panel--identification .detail-panel-head-actions .btn{flex-basis:132px}}
+
+
+/* Compact mobile global search cards into a scannable list */
+@media(max-width:800px){
+  #siteGlobalSearchResults .dashboard-search-result,
+  #dashboardSearchResults .dashboard-search-result{
+    align-items:center!important;gap:7px!important;min-height:0!important;
+    margin:0 0 4px!important;padding:6px 8px!important;border:0!important;
+    border-bottom:1px solid #e7edf3!important;border-radius:8px!important;background:#fff!important;
+  }
+  #siteGlobalSearchResults .dashboard-search-result:last-of-type,
+  #dashboardSearchResults .dashboard-search-result:last-of-type{border-bottom:0!important}
+  #siteGlobalSearchResults .dashboard-search-result-icon,
+  #dashboardSearchResults .dashboard-search-result-icon{
+    flex:0 0 30px!important;width:30px!important;height:30px!important;border-radius:8px!important;
+  }
+  #siteGlobalSearchResults .dashboard-search-result-icon svg,
+  #dashboardSearchResults .dashboard-search-result-icon svg{width:19px!important;height:19px!important}
+  #siteGlobalSearchResults .dashboard-search-result-title,
+  #dashboardSearchResults .dashboard-search-result-title{
+    margin:0 0 2px!important;font-size:13px!important;line-height:1.15!important;
+  }
+  #siteGlobalSearchResults .dashboard-search-result-meta,
+  #dashboardSearchResults .dashboard-search-result-meta{
+    gap:1px!important;font-size:10px!important;line-height:1.2!important;
+  }
+  #siteGlobalSearchResults .dashboard-search-result-side,
+  #dashboardSearchResults .dashboard-search-result-side{gap:2px!important}
+  #siteGlobalSearchResults .dashboard-search-result-status,
+  #dashboardSearchResults .dashboard-search-result-status{
+    padding:3px 5px!important;font-size:9px!important;line-height:1.1!important;
+  }
+  #siteGlobalSearchResults .dashboard-search-result-arrow,
+  #dashboardSearchResults .dashboard-search-result-arrow{font-size:18px!important}
+  #siteGlobalSearchResults .dashboard-search-footer,
+  #dashboardSearchResults .dashboard-search-footer{padding:6px 3px 2px!important}
+}

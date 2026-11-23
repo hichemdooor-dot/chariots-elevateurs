@@ -4206,3 +4206,9 @@ body.professional-dashboard .dash-logo img{
     font-size:11px;
   }
 }
+
+/* Keep the identification actions inside their card at desktop and mobile widths. */
+.detail-panel--identification .detail-panel-head{flex-wrap:wrap;row-gap:8px}
+.detail-panel--identification .detail-panel-head-actions{display:flex;flex:1 1 100%;flex-wrap:wrap;justify-content:flex-end;gap:6px;min-width:0}
+.detail-panel--identification .detail-panel-head-actions .btn{flex:1 1 145px;min-width:0;min-height:36px;padding:6px 10px;line-height:1.25;white-space:normal}
+@media(max-width:560px){.detail-panel--identification .detail-panel-head-actions .btn{flex-basis:132px}}

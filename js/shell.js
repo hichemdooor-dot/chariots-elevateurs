@@ -443,60 +443,35 @@ function initSiteGlobalSearch(){
 })();
 
 
-/* SBI shared page Retour button — consistent floating placement across pages */
+/* SBI shared page Retour button — placed in document flow above each page title */
 function initSbiPageBackButton(){
   const page=location.pathname.split('/').pop()||'dashboard.html';
   if(['index.html','maintenance.html','dashboard.html'].includes(page))return;
 
-  const updatePosition=()=>{
-    const header=document.querySelector('header.top,.pro-header');
-    const sidebar=document.querySelector('.layout > .side.desktop,.professional-dashboard .dash-sidebar');
-    const mobile=window.innerWidth<=800;
-    const headerBottom=header?.getBoundingClientRect().bottom||90;
-    const sidebarEdge=!mobile&&sidebar?sidebar.getBoundingClientRect().right:0;
-    document.documentElement.style.setProperty('--sbi-back-top',Math.max(90,Math.round(headerBottom+12))+'px');
-    document.documentElement.style.setProperty('--sbi-back-left',Math.max(12,Math.round(sidebarEdge+16))+'px');
-  };
+  const title=document.querySelector('.content .page-title,main .page-title,.page-title,main h1,.content h1');
+  if(!title||!title.parentNode)return;
 
   if(!document.getElementById('sbiPageBackStyles')){
     const style=document.createElement('style');
     style.id='sbiPageBackStyles';
-    style.textContent='body.sbi-page-back-clearance .layout > .content{padding-top:100px!important}@media(max-width:800px){body.sbi-page-back-clearance .layout > .content{padding-top:100px!important}}.sbi-page-back{position:fixed!important;top:var(--sbi-back-top,108px)!important;left:var(--sbi-back-left,228px)!important;right:auto!important;z-index:1400!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:8px;min-height:40px;margin:0!important;padding:0 15px;border:1px solid #cbd9e7;border-radius:999px;background:#fff;color:#245273;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 5px 18px rgba(20,55,90,.18);text-decoration:none!important;transition:background .15s,border-color .15s,box-shadow .15s}.sbi-page-back:hover{background:#edf5fc;border-color:#8ebce2;box-shadow:0 7px 22px rgba(20,55,90,.22)}.sbi-page-back:focus-visible{outline:3px solid #1689e855;outline-offset:2px}.sbi-page-back svg{width:17px;height:17px;flex:0 0 17px}@media(max-width:800px){.sbi-page-back{left:12px!important;min-height:42px;padding:0 14px;box-shadow:0 5px 18px rgba(20,55,90,.22)}}';
+    style.textContent='.sbi-page-back{position:static!important;inset:auto!important;display:inline-flex!important;align-self:flex-start!important;align-items:center!important;justify-content:center!important;gap:8px;min-height:40px;margin:0 0 10px!important;padding:0 15px;border:1px solid #cbd9e7;border-radius:999px;background:#fff;color:#245273;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 3px 12px rgba(20,55,90,.12);text-decoration:none!important;transition:background .15s,border-color .15s,box-shadow .15s}.sbi-page-back:hover{background:#edf5fc;border-color:#8ebce2;box-shadow:0 5px 16px rgba(20,55,90,.16)}.sbi-page-back:focus-visible{outline:3px solid #1689e855;outline-offset:2px}.sbi-page-back svg{width:17px;height:17px;flex:0 0 17px}';
     (document.head||document.documentElement).appendChild(style);
   }
 
   const existing=Array.from(document.querySelectorAll('a,button,[role="button"]')).find(el=>{
-    const labels=[el.getAttribute('aria-label'),el.getAttribute('title'),el.textContent]
+    const labels=[el.getAttribute('aria-label'),el.getAttribute('title'),el.textContent)
       .filter(Boolean).map(value=>value.replace(/[←→↩︎]/g,'').trim());
-    return labels.some(label=>/^retour(?:\s|$)/i.test(label));
+    return labels.some(label=>/^retour(?:\\s|$)/i.test(label));
   });
-  document.body.classList.add('sbi-page-back-clearance');
-  if(existing){
-    existing.classList.add('sbi-page-back');
-  }else if(!document.querySelector('.sbi-page-back')){
-    const title=document.querySelector('.content .page-title,main .page-title,.page-title,main h1,.content h1');
-    if(!title||!title.parentNode)return;
-    const button=document.createElement('button');
+  let button=existing||document.createElement('button');
+  button.classList.add('sbi-page-back');
+  if(!existing){
     button.type='button';
-    button.className='sbi-page-back';
     button.setAttribute('aria-label','Retour au tableau de bord');
     button.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/><path d="M20 12H9"/></svg><span>Retour</span>';
     button.addEventListener('click',()=>{location.href='dashboard.html';});
-    document.body.appendChild(button);
   }
-
-  updatePosition();
-  window.addEventListener('resize',updatePosition,{passive:true});
-  const sidebar=document.querySelector('.layout > .side.desktop,.professional-dashboard .dash-sidebar');
-  if(sidebar&&typeof ResizeObserver!=='undefined'){
-    const observer=new ResizeObserver(updatePosition);
-    observer.observe(sidebar);
-  }
-  const header=document.querySelector('header.top,.pro-header');
-  if(header&&typeof ResizeObserver!=='undefined'){
-    const observer=new ResizeObserver(updatePosition);
-    observer.observe(header);
-  }
+  title.parentNode.insertBefore(button,title);
 }
 document.addEventListener('DOMContentLoaded',()=>{
   // Use the exact dashboard hamburger drawer on every page.

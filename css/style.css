@@ -4212,3 +4212,25 @@ body.professional-dashboard .dash-logo img{
 .detail-panel--identification .detail-panel-head-actions{display:flex;flex:1 1 100%;flex-wrap:wrap;justify-content:flex-end;gap:6px;min-width:0}
 .detail-panel--identification .detail-panel-head-actions .btn{flex:1 1 145px;min-width:0;min-height:36px;padding:6px 10px;line-height:1.25;white-space:normal}
 @media(max-width:560px){.detail-panel--identification .detail-panel-head-actions .btn{flex-basis:132px}}
+
+/* Admin user role editor layout */
+.sbi-user-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px 18px;align-items:center;padding:16px}
+.sbi-user-main{min-width:0}
+.sbi-user-meta{display:flex;align-items:center;gap:10px 16px;flex-wrap:wrap;overflow:visible}
+.sbi-role-control{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sbi-role-control select{min-height:38px;padding:7px 30px 7px 10px;border:1px solid var(--border,#dbe3ec);border-radius:8px;background:#fff;color:var(--text,#163a60);font:inherit}
+.sbi-role-control .btn{min-height:38px}
+.sbi-user-actions{grid-column:1/-1;display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px}
+.sbi-user-actions .btn{white-space:nowrap}
+@media(max-width:800px){
+ .sbi-user-item{grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:13px}
+ .sbi-user-meta{align-items:flex-start}
+ .sbi-role-control{width:100%}
+ .sbi-user-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}
+ .sbi-user-actions .btn{width:100%;min-height:42px;white-space:normal}
+}
+@media(max-width:460px){
+ .sbi-role-control select{flex:1;min-width:90px}
+ .sbi-role-control .btn{flex:1}
+ .sbi-user-actions{grid-template-columns:1fr}
+}

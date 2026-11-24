@@ -721,3 +721,27 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 /* SBI PWA — shared registration and install prompt */
 (function(){var s=document.createElement('script');s.src='js/pwa.js?v=2';s.defer=true;(document.head||document.documentElement).appendChild(s)})();
+
+
+/* SBI GLOBAL UPPERCASE INPUTS */
+(function(){
+  const uppercaseText = (el) => {
+    if (!el || el.disabled || el.readOnly || el.dataset?.uppercaseDisabled === '1') return;
+    if (el.tagName === 'TEXTAREA') return true;
+    if (el.tagName !== 'INPUT') return false;
+    return ['text','search'].includes(String(el.type || 'text').toLowerCase());
+  };
+  document.addEventListener('input', function(event){
+    const el = event.target;
+    if (!uppercaseText(el) || event.isComposing || el.isComposing) return;
+    const current = String(el.value || '');
+    const upper = current.toLocaleUpperCase('fr-FR');
+    if (current === upper) return;
+    const start = typeof el.selectionStart === 'number' ? el.selectionStart : null;
+    const end = typeof el.selectionEnd === 'number' ? el.selectionEnd : null;
+    el.value = upper;
+    if (start !== null && end !== null) {
+      try { el.setSelectionRange(start, end); } catch (_) {}
+    }
+  }, true);
+})();

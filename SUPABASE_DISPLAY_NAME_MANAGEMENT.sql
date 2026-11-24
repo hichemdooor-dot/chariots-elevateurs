@@ -7,28 +7,13 @@ create or replace function public.admin_list_sbi_user_display_names()
 returns table(user_id uuid, display_name text)
 language plpgsql
 security definer
-set search_path = public, auth
+set search_path = ''
 as $$
-declare
-  v_email text;
-  v_app_role text;
-  v_status jsonb;
 begin
-  if auth.uid() is null then
+  if (select auth.uid()) is null then
     raise exception 'Authentication required';
   end if;
-
-  select u.email,
-         coalesce(u.raw_app_meta_data ->> 'sbi_role', '')
-    into v_email, v_app_role
-    from auth.users u
-   where u.id = auth.uid();
-
-  select to_jsonb(public.get_my_sbi_status()) into v_status;
-
-  if lower(coalesce(v_email, '')) <> 'hichemdooor@gmail.com'
-     and lower(coalesce(v_app_role, '')) <> 'admin'
-     and lower(coalesce(v_status ->> 'role', '')) <> 'admin' then
+  if not coalesce(public.is_sbi_admin(), false) then
     raise exception 'Administrator access required';
   end if;
 
@@ -52,35 +37,21 @@ create or replace function public.admin_set_sbi_user_display_name(
 returns void
 language plpgsql
 security definer
-set search_path = public, auth
+set search_path = ''
 as $$
 declare
-  v_email text;
-  v_app_role text;
-  v_status jsonb;
   v_name text;
 begin
-  if auth.uid() is null then
+  if (select auth.uid()) is null then
     raise exception 'Authentication required';
+  end if;
+  if not coalesce(public.is_sbi_admin(), false) then
+    raise exception 'Administrator access required';
   end if;
 
   v_name := trim(coalesce(p_display_name, ''));
   if char_length(v_name) < 1 or char_length(v_name) > 80 then
     raise exception 'Display name must contain between 1 and 80 characters';
-  end if;
-
-  select u.email,
-         coalesce(u.raw_app_meta_data ->> 'sbi_role', '')
-    into v_email, v_app_role
-    from auth.users u
-   where u.id = auth.uid();
-
-  select to_jsonb(public.get_my_sbi_status()) into v_status;
-
-  if lower(coalesce(v_email, '')) <> 'hichemdooor@gmail.com'
-     and lower(coalesce(v_app_role, '')) <> 'admin'
-     and lower(coalesce(v_status ->> 'role', '')) <> 'admin' then
-    raise exception 'Administrator access required';
   end if;
 
   update auth.users

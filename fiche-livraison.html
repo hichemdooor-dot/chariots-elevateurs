@@ -228,7 +228,25 @@ async function loadDeliveryFiche(){
   const c=CHARIOTS.find(x=>String(x.qr_id)===String(qr));
   if(!c){document.getElementById('sheet').innerHTML='<div class="error">Chariot introuvable. Retournez à la liste et ouvrez la fiche depuis le bon chariot.</div>';return}
   const plan=typeof getDeliveryPlan==='function'?getDeliveryPlan(c.qr_id):null;
-  setClientDisplay(ficheText(c.client,'CLIENT À RENSEIGNER'));
+  const editor=document.getElementById('manualPanel');
+  editor.classList.add('open');
+  const editorTitle=editor.querySelector('h2');
+  if(editorTitle)editorTitle.textContent='Modifier les informations de la fiche';
+  const setEditorValue=(id,value)=>{
+    const el=document.getElementById(id),v=String(value??'').trim();
+    if(!el)return;
+    if(el.tagName==='SELECT'&&v&&!Array.from(el.options).some(o=>o.value===v))el.add(new Option(v,v));
+    el.value=v;
+  };
+  setEditorValue('mClient',c.client);
+  setEditorValue('mDestination',plan?.destination||c.destination||c.delivery_destination);
+  setEditorValue('mCapacity',fmtCapacity(c.capacity)||c.capacity);
+  setEditorValue('mEngine',c.engine);
+  setEditorValue('mMast',c.mast_type);
+  setEditorValue('mHeight',formatFicheHeight(c.lifting_height));
+  setEditorValue('mFork',c.fork_dimension);
+  updateGerbeurHeightOption();
+  applyManualFiche();
   document.getElementById('destination').textContent=ficheText(plan?.destination||c.destination||c.delivery_destination,'DESTINATION À RENSEIGNER').toLocaleUpperCase('fr');
   document.getElementById('capacity').textContent=ficheText(fmtCapacity(c.capacity)||c.capacity);
   setEngineDisplay(ficheText(c.engine,''));

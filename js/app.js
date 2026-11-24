@@ -3296,7 +3296,43 @@ async function loadConnectionHistory(){
 }
 
 async function gestionPage(){if(!await session())return;if(!requireAdmin()){$('#users').innerHTML='<div class="notice red">Accès administrateur requis.</div>';return}await loadSbiUsers();await loadPasswordRequests();await loadConnectionHistory()}
-function renderSbiUsers(users){$('#users').innerHTML=users.length?users.map(u=>{const email=String(u.email||'—');const role=String(u.role||'user');const status=u.disabled?'Désactivé':'Actif';const displayName=String(u.display_name||u.full_name||u.name||email.split('@')[0]||'Utilisateur');return `<div class="item sbi-user-item" style="cursor:default"><div class="item-main sbi-user-main"><div class="item-title sbi-user-email" title="${esc(email)}">${esc(email)}</div><div class="field sbi-user-name-field"><label for="sbiDisplayName-${esc(u.id)}">Nom affiché</label><input id="sbiDisplayName-${esc(u.id)}" type="text" maxlength="80" value="${esc(displayName)}" autocomplete="off"></div><div class="meta sbi-user-meta"><span><strong>Statut :</strong> ${esc(status)}</span><label class="sbi-role-control"><strong>Rôle :</strong> <select id="sbiRole-${esc(u.id)}"><option value="user" ${role==='user'?'selected':''}>User</option><option value="admin" ${role==='admin'?'selected':''}>Admin</option></select><button class="btn light" type="button" onclick="saveSbiUserRole('${esc(u.id)}')">Enregistrer le rôle</button></label></div></div><span class="badge ${u.disabled?'red':''} sbi-user-badge">${u.disabled?'Inactif':'Actif'}</span><div class="user-actions sbi-user-actions"><button class="btn light" onclick="saveSbiUserDisplayName('${esc(u.id)}')">Enregistrer le nom</button><button class="btn light" onclick="toggleSbiUser('${esc(u.id)}',${!u.disabled})">${u.disabled?'Réactiver':'Désactiver'}</button><button class="btn danger" onclick="deleteSbiUser('${esc(u.id)}')">Supprimer</button></div></div>`}).join(''):'<div class="empty">Aucun utilisateur.</div>'}
+function renderSbiUsers(users){
+  const list=$('#users');
+  list.innerHTML=users.length?users.map(u=>{
+    const email=String(u.email||'—'),role=String(u.role||'user');
+    const status=u.disabled?'Désactivé':'Actif';
+    const displayName=String(u.display_name||u.full_name||u.name||email.split('@')[0]||'Utilisateur');
+    const id=esc(u.id);
+    return `<div class="item sbi-user-item" style="cursor:default">
+      <div class="item-main sbi-user-main">
+        <div class="item-title sbi-user-email" title="${esc(email)}">${esc(email)}</div>
+        <div class="field sbi-user-name-field"><label for="sbiDisplayName-${id}">Nom affiché</label><input id="sbiDisplayName-${id}" type="text" maxlength="80" value="${esc(displayName)}" autocomplete="off"></div>
+        <div class="meta sbi-user-meta"><span><strong>Statut :</strong> ${esc(status)}</span>
+          <label class="sbi-role-control"><strong>Rôle :</strong><select id="sbiRole-${id}"><option value="user" ${role==='user'?'selected':''}>User</option><option value="admin" ${role==='admin'?'selected':''}>Admin</option></select>
+          <button class="btn light" type="button" data-sbi-action="role" data-user-id="${id}">Enregistrer le rôle</button></label>
+        </div>
+      </div>
+      <span class="badge ${u.disabled?'red':''} sbi-user-badge">${u.disabled?'Inactif':'Actif'}</span>
+      <div class="user-actions sbi-user-actions">
+        <button class="btn light" type="button" data-sbi-action="name" data-user-id="${id}">Enregistrer le nom</button>
+        <button class="btn light" type="button" data-sbi-action="toggle" data-user-id="${id}" data-disabled="${!u.disabled}">${u.disabled?'Réactiver':'Désactiver'}</button>
+        <button class="btn danger" type="button" data-sbi-action="delete" data-user-id="${id}">Supprimer</button>
+      </div>
+    </div>`;
+  }).join(''):'<div class="empty">Aucun utilisateur.</div>';
+  if(!list.dataset.sbiActionsBound){
+    list.dataset.sbiActionsBound='1';
+    list.addEventListener('click',event=>{
+      const button=event.target.closest('[data-sbi-action]');
+      if(!button||!list.contains(button))return;
+      const id=button.dataset.userId;
+      if(button.dataset.sbiAction==='name')saveSbiUserDisplayName(id);
+      else if(button.dataset.sbiAction==='role')saveSbiUserRole(id);
+      else if(button.dataset.sbiAction==='toggle')toggleSbiUser(id,button.dataset.disabled==='true');
+      else if(button.dataset.sbiAction==='delete')deleteSbiUser(id);
+    });
+  }
+}
 async function loadSbiUsers(){if(!requireAdmin())return;try{const {data,error}=await supabaseClient.rpc('admin_list_sbi_users');if(error)throw error;let users=data||[];let nameFeatureReady=true;try{const namesResult=await supabaseClient.rpc('admin_list_sbi_user_display_names');if(namesResult.error)throw namesResult.error;const namesById=new Map((namesResult.data||[]).map(item=>[String(item.user_id),item.display_name]));users=users.map(user=>({...user,display_name:namesById.get(String(user.id))||user.display_name||user.full_name||user.name||''}));}catch(nameError){nameFeatureReady=false;console.warn('Fonction de gestion des noms non installée. Exécutez SUPABASE_DISPLAY_NAME_MANAGEMENT.sql dans Supabase.',nameError)}renderSbiUsers(users);$('#userAdminMsg').textContent=users.length+' utilisateur(s).'+(nameFeatureReady?'':' Pour activer l’édition des noms, exécutez SUPABASE_DISPLAY_NAME_MANAGEMENT.sql dans Supabase → SQL Editor.')}catch(e){$('#userAdminMsg').textContent='Erreur : '+friendlySupabaseError(e)}}
 async function saveSbiUserDisplayName(userId){if(!requireAdmin())return;const input=document.getElementById('sbiDisplayName-'+userId);const msg=$('#userAdminMsg');const displayName=String(input?.value||'').trim();if(!displayName||displayName.length>80){if(msg)msg.textContent='Saisissez un nom entre 1 et 80 caractères.';return}if(msg)msg.textContent='Enregistrement du nom...';try{const {error}=await supabaseClient.rpc('admin_set_sbi_user_display_name',{p_user_id:userId,p_display_name:displayName});if(error)throw error;if(msg)msg.textContent='Nom affiché mis à jour.';await loadSbiUsers()}catch(e){if(msg)msg.textContent='Modification impossible : '+friendlySupabaseError(e)+'. Vérifiez que SUPABASE_DISPLAY_NAME_MANAGEMENT.sql a été exécuté dans Supabase → SQL Editor.'}}
 async function saveSbiUserRole(userId){if(!requireAdmin())return;const select=document.getElementById('sbiRole-'+userId);const msg=$('#userAdminMsg');const role=String(select?.value||'');if(!['user','admin'].includes(role)){if(msg)msg.textContent='Sélectionnez un rôle valide.';return}if(msg)msg.textContent='Enregistrement du rôle...';try{const {error}=await supabaseClient.rpc('admin_set_sbi_user_role',{p_user_id:userId,p_role:role});if(error)throw error;if(msg)msg.textContent='Rôle mis à jour.';await loadSbiUsers()}catch(e){if(msg)msg.textContent='Modification du rôle impossible : '+friendlySupabaseError(e)}}

@@ -4234,3 +4234,10 @@ body.professional-dashboard .dash-logo img{
  .sbi-role-control .btn{flex:1}
  .sbi-user-actions{grid-template-columns:1fr}
 }
+
+/* User-management controls must remain interactive inside clickable .item cards. */
+.sbi-user-item .sbi-user-main{pointer-events:auto!important;position:relative;z-index:4}
+.sbi-user-item .sbi-user-main input,
+.sbi-user-item .sbi-user-main select,
+.sbi-user-item .sbi-user-main button{pointer-events:auto!important}
+.sbi-user-item .sbi-user-actions{position:relative;z-index:4;pointer-events:auto}

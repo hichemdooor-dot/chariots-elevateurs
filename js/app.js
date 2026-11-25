@@ -3031,7 +3031,7 @@ function setupLiveDuplicateGuard(old){
 }
 function setupLastUsedConfiguration(old){
   const form=document.getElementById('chariotForm');
-  if(!form||old)return;
+  if(!form||old||new URLSearchParams(location.search).has('fresh'))return;
   const keys=['engine','capacity','lifting_height','fork_dimension','mast_type','tire_type','color'];
   let saved={};
   try{saved=JSON.parse(localStorage.getItem('sbi:lastChariotConfig')||'{}')||{}}catch(e){saved={}};
@@ -3051,6 +3051,32 @@ function updateSaveButtonState(){
  const model=String(document.querySelector('[name="engine"]')?.value||'').trim().toLocaleUpperCase('fr'),special=isSbiHandlingEquipment(model),trans=model==='TRANSPALETTE';
  const required=['engine','capacity'];if(!special)required.push('chassis','color','fork_dimension','tire_type');if(special&&!trans)required.push('lifting_height');
  const ok=required.every(k=>String(document.querySelector(`[name="${k}"]`)?.value||'').trim());$('#saveBtn')?.classList.toggle('save-ready',ok);
+}
+function showChariotSavedChoice(qrId){
+  const overlay=document.createElement('div');
+  overlay.id='chariotSavedChoice';
+  overlay.innerHTML=`
+    <style>
+      #chariotSavedChoice{position:fixed;inset:0;z-index:10060;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(15,23,42,.58);backdrop-filter:blur(4px)}
+      #chariotSavedChoice .saved-choice-card{width:min(100%,430px);padding:24px;background:var(--card-bg,#fff);color:var(--text,#172033);border:1px solid rgba(148,163,184,.28);border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.25);font-family:inherit}
+      #chariotSavedChoice h2{margin:0;font-size:20px}
+      #chariotSavedChoice p{margin:9px 0 0;color:var(--muted,#64748b);line-height:1.5}
+      #chariotSavedChoice .saved-choice-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:22px}
+      #chariotSavedChoice .saved-choice-actions .btn{min-height:42px}
+      @media(max-width:480px){#chariotSavedChoice .saved-choice-actions{flex-direction:column-reverse}#chariotSavedChoice .saved-choice-actions .btn{width:100%;justify-content:center}}
+    </style>
+    <section class="saved-choice-card" role="dialog" aria-modal="true" aria-labelledby="chariotSavedChoiceTitle">
+      <h2 id="chariotSavedChoiceTitle">Chariot enregistré</h2>
+      <p>Que souhaitez-vous faire maintenant&nbsp;?</p>
+      <div class="saved-choice-actions">
+        <button type="button" class="btn light" data-choice="done">Non</button>
+        <button type="button" class="btn" data-choice="another">Créer un autre chariot</button>
+      </div>
+    </section>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('[data-choice="done"]').addEventListener('click',()=>{location.href='chariot.html?id='+encodeURIComponent(qrId)});
+  overlay.querySelector('[data-choice="another"]').addEventListener('click',()=>{location.href='nouveau-chariot.html?fresh=1'});
+  overlay.querySelector('[data-choice="another"]').focus();
 }
 async function saveChariot(){
   if(!requireValidLicense()||!requireAdmin())return;
@@ -3114,7 +3140,8 @@ async function saveChariot(){
     const cfg={};['engine','capacity','lifting_height','fork_dimension','mast_type','tire_type','color'].forEach(k=>{if(String(p[k]||'').trim())cfg[k]=p[k]});
     localStorage.setItem('sbi:lastChariotConfig',JSON.stringify(cfg));
   }catch(e){}
-  location.href='chariot.html?id='+encodeURIComponent(p.qr_id)
+  if(oldId){location.href='chariot.html?id='+encodeURIComponent(p.qr_id);return}
+  showChariotSavedChoice(p.qr_id)
 }
 async function markDelivered(qrId){
   const ok=await performWorkflowAction(qrId,'deliver');

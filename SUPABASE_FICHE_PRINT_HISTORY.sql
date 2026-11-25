@@ -67,3 +67,8 @@ drop trigger if exists sbi_stamp_fiche_print_identity on public.fiche_print_hist
 create trigger sbi_stamp_fiche_print_identity
 before insert on public.fiche_print_history
 for each row execute function public.sbi_stamp_fiche_print_identity();
+
+-- Explicitly expose only the operations used by the app. RLS still limits rows.
+revoke all on table public.fiche_print_history from anon;
+grant select, insert on table public.fiche_print_history to authenticated;
+grant usage, select on sequence public.fiche_print_history_id_seq to authenticated;

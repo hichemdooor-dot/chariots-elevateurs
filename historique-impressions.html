@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SBI — Historique des impressions</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#eef1f5;color:#172033;font-family:Arial,sans-serif}.wrap{max-width:1400px;margin:0 auto;padding:18px}.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}.top h1{font-size:22px;color:#15345b;margin:0}.actions{display:flex;gap:8px;flex-wrap:wrap}.btn{border:0;border-radius:8px;background:#15345b;color:white;padding:10px 14px;font-weight:700;text-decoration:none;cursor:pointer}.btn.light{background:#fff;color:#15345b;border:1px solid #ccd5df}.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px}.stat,.panel{background:#fff;border:1px solid #dce2e9;border-radius:12px;padding:15px}.stat small{display:block;color:#667085;font-weight:700}.stat strong{display:block;font-size:26px;color:#15345b;margin-top:6px}.filters{display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:9px;margin-bottom:12px}.filters input,.filters select{width:100%;min-width:0;border:1px solid #cbd5df;border-radius:8px;padding:11px;font-size:14px;background:#fff}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:850px}th,td{text-align:left;padding:11px 10px;border-bottom:1px solid #e6eaf0;font-size:13px}th{background:#f5f7fa;color:#344054;position:sticky;top:0}td{color:#344054}.muted{color:#667085}.empty{text-align:center;padding:28px;color:#667085}.count{font-weight:800;color:#15345b}.notice{padding:12px;border-radius:8px;background:#fff7e6;color:#8a5700;margin-bottom:12px;display:none}.print-title{display:none}@media(max-width:700px){.wrap{padding:12px}.stats{grid-template-columns:1fr 1fr}.filters{grid-template-columns:1fr 1fr}.filters input:first-child{grid-column:1/-1}.top h1{font-size:19px}}@media print{body{background:#fff}.wrap{max-width:none;padding:0}.top .actions,.filters{display:none!important}.top h1{font-size:18px}.stat,.panel{border:0;padding:5px}.stats{margin:0 0 8px}.stat strong{font-size:16px}th,td{font-size:9px;padding:5px}.print-title{display:block}table{min-width:0}}
+</style>
+</head>
+<body>
+<div class="wrap">
+ <header class="top"><h1>HISTORIQUE DES IMPRESSIONS</h1><div class="actions"><a class="btn light" href="chariots-prevus-livraison.html">← Retour</a><button class="btn light" id="csvBtn">Exporter Excel (CSV)</button><button class="btn" id="pdfBtn">Exporter PDF</button></div></header>
+ <div id="notice" class="notice"></div>
+ <section class="stats"><div class="stat"><small>IMPRESSIONS AFFICHÉES</small><strong id="totalCount">0</strong></div><div class="stat"><small>UTILISATEURS</small><strong id="userCount">0</strong></div><div class="stat"><small>CHARIOTS DISTINCTS</small><strong id="chariotCount">0</strong></div></section>
+ <section class="panel">
+  <div class="filters"><input id="search" placeholder="Rechercher châssis, client, utilisateur, QR…"><input id="fromDate" type="date" aria-label="Date début"><input id="toDate" type="date" aria-label="Date fin"><select id="userFilter"><option value="">Tous les utilisateurs</option></select></div>
+  <div class="table-wrap"><table><thead><tr><th>DATE / HEURE</th><th>UTILISATEUR</th><th>N° CHÂSSIS</th><th>CLIENT</th><th>DESTINATION</th><th>QR ID</th><th>NB IMPRESSIONS</th></tr></thead><tbody id="rows"><tr><td colspan="7" class="empty">Chargement…</td></tr></tbody></table></div>
+ </section>
+ <p class="muted print-title">SBI — Journal de traçabilité des fiches de livraison</p>
+</div>
+<script src="maintenance-config.js?v=7"></script><script src="js/app.js?v=20261117-transpalette-no-height-v1"></script>
+<script>
+let allLogs=[],visibleLogs=[];
+const $id=id=>document.getElementById(id);
+const safe=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function dateLabel(value){const d=new Date(value);return Number.isNaN(d.getTime())?String(value||'—'):d.toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'medium'});}
+function isAdminView(){return typeof isAdmin==='function'&&isAdmin();}
+async function loadPrintHistory(){
+ const {data,error}=await supabaseClient.from('fiche_print_history').select('*').order('created_at',{ascending:false}).limit(5000);
+ if(error)throw error;
+ allLogs=data||[];
+ const users=[...new Map(allLogs.map(x=>[x.user_id,{id:x.user_id,name:x.user_name||x.user_email||x.user_id}])).values()].sort((a,b)=>a.name.localeCompare(b.name,'fr'));
+ const select=$id('userFilter');
+ users.forEach(u=>{const o=document.createElement('option');o.value=u.id;o.textContent=u.name;select.appendChild(o)});
+ applyFilters();
+}
+function applyFilters(){
+ const q=$id('search').value.trim().toLocaleLowerCase('fr'),from=$id('fromDate').value,to=$id('toDate').value,user=$id('userFilter').value;
+ visibleLogs=allLogs.filter(x=>{
+  const hay=[x.user_name,x.user_email,x.chassis_number,x.client_name,x.destination,x.qr_id].join(' ').toLocaleLowerCase('fr');
+  const day=String(x.created_at||'').slice(0,10);
+  return (!q||hay.includes(q))&&(!from||day>=from)&&(!to||day<=to)&&(!user||x.user_id===user);
+ });
+ const uniqueUsers=new Set(visibleLogs.map(x=>x.user_id)).size;
+ const uniqueChariots=new Set(visibleLogs.map(x=>x.qr_id||x.chassis_number||x.id)).size;
+ $id('totalCount').textContent=visibleLogs.length;
+ $id('userCount').textContent=uniqueUsers;
+ $id('chariotCount').textContent=uniqueChariots;
+ const perChariot=new Map();
+ visibleLogs.forEach(x=>{const key=x.qr_id||x.chassis_number||String(x.id);perChariot.set(key,(perChariot.get(key)||0)+1)});
+ const tbody=$id('rows');
+ if(!visibleLogs.length){tbody.innerHTML='<tr><td colspan="7" class="empty">Aucune impression trouvée.</td></tr>';return}
+ tbody.innerHTML=visibleLogs.map(x=>{
+  const key=x.qr_id||x.chassis_number||String(x.id);
+  return '<tr><td>'+safe(dateLabel(x.created_at))+'</td><td>'+safe(x.user_name||x.user_email||'Utilisateur')+'<br><span class="muted">'+safe(x.user_email||'')+'</span></td><td><strong>'+safe(x.chassis_number||'—')+'</strong></td><td>'+safe(x.client_name||'—')+'</td><td>'+safe(x.destination||'—')+'</td><td>'+safe(x.qr_id||'—')+'</td><td class="count">'+perChariot.get(key)+'</td></tr>';
+ }).join('');
+}
+function exportCsv(){
+ const headers=['Date / heure','Utilisateur','Email','N° châssis','Client','Destination','QR ID','Type'];
+ const rows=visibleLogs.map(x=>[dateLabel(x.created_at),x.user_name||'',x.user_email||'',x.chassis_number||'',x.client_name||'',x.destination||'',x.qr_id||'',x.print_type||'']);
+ const csv='\uFEFF'+[headers,...rows].map(row=>row.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\r\n');
+ const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+ a.href=url;a.download='SBI-historique-impressions-'+new Date().toISOString().slice(0,10)+'.csv';a.click();URL.revokeObjectURL(url);
+}
+['search','fromDate','toDate','userFilter'].forEach(id=>$id(id).addEventListener('input',applyFilters));
+$id('csvBtn').addEventListener('click',exportCsv);
+$id('pdfBtn').addEventListener('click',()=>window.print());
+initPage(async()=>{
+ if(!isAdminView())$id('notice').style.display='none';
+ try{await loadPrintHistory()}catch(e){console.error(e);$id('notice').textContent='Impossible de charger l’historique. Vérifiez l’installation SQL et les autorisations Supabase.';$id('notice').style.display='block';$id('rows').innerHTML='<tr><td colspan="7" class="empty">Erreur de chargement.</td></tr>'}
+});
+</script>
+</body></html>

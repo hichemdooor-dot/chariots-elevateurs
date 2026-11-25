@@ -68,7 +68,13 @@ $id('csvBtn').addEventListener('click',exportCsv);
 $id('pdfBtn').addEventListener('click',()=>window.print());
 initPage(async()=>{
  const requestedQr=new URLSearchParams(location.search).get('qr');if(requestedQr)$id('search').value=requestedQr;
- if(!isAdminView())$id('notice').style.display='none';
+ if(!isAdminView()){
+  $id('notice').textContent='ACCÈS RÉSERVÉ AUX ADMINISTRATEURS SBI.';
+  $id('notice').style.display='block';
+  $id('rows').innerHTML='<tr><td colspan="7" class="empty">Accès non autorisé.</td></tr>';
+  ['csvBtn','pdfBtn'].forEach(id=>{$id(id).disabled=true;$id(id).style.opacity='.45'});
+  return;
+ }
  try{await loadPrintHistory()}catch(e){console.error(e);$id('notice').textContent='Impossible de charger l’historique. Vérifiez l’installation SQL et les autorisations Supabase.';$id('notice').style.display='block';$id('rows').innerHTML='<tr><td colspan="7" class="empty">Erreur de chargement.</td></tr>'}
 });
 </script>

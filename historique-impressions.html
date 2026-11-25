@@ -67,6 +67,7 @@ function exportCsv(){
 $id('csvBtn').addEventListener('click',exportCsv);
 $id('pdfBtn').addEventListener('click',()=>window.print());
 initPage(async()=>{
+ const requestedQr=new URLSearchParams(location.search).get('qr');if(requestedQr)$id('search').value=requestedQr;
  if(!isAdminView())$id('notice').style.display='none';
  try{await loadPrintHistory()}catch(e){console.error(e);$id('notice').textContent='Impossible de charger l’historique. Vérifiez l’installation SQL et les autorisations Supabase.';$id('notice').style.display='block';$id('rows').innerHTML='<tr><td colspan="7" class="empty">Erreur de chargement.</td></tr>'}
 });

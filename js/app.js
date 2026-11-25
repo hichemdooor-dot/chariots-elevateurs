@@ -3076,7 +3076,10 @@ function showChariotSavedChoice(qrId){
   document.body.appendChild(overlay);
   overlay.querySelector('[data-choice="done"]').addEventListener('click',()=>{location.href='chariot.html?id='+encodeURIComponent(qrId)});
   overlay.querySelector('[data-choice="another"]').addEventListener('click',()=>{location.href='nouveau-chariot.html?fresh=1'});
-  overlay.querySelector('[data-choice="another"]').focus();
+  // Keep focus on the dialog itself; focusing the primary action can let the
+  // submit key that opened this dialog activate it after the save completes.
+  overlay.querySelector('[role="dialog"]').setAttribute('tabindex','-1');
+  overlay.querySelector('[role="dialog"]').focus();
 }
 async function saveChariot(){
   if(!requireValidLicense()||!requireAdmin())return;

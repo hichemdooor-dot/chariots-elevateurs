@@ -34,7 +34,7 @@ function menuHTML(){
       link('planning-livraisons.html','Planning des livraisons','<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M7 2v4M17 2v4M3 9h18"/><path d="M8 13h2M12 13h2M16 13h0M8 17h2M12 17h2"/>')+
 
             link('livres.html','Chariots livrés','<path d="M4 5h12v14H4z"/><path d="M8 8h5M8 12h5M8 16h3"/><path d="M16 8h4v11h-4"/>'))}
-    link('agenda-planning.html','Agenda & Planning','<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M7 2v4M17 2v4M3 9h18M8 13h3M8 17h5"/>')
+    ${link('agenda-planning.html','Agenda & Planning','<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M7 2v4M17 2v4M3 9h18M8 13h3M8 17h5"/>')}
     ${group('sav','SAV & retours',
       link('retours-clients.html','Pannes & retours clients','<path d="M3 12h4l3 8 4-16 3 8h4"/><circle cx="12" cy="12" r="10"/>'))}
     ${group('administration','Administration',

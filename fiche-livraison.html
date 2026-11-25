@@ -93,27 +93,60 @@
     <div id="mastSpec" class="spec"><div id="mastLabel" class="label">TYPE DE MÂT</div><div id="mast" class="value">—</div></div>
   </section>
   </main></div></section>
+<div id="physicalPrintConfirm" hidden role="dialog" aria-modal="true" aria-labelledby="physicalPrintTitle" style="position:fixed;inset:0;z-index:99999;background:rgba(15,23,42,.62);display:flex;align-items:center;justify-content:center;padding:18px">
+ <div style="width:min(100%,430px);background:#fff;border-radius:14px;padding:22px;box-shadow:0 18px 60px rgba(0,0,0,.28);font-family:Arial,sans-serif;color:#172033">
+  <h2 id="physicalPrintTitle" style="margin:0 0 10px;font-size:20px;color:#15345b">CONFIRMATION D’IMPRESSION</h2>
+  <p style="margin:0 0 18px;line-height:1.5">La fiche de livraison a-t-elle été réellement imprimée sur papier ?</p>
+  <div style="display:flex;gap:10px;flex-wrap:wrap">
+   <button type="button" id="physicalPrintYes" style="flex:1;min-height:46px;border:0;border-radius:8px;background:#16803c;color:#fff;font-weight:700;font-size:15px">OUI, IMPRIMÉE</button>
+   <button type="button" id="physicalPrintNo" style="flex:1;min-height:46px;border:1px solid #cbd5df;border-radius:8px;background:#f8fafc;color:#344054;font-weight:700;font-size:15px">NON</button>
+  </div>
+ </div>
+</div>
+<div id="physicalPrintStatus" hidden style="position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:99998;background:#166534;color:#fff;padding:12px 18px;border-radius:9px;font:700 14px Arial,sans-serif;max-width:90%;text-align:center"></div>
 <script src="maintenance-config.js?v=7"></script><script src="js/app.js?v=20261117-transpalette-no-height-v1"></script>
 <script>
 const CLIENT_NAMES_STORAGE_KEY='sbi-fiche-client-names-v1';
 let currentFicheAuditContext={qr_id:'',chassis_number:'',client_name:'',destination:''};
+let pendingPhysicalPrint=null,printDialogOpen=false;
 async function printDeliveryFiche(){
  const user=typeof currentUser!=='undefined'?currentUser:null;
  if(!user?.id){alert('Connexion requise : impression non lancée afin de conserver la traçabilité.');return;}
+ if(printDialogOpen||pendingPhysicalPrint){alert('Une impression est déjà en cours de confirmation.');return;}
  const qr=new URLSearchParams(location.search).get('qr')||currentFicheAuditContext.qr_id||null;
  const chassis=String(currentFicheAuditContext.chassis_number||'').trim();
  const client=String(document.getElementById('mClient')?.value||currentFicheAuditContext.client_name||'').trim();
  const destination=String(document.getElementById('mDestinationCustom')?.value||document.getElementById('mDestination')?.value||currentFicheAuditContext.destination||'').trim();
  const meta=user.user_metadata||{};
  const userName=String((typeof getUserDisplayName==='function'?getUserDisplayName():'')||meta.full_name||meta.name||meta.display_name||user.email||'Utilisateur').trim();
- const payload={user_id:user.id,user_email:user.email||null,user_name:userName,qr_id:qr,chassis_number:chassis||null,client_name:client||null,destination:destination||null,print_type:'fiche_livraison'};
+ pendingPhysicalPrint={user_id:user.id,user_email:user.email||null,user_name:userName,qr_id:qr,chassis_number:chassis||null,client_name:client||null,destination:destination||null,print_type:'fiche_livraison'};
+ printDialogOpen=true;
+ try{window.print();}
+ catch(e){console.error('Ouverture impression impossible',e);printDialogOpen=false;pendingPhysicalPrint=null;alert('Impossible d’ouvrir la fenêtre d’impression.');}
+}
+function showPhysicalPrintConfirmation(){
+ printDialogOpen=false;
+ if(!pendingPhysicalPrint)return;
+ const modal=document.getElementById('physicalPrintConfirm');
+ if(modal){modal.hidden=false;document.getElementById('physicalPrintYes')?.focus();}
+}
+async function confirmPhysicalPrint(didPrint){
+ const payload=pendingPhysicalPrint;
+ if(!payload)return;
+ pendingPhysicalPrint=null;
+ const modal=document.getElementById('physicalPrintConfirm');if(modal)modal.hidden=true;
+ if(!didPrint)return;
  try{
   const {error}=await supabaseClient.from('fiche_print_history').insert(payload);
   if(error)throw error;
-  window.print();
- }catch(e){console.error('Traçabilité impression impossible',e);alert('Impression annulée : impossible d’enregistrer cette impression dans l’historique. Vérifiez que la table fiche_print_history a été créée et que vous êtes connecté.');}
+  const status=document.getElementById('physicalPrintStatus');
+  if(status){status.textContent='Impression confirmée et enregistrée dans l’historique.';status.hidden=false;setTimeout(()=>{status.hidden=true;},5000);}
+ }catch(e){console.error('Enregistrement confirmation impression impossible',e);alert('La confirmation n’a pas pu être enregistrée. Vérifiez votre connexion et les autorisations Supabase.');}
 }
+document.getElementById('physicalPrintYes')?.addEventListener('click',()=>confirmPhysicalPrint(true));
+document.getElementById('physicalPrintNo')?.addEventListener('click',()=>confirmPhysicalPrint(false));
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&String(e.key).toLowerCase()==='p'){e.preventDefault();printDeliveryFiche();}});
+window.addEventListener('afterprint',showPhysicalPrintConfirmation);
 function getSavedClientNames(){
  try{const value=JSON.parse(localStorage.getItem(CLIENT_NAMES_STORAGE_KEY)||'[]');return Array.isArray(value)?value.filter(x=>typeof x==='string'&&x.trim()):[]}catch(e){return []}
 }

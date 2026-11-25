@@ -246,7 +246,7 @@ async function loadDeliveryFiche(){
   const c=CHARIOTS.find(x=>String(x.qr_id)===String(qr));
   if(!c){document.getElementById('sheet').innerHTML='<div class="error">Chariot introuvable. Retournez à la liste et ouvrez la fiche depuis le bon chariot.</div>';return}
   const plan=typeof getDeliveryPlan==='function'?getDeliveryPlan(c.qr_id):null;
-  currentFicheAuditContext={qr_id:String(c.qr_id||qr),chassis_number:String(c.chassis_number||c.chassis||c.serial_number||''),client_name:String(c.client||''),destination:String(plan?.destination||c.destination||c.delivery_destination||'')};
+  currentFicheAuditContext={qr_id:String(c.qr_id||qr),chassis_number:String(c.chassis||c.chassis_number||c.numero_chassis||c.serial_number||''),client_name:String(c.client||''),destination:String(plan?.destination||c.destination||c.delivery_destination||'')};
   const editor=document.getElementById('manualPanel');
   editor.classList.add('open');
   const editorTitle=editor.querySelector('h2');

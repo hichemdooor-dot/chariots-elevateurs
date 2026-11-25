@@ -120,7 +120,7 @@ async function printDeliveryFiche(){
  const destination=String(document.getElementById('mDestinationCustom')?.value||document.getElementById('mDestination')?.value||currentFicheAuditContext.destination||'').trim();
  const meta=user.user_metadata||{};
  const userName=String((typeof getUserDisplayName==='function'?getUserDisplayName():'')||meta.full_name||meta.name||meta.display_name||user.email||'Utilisateur').trim();
- pendingPhysicalPrint={user_id:user.id,user_email:user.email||null,user_name:userName,qr_id:qr,chassis_number:chassis||null,client_name:client||null,destination:destination||null,print_type:'fiche_livraison'};
+ pendingPhysicalPrint={user_id:user.id,user_email:user.email||null,user_name:userName,qr_id:qr,chassis_number:chassis||null,client_name:client||null,destination:destination||null,print_type:'fiche_livraison',confirmed_physical:true};
  printDialogOpen=true;
  try{window.print();}
  catch(e){console.error('Ouverture impression impossible',e);printDialogOpen=false;pendingPhysicalPrint=null;alert('Impossible d’ouvrir la fenêtre d’impression.');}

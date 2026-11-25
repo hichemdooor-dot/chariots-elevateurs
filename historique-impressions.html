@@ -27,7 +27,7 @@ const safe=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'
 function dateLabel(value){const d=new Date(value);return Number.isNaN(d.getTime())?String(value||'—'):d.toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'medium'});}
 function isAdminView(){return typeof isAdmin==='function'&&isAdmin();}
 async function loadPrintHistory(){
- const {data,error}=await supabaseClient.from('fiche_print_history').select('*').order('created_at',{ascending:false}).limit(5000);
+ const {data,error}=await supabaseClient.from('fiche_print_history').select('*').eq('confirmed_physical',true).order('created_at',{ascending:false}).limit(5000);
  if(error)throw error;
  allLogs=data||[];
  const users=[...new Map(allLogs.map(x=>[x.user_id,{id:x.user_id,name:x.user_name||x.user_email||x.user_id}])).values()].sort((a,b)=>a.name.localeCompare(b.name,'fr'));

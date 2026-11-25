@@ -3069,7 +3069,7 @@ function showChariotSavedChoice(qrId){
       <h2 id="chariotSavedChoiceTitle">Chariot enregistré</h2>
       <p>Que souhaitez-vous faire maintenant&nbsp;?</p>
       <div class="saved-choice-actions">
-        <button type="button" class="btn light" data-choice="done">Non</button>
+        <button type="button" class="btn light" data-choice="done">Enregistrer et fermer</button>
         <button type="button" class="btn" data-choice="another">Créer un autre chariot</button>
       </div>
     </section>`;

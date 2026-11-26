@@ -3046,9 +3046,22 @@ function setupSmartClientSuggestions(old){
   const clientField=document.querySelector('[name="client"]');
   const list=document.getElementById('clientSuggestions');
   if(!clientField||!list)return;
-  const clients=[...new Set((CHARIOTS||[]).map(c=>String(c?.client||'').trim().toUpperCase()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fr'));
+  const unique=new Map();
+  const addClient=value=>{
+    const name=String(value||'').trim().replace(/\\s+/g,' ').toLocaleUpperCase('fr');
+    const key=name.normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase();
+    if(name&&key&&!unique.has(key))unique.set(key,name);
+  };
+  // Clients already used in chariot records.
+  (Array.isArray(CHARIOTS)?CHARIOTS:[]).forEach(c=>addClient(c?.client));
+  // Names saved by the manual Fiche de livraison page on this device.
+  try{
+    const saved=JSON.parse(localStorage.getItem('sbi-fiche-client-names-v1')||'[]');
+    if(Array.isArray(saved))saved.forEach(addClient);
+  }catch(e){console.warn('Lecture des noms clients de la fiche de livraison impossible.',e)}
+  const clients=[...unique.values()].sort((a,b)=>a.localeCompare(b,'fr'));
   list.innerHTML=clients.map(v=>`<option value="${esc(v)}"></option>`).join('');
-  clientField.title='Clients existants proposés automatiquement. La saisie reste libre.';
+  clientField.title='Suggestions issues des chariots existants et des fiches de livraison enregistrées sur cet appareil. La saisie reste libre.';
 }
 function showDuplicatePopup(duplicate, fields){
   const existing=document.getElementById('sbiDuplicateModal');

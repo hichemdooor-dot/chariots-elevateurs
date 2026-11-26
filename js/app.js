@@ -699,6 +699,80 @@ async function saveChariotCommercial(qrId,commercial,reason='Affectation automat
   if(error){console.warn('Commercial responsable non enregistré',error);return false}
   return true;
 }
+
+function sbiAskClientWithSuggestions(currentValue=''){
+  return new Promise(resolve=>{
+    document.getElementById('sbiClientSuggestOverlay')?.remove();
+    const overlay=document.createElement('div');
+    overlay.id='sbiClientSuggestOverlay';
+    overlay.innerHTML=`
+      <style>
+        #sbiClientSuggestOverlay{position:fixed;inset:0;z-index:10080;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(15,23,42,.58)}
+        #sbiClientSuggestOverlay .scs-card{width:min(100%,440px);max-height:min(82vh,620px);overflow:visible;background:var(--card-bg,#fff);color:var(--text,#172033);border-radius:20px;box-shadow:0 22px 65px rgba(0,0,0,.28);padding:22px}
+        #sbiClientSuggestOverlay .scs-title{font-size:19px;font-weight:800;margin:0 0 7px}
+        #sbiClientSuggestOverlay .scs-hint{font-size:13px;color:var(--muted,#64748b);margin:0 0 14px}
+        #sbiClientSuggestOverlay .scs-input{box-sizing:border-box;width:100%;min-height:48px;padding:12px 14px;border:1px solid #cbd5e1;border-radius:11px;background:var(--input-bg,#fff);color:inherit;font:inherit;font-size:16px;text-transform:uppercase;outline:none}
+        #sbiClientSuggestOverlay .scs-input:focus{border-color:#2585c7;box-shadow:0 0 0 3px rgba(37,133,199,.14)}
+        #sbiClientSuggestOverlay .scs-results{margin-top:8px;max-height:220px;overflow:auto;border:1px solid #dbe3eb;border-radius:11px;background:var(--card-bg,#fff)}
+        #sbiClientSuggestOverlay .scs-results[hidden]{display:none}
+        #sbiClientSuggestOverlay .scs-option{display:block;width:100%;padding:12px 13px;text-align:left;border:0;border-bottom:1px solid #edf1f5;background:transparent;color:inherit;font:inherit;cursor:pointer}
+        #sbiClientSuggestOverlay .scs-option:last-child{border-bottom:0}
+        #sbiClientSuggestOverlay .scs-option:active,#sbiClientSuggestOverlay .scs-option:focus{background:rgba(37,133,199,.10);outline:0}
+        #sbiClientSuggestOverlay .scs-option small{display:block;margin-top:3px;color:var(--muted,#64748b);font-size:12px}
+        #sbiClientSuggestOverlay .scs-empty{padding:12px;color:var(--muted,#64748b);font-size:13px}
+        #sbiClientSuggestOverlay .scs-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+        #sbiClientSuggestOverlay .scs-actions button{min-width:92px;padding:11px 15px;border:0;border-radius:10px;font:inherit;font-weight:700;cursor:pointer}
+        #sbiClientSuggestOverlay .scs-cancel{background:#eef2f6;color:#334155}
+        #sbiClientSuggestOverlay .scs-ok{background:#0875bd;color:#fff}
+      </style>
+      <section class="scs-card" role="dialog" aria-modal="true" aria-labelledby="scsTitle">
+        <h2 class="scs-title" id="scsTitle">Nom du client</h2>
+        <p class="scs-hint">Commencez à saisir pour afficher les clients existants, ou saisissez un nouveau nom.</p>
+        <input class="scs-input" id="scsInput" type="text" maxlength="180" autocomplete="off" autocapitalize="characters" placeholder="Nom du client">
+        <div class="scs-results" id="scsResults" role="listbox" aria-label="Clients existants" hidden></div>
+        <div class="scs-actions"><button type="button" class="scs-cancel" id="scsCancel">Annuler</button><button type="button" class="scs-ok" id="scsOk">OK</button></div>
+      </section>`;
+    document.body.appendChild(overlay);
+    const input=overlay.querySelector('#scsInput'),results=overlay.querySelector('#scsResults');
+    input.value=String(currentValue||'');
+    const normalize=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+    const escape=value=>String(value||'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+    const finish=value=>{overlay.remove();resolve(value)};
+    const render=()=>{
+      const q=normalize(input.value);
+      if(!q){results.hidden=true;results.innerHTML='';return}
+      const unique=new Map();
+      (Array.isArray(CHARIOTS)?CHARIOTS:[]).forEach(ch=>{
+        const name=String(ch?.client||'').trim(),key=normalize(name);
+        if(key&&key.includes(q)&&!unique.has(key))unique.set(key,name);
+      });
+      const matches=[...unique.values()].sort((a,b)=>{
+        const aa=normalize(a),bb=normalize(b);
+        return Number(!aa.startsWith(q))-Number(!bb.startsWith(q))||aa.localeCompare(bb,'fr');
+      }).slice(0,8);
+      results.innerHTML=matches.length?matches.map(name=>'<button type="button" class="scs-option" role="option" data-client="'+escape(name)+'"><strong>'+escape(name)+'</strong><small>Client existant</small></button>').join(''):'<div class="scs-empty">Aucun client correspondant. Vous pouvez saisir un nouveau nom.</div>';
+      results.hidden=false;
+    };
+    input.addEventListener('input',render);
+    results.addEventListener('click',event=>{
+      const option=event.target.closest('[data-client]');
+      if(!option)return;
+      input.value=option.dataset.client||'';
+      results.hidden=true;
+      input.focus();
+    });
+    overlay.querySelector('#scsCancel').addEventListener('click',()=>finish(null));
+    overlay.querySelector('#scsOk').addEventListener('click',()=>finish(input.value.trim()));
+    input.addEventListener('keydown',event=>{
+      if(event.key==='Enter'){event.preventDefault();finish(input.value.trim())}
+      if(event.key==='Escape'){event.preventDefault();finish(null)}
+    });
+    overlay.addEventListener('click',event=>{if(event.target===overlay)finish(null)});
+    input.focus();
+    if(input.value.trim())render();
+  });
+}
+
 async function assignClientToChariot(qrId){
   if(!requireValidLicense()||!currentUser)return;
   const commercial=getSbiCommercialName();
@@ -706,7 +780,7 @@ async function assignClientToChariot(qrId){
   const c=CHARIOTS.find(x=>String(x.qr_id)===String(qrId));
   if(!c){alert('Chariot introuvable.');return}
   if(isDelivered(c)){alert('Un chariot déjà livré ne peut pas être affecté à un nouveau client depuis cette action.');return}
-  const client=String(prompt('Nom du client :',String(c.client||''))||'').trim().toUpperCase();
+  const client=String(await sbiAskClientWithSuggestions(c.client||'')||'').trim().toUpperCase();
   if(!client)return;
   if(!confirm('Affecter le chariot '+chariotReference(c)+' au client '+client+' ?'))return;
   const special=isSbiHandlingEquipment(c.engine);

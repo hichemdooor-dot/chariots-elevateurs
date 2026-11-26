@@ -693,7 +693,7 @@ async function getChariotCommercial(qrId){
   try{return {name:String(JSON.parse(row.travaux||'{}').commercial||''),row}}catch(_){return {name:'',row}}
 }
 async function saveChariotCommercial(qrId,commercial,reason='Affectation automatique'){
-  const name=String(commercial||'').trim().replace(/\\s+/g,' ').toUpperCase();
+  const name=String(commercial||'').trim().replace(/\s+/g,' ').toUpperCase();
   if(!qrId||!name)return false;
   const {error}=await supabaseClient.from('maintenance').insert({qr_id:qrId,date:new Date().toISOString().slice(0,10),technicien:getUserDisplayName(),type:'Commercial responsable',travaux:JSON.stringify({commercial:name,reason}),created_by:currentUser?.id||null});
   if(error){console.warn('Commercial responsable non enregistré',error);return false}
@@ -3049,7 +3049,7 @@ function setupSmartClientSuggestions(old){
   const unique=new Map();
   const addClient=value=>{
     const name=String(value||'').trim().replace(/\\s+/g,' ').toLocaleUpperCase('fr');
-    const key=name.normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase();
+    const key=name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
     if(name&&key&&!unique.has(key))unique.set(key,name);
   };
   // Clients already used in chariot records.

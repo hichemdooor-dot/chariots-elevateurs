@@ -3047,21 +3047,52 @@ function setupSmartClientSuggestions(old){
   const list=document.getElementById('clientSuggestions');
   if(!clientField||!list)return;
   const unique=new Map();
+  const normalize=value=>String(value||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().trim();
   const addClient=value=>{
     const name=String(value||'').trim().replace(/\\s+/g,' ').toLocaleUpperCase('fr');
-    const key=name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+    const key=normalize(name);
     if(name&&key&&!unique.has(key))unique.set(key,name);
   };
-  // Clients already used in chariot records.
   (Array.isArray(CHARIOTS)?CHARIOTS:[]).forEach(c=>addClient(c?.client));
-  // Names saved by the manual Fiche de livraison page on this device.
   try{
     const saved=JSON.parse(localStorage.getItem('sbi-fiche-client-names-v1')||'[]');
     if(Array.isArray(saved))saved.forEach(addClient);
   }catch(e){console.warn('Lecture des noms clients de la fiche de livraison impossible.',e)}
-  const clients=[...unique.values()].sort((a,b)=>a.localeCompare(b,'fr'));
-  list.innerHTML=clients.map(v=>`<option value="${esc(v)}"></option>`).join('');
-  clientField.title='Suggestions issues des chariots existants et des fiches de livraison enregistrées sur cet appareil. La saisie reste libre.';
+  const clients=[...unique.values()];
+  const escapeHtml=value=>String(value||'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const close=()=>{list.hidden=true;list.innerHTML='';clientField.setAttribute('aria-expanded','false')};
+  const render=()=>{
+    const query=normalize(clientField.value);
+    if(!query){close();return}
+    const matches=clients.filter(name=>normalize(name).includes(query)).sort((x,y)=>{
+      const a=normalize(x),b=normalize(y);
+      return Number(!a.startsWith(query))-Number(!b.startsWith(query))||a.localeCompare(b,'fr');
+    }).slice(0,8);
+    list.innerHTML=matches.length
+      ?matches.map(name=>'<button type="button" class="sbi-client-option" role="option" data-client="'+escapeHtml(name)+'">'+escapeHtml(name)+'</button>').join('')
+      :'<div class="sbi-client-empty">Aucun client correspondant. Vous pouvez saisir un nouveau nom.</div>';
+    list.hidden=false;
+    clientField.setAttribute('aria-expanded','true');
+  };
+  clientField.setAttribute('aria-autocomplete','list');
+  clientField.setAttribute('aria-controls','clientSuggestions');
+  clientField.title='Saisissez quelques lettres pour afficher les clients existants. La saisie reste libre.';
+  clientField.addEventListener('input',render);
+  clientField.addEventListener('focus',()=>{if(clientField.value.trim())render()});
+  list.addEventListener('mousedown',event=>event.preventDefault());
+  list.addEventListener('click',event=>{
+    const option=event.target.closest('[data-client]');
+    if(!option)return;
+    clientField.value=option.dataset.client||'';
+    clientField.dispatchEvent(new Event('input',{bubbles:true}));
+    close();
+    clientField.focus();
+  });
+  clientField.addEventListener('keydown',event=>{if(event.key==='Escape')close()});
+  document.addEventListener('click',event=>{
+    if(!event.target.closest('.sbi-client-picker'))close();
+  });
+  clientField.addEventListener('blur',()=>setTimeout(()=>{if(!list.matches(':hover'))close()},120));
 }
 function showDuplicatePopup(duplicate, fields){
   const existing=document.getElementById('sbiDuplicateModal');

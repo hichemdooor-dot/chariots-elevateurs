@@ -2472,7 +2472,7 @@ function ensureDeliveryModalStyles(){
 let SBI_DELIVERY_DRIVER_NAMES=['AISSA','YOUNES','BILLAL','HAMZA'];
 async function loadSharedDeliveryDriverNames(){
   const configType='Configuration chauffeurs',configQr='SYSTEM',cacheKey='sbi_delivery_drivers_v1';
-  const normalize=values=>{const out=[],seen=new Set();(Array.isArray(values)?values:[]).forEach(value=>{const name=String(value||'').trim().replace(/\\s+/g,' ').toLocaleUpperCase('fr'),key=name.toLocaleLowerCase('fr');if(name&&!seen.has(key)){seen.add(key);out.push(name)}});return out};
+    const name=String(value||'').trim().replace(/\s+/g,' ').toLocaleUpperCase('fr');
   try{
     const {data,error}=await supabaseClient.from('maintenance').select('travaux,created_at').eq('qr_id',configQr).eq('type',configType).order('created_at',{ascending:false}).limit(1);
     if(error)throw error;

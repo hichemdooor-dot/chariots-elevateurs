@@ -3193,12 +3193,29 @@ function showChariotSavedChoice(qrId){
       </div>
     </section>`;
   document.body.appendChild(overlay);
-  overlay.querySelector('[data-choice="done"]').addEventListener('click',()=>{location.href='chariot.html?id='+encodeURIComponent(qrId)});
-  overlay.querySelector('[data-choice="another"]').addEventListener('click',()=>{location.href='nouveau-chariot.html?fresh=1'});
-  // Keep focus on the dialog itself; focusing the primary action can let the
-  // submit key that opened this dialog activate it after the save completes.
-  overlay.querySelector('[role="dialog"]').setAttribute('tabindex','-1');
-  overlay.querySelector('[role="dialog"]').focus();
+  const dialog=overlay.querySelector('[role="dialog]');
+  dialog.setAttribute('tabindex','-1');
+  // Never let a delayed Enter/click event from the form submission activate
+  // one of the choices. A choice is accepted only after a fresh user gesture.
+  const bindExplicitChoice=(selector,destination)=>{
+    const button=overlay.querySelector(selector);
+    let armed=false;
+    button.setAttribute('tabindex','-1');
+    button.addEventListener('pointerdown',()=>{armed=true},{passive:true});
+    button.addEventListener('keydown',event=>{
+      if(event.key==='Enter'||event.key===' '){armed=true}
+    });
+    button.addEventListener('click',event=>{
+      if(!armed){event.preventDefault();event.stopImmediatePropagation();return}
+      armed=false;
+      location.href=destination();
+    });
+  };
+  bindExplicitChoice('[data-choice="done"]',()=> 'chariot.html?id='+encodeURIComponent(qrId));
+  bindExplicitChoice('[data-choice="another"]',()=> 'nouveau-chariot.html?fresh=1');
+  // Keep focus away from either action button; require a new tap/key press.
+  dialog.focus({preventScroll:true});
+  requestAnimationFrame(()=>{if(document.activeElement!==dialog)dialog.focus({preventScroll:true})});
 }
 async function saveChariot(){
   if(!requireValidLicense()||!requireAdmin())return;

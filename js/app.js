@@ -735,7 +735,7 @@ function sbiAskClientWithSuggestions(currentValue=''){
     document.body.appendChild(overlay);
     const input=overlay.querySelector('#scsInput'),results=overlay.querySelector('#scsResults');
     input.value=String(currentValue||'');
-    const normalize=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  const normalize=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
     const escape=value=>String(value||'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
     const finish=value=>{overlay.remove();resolve(value)};
     const render=()=>{

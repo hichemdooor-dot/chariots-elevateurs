@@ -3182,14 +3182,14 @@ function showChariotSavedChoice(qrId){
       #chariotSavedChoice p{margin:9px 0 0;color:var(--muted,#64748b);line-height:1.5}
       #chariotSavedChoice .saved-choice-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:22px}
       #chariotSavedChoice .saved-choice-actions .btn{min-height:42px}
-      @media(max-width:480px){#chariotSavedChoice .saved-choice-actions{flex-direction:column-reverse}#chariotSavedChoice .saved-choice-actions .btn{width:100%;justify-content:center}}
+      @media(max-width:480px){#chariotSavedChoice .saved-choice-actions{flex-direction:column}#chariotSavedChoice .saved-choice-actions .btn{width:100%;justify-content:center}}
     </style>
     <section class="saved-choice-card" role="dialog" aria-modal="true" aria-labelledby="chariotSavedChoiceTitle">
       <h2 id="chariotSavedChoiceTitle">Chariot enregistré</h2>
       <p>Que souhaitez-vous faire maintenant&nbsp;?</p>
       <div class="saved-choice-actions">
-        <button type="button" class="btn light" data-choice="done">Enregistrer et fermer</button>
-        <button type="button" class="btn" data-choice="another">Créer un autre chariot</button>
+        <button type="button" class="btn" data-choice="done">Enregistrer et fermer</button>
+        <button type="button" class="btn light" data-choice="another">Créer un autre chariot</button>
       </div>
     </section>`;
   document.body.appendChild(overlay);

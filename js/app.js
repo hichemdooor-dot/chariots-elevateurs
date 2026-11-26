@@ -1142,7 +1142,8 @@ async function transitionChariotStatus(qrId,nextStatus,reason='',options={}){
   if(!c){alert('Chariot introuvable.');return false}
   const from=normalizeStatus(c.status),to=normalizeStatus(nextStatus);
   if(from===to)return true;
-  if(isSbiHandlingEquipment(c.engine)){
+  // Delivery takes precedence: special equipment is forced to STOCK1 / Prêt à livrer only before delivery.
+  if(isSbiHandlingEquipment(c.engine)&&to!=='livre'){
     const fixedPayload={stock:'STOCK1',status:'Prêt à livrer',updated_at:new Date().toISOString()};
     const {error}=await supabaseClient.from('chariots').update(fixedPayload).eq('qr_id',qrId);
     if(error){alert('Erreur : '+friendlySupabaseError(error));return false;}

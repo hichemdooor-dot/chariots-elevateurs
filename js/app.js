@@ -735,7 +735,7 @@ function sbiAskClientWithSuggestions(currentValue=''){
     document.body.appendChild(overlay);
     const input=overlay.querySelector('#scsInput'),results=overlay.querySelector('#scsResults');
     input.value=String(currentValue||'');
-  const normalize=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  const normalize=value=>String(value||'').toLowerCase().trim();
     const escape=value=>String(value||'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
     const finish=value=>{overlay.remove();resolve(value)};
     const render=()=>{
@@ -2472,7 +2472,7 @@ function ensureDeliveryModalStyles(){
 let SBI_DELIVERY_DRIVER_NAMES=['AISSA','YOUNES','BILLAL','HAMZA'];
 async function loadSharedDeliveryDriverNames(){
   const configType='Configuration chauffeurs',configQr='SYSTEM',cacheKey='sbi_delivery_drivers_v1';
-    const name=String(value||'').trim().replace(/\s+/g,' ').toLocaleUpperCase('fr');
+    const name=String(value||'').trim().split(' ').filter(Boolean).join(' ').toLocaleUpperCase('fr');
   try{
     const {data,error}=await supabaseClient.from('maintenance').select('travaux,created_at').eq('qr_id',configQr).eq('type',configType).order('created_at',{ascending:false}).limit(1);
     if(error)throw error;
